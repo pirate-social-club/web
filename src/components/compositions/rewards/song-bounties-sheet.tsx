@@ -28,6 +28,7 @@ export type BountyObjective = "study" | "karaoke";
 export type SongBountyLifecycleStatus =
   | "empty"
   | "active"
+  | "paused"
   | "exhausted"
   | "funding_confirming"
   | "operational_hold";
@@ -44,8 +45,9 @@ export interface SongBountySlot {
   rewardLabel?: string;
   remainingLabel?: string;
   viewerStatusLabel?: string;
-  canCreate?: boolean;
-  canFund?: boolean;
+  actionDisabledReason?: string;
+  canCreate: boolean;
+  canFund: boolean;
 }
 
 export interface LegacyEitherBounty {
@@ -109,9 +111,11 @@ function assertNever(value: never): never {
 function lifecycleStatusCopy(slot: SongBountySlot): string {
   switch (slot.status) {
     case "empty":
-      return "No bounty yet.";
+      return slot.actionDisabledReason ?? "No bounty yet.";
     case "active":
       return slot.remainingLabel ?? "Open for claims.";
+    case "paused":
+      return "Paused. Funding is unavailable until this bounty resumes.";
     case "exhausted":
       return "Out of funds. Add funding to reopen this slot.";
     case "funding_confirming":
@@ -123,23 +127,23 @@ function lifecycleStatusCopy(slot: SongBountySlot): string {
   }
 }
 
-function slotAction(slot: SongBountySlot, capabilities: SongBountyCapabilities): {
+function slotAction(slot: SongBountySlot): {
   action: "create" | "fund" | "view";
   disabled: boolean;
   label: string;
 } {
   if (slot.status === "empty") {
-    const canCreate = slot.canCreate ?? capabilities.canCreate;
-    return { action: "create", disabled: !canCreate, label: canCreate ? "Create" : "Unavailable" };
+    return { action: "create", disabled: !slot.canCreate, label: slot.canCreate ? "Create" : "Unavailable" };
   }
   if (slot.status === "active" || slot.status === "exhausted") {
-    const canFund = slot.canFund ?? capabilities.canFund;
-    return { action: "fund", disabled: !canFund, label: canFund ? "Fund" : "Unavailable" };
+    return { action: "fund", disabled: !slot.canFund, label: slot.canFund ? "Fund" : "Unavailable" };
   }
   if (slot.status === "funding_confirming") {
     return { action: "view", disabled: true, label: "Confirming" };
   }
   switch (slot.status) {
+    case "paused":
+      return { action: "view", disabled: true, label: "Paused" };
     case "operational_hold":
       return { action: "view", disabled: true, label: "On hold" };
     default:
@@ -154,6 +158,9 @@ function SlotStateIcon({ slot }: { slot: SongBountySlot }) {
   if (slot.status === "operational_hold") {
     return <ShieldWarning aria-hidden className="size-5 text-warning" weight="duotone" />;
   }
+  if (slot.status === "paused") {
+    return <HourglassMedium aria-hidden className="size-5 text-warning" weight="duotone" />;
+  }
   if (slot.status === "exhausted") {
     return <WarningCircle aria-hidden className="size-5 text-warning" weight="duotone" />;
   }
@@ -161,18 +168,16 @@ function SlotStateIcon({ slot }: { slot: SongBountySlot }) {
 }
 
 function BountySlotCard({
-  capabilities,
   onAction,
   slot,
 }: {
-  capabilities: SongBountyCapabilities;
   onAction?: SongBountiesSheetProps["onSlotAction"];
   slot: SongBountySlot;
 }) {
   const copy = OBJECTIVE_COPY[slot.objective];
   const ObjectiveIcon = copy.icon;
-  const action = slotAction(slot, capabilities);
-  const unavailable = slot.status === "exhausted" || slot.status === "funding_confirming" || slot.status === "operational_hold";
+  const action = slotAction(slot);
+  const unavailable = slot.status === "exhausted" || slot.status === "funding_confirming" || slot.status === "paused" || slot.status === "operational_hold";
 
   return (
     <Card
@@ -237,12 +242,14 @@ function LegacyEitherCard({
   onAction?: SongBountiesSheetProps["onSlotAction"];
 }) {
   const syntheticSlot: SongBountySlot = {
+    canCreate: false,
+    canFund: capabilities.canFund,
     objective: "study",
     remainingLabel: bounty.remainingLabel,
     rewardLabel: bounty.rewardLabel,
     status: bounty.status,
   };
-  const action = slotAction(syntheticSlot, capabilities);
+  const action = slotAction(syntheticSlot);
   const lifecycleCopy = bounty.status === "exhausted"
     ? "Out of funds. Add funding to reopen these slots."
     : lifecycleStatusCopy(syntheticSlot);
@@ -379,12 +386,17 @@ export function SongBountiesSheet({
   onSlotAction,
   onTicketPoolAction,
   open,
-  showTicketPool = true,
+  showTicketPool = false,
   slots,
   ticketPool,
 }: SongBountiesSheetProps) {
   const normalizedSlots = (["study", "karaoke"] as const).map((objective) =>
-    slots.find((slot) => slot.objective === objective) ?? { objective, status: "empty" as const });
+    slots.find((slot) => slot.objective === objective) ?? {
+      canCreate: capabilities.canCreate,
+      canFund: capabilities.canFund,
+      objective,
+      status: "empty" as const,
+    });
 
   return (
     <Modal forceMobile={forceMobile} onOpenChange={onOpenChange} open={open}>
@@ -418,7 +430,6 @@ export function SongBountiesSheet({
             <LegacyEitherCard bounty={legacyEither} capabilities={capabilities} onAction={onSlotAction} />
           ) : normalizedSlots.map((slot) => (
             <BountySlotCard
-              capabilities={capabilities}
               key={slot.objective}
               onAction={onSlotAction}
               slot={slot}

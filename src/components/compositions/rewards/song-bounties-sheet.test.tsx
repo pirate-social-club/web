@@ -19,13 +19,20 @@ const { SongBountiesSheet } = await import("./song-bounties-sheet");
 const capabilities = { canCreate: true, canFund: true };
 
 test("renders ticket pool independently from stable Study and Karaoke slots", () => {
-  const view = render(<SongBountiesSheet capabilities={capabilities} open slots={[]} />);
+  const view = render(<SongBountiesSheet capabilities={capabilities} open showTicketPool slots={[]} />);
 
   expect(view.getByLabelText("Daily Megapot ticket pool")).toBeTruthy();
   expect(view.getByLabelText("Study bounty slot")).toBeTruthy();
   expect(view.getByLabelText("Karaoke bounty slot")).toBeTruthy();
   expect(view.getAllByText("No bounty yet.")).toHaveLength(2);
   expect(view.getByRole("button", { name: "Create ticket pool" })).toBeTruthy();
+  expect(view.getAllByRole("button", { name: "Create" })).toHaveLength(2);
+});
+
+test("keeps the parked ticket pool hidden unless explicitly enabled", () => {
+  const view = render(<SongBountiesSheet capabilities={capabilities} open slots={[]} />);
+
+  expect(view.queryByLabelText("Daily Megapot ticket pool")).toBeNull();
   expect(view.getAllByRole("button", { name: "Create" })).toHaveLength(2);
 });
 
@@ -38,7 +45,8 @@ test("cash-slot top-up remains independent from ticket-pool funding", () => {
       onSlotAction={(objective, action) => slotActions.push(`${objective}:${action}`)}
       onTicketPoolAction={(action) => poolActions.push(action)}
       open
-      slots={[{ objective: "study", rewardLabel: "$0.40 USDC", status: "exhausted" }]}
+      showTicketPool
+      slots={[{ canCreate: false, canFund: true, objective: "study", rewardLabel: "$0.40 USDC", status: "exhausted" }]}
       ticketPool={{
         beneficiaryCountLabel: "4 singers included",
         drawingLabel: "Drawing 7,710 · Base Sepolia",
@@ -60,9 +68,10 @@ test("ticket pool explains shared winnings without claiming user ticket ownershi
     <SongBountiesSheet
       capabilities={capabilities}
       open
+      showTicketPool
       slots={[
-        { objective: "study", rewardLabel: "25 $COMMUNITY", status: "active" },
-        { objective: "karaoke", rewardLabel: "$0.40 USDC", status: "active" },
+        { canCreate: false, canFund: true, objective: "study", rewardLabel: "25 $COMMUNITY", status: "active" },
+        { canCreate: false, canFund: true, objective: "karaoke", rewardLabel: "$0.40 USDC", status: "active" },
       ]}
       ticketPool={{
         beneficiaryCountLabel: "1 singer included",
@@ -87,8 +96,8 @@ test("shows occupied cash states without offering cash-slot funding", () => {
       capabilities={capabilities}
       open
       slots={[
-        { objective: "study", rewardLabel: "25 $COMMUNITY", status: "funding_confirming" },
-        { objective: "karaoke", rewardLabel: "$0.40 USDC", status: "operational_hold" },
+        { canCreate: false, canFund: false, objective: "study", rewardLabel: "25 $COMMUNITY", status: "funding_confirming" },
+        { canCreate: false, canFund: false, objective: "karaoke", rewardLabel: "$0.40 USDC", status: "operational_hold" },
       ]}
     />,
   );
@@ -97,12 +106,45 @@ test("shows occupied cash states without offering cash-slot funding", () => {
   expect(view.getByRole("button", { name: "On hold" }).hasAttribute("disabled")).toBe(true);
 });
 
+test("explains a paused bounty without collapsing it into an operational hold", () => {
+  const view = render(
+    <SongBountiesSheet
+      capabilities={capabilities}
+      open
+      slots={[{ canCreate: false, canFund: false, objective: "study", rewardLabel: "$0.40 USDC", status: "paused" }]}
+    />,
+  );
+
+  expect(view.getByText("Paused. Funding is unavailable until this bounty resumes.")).toBeTruthy();
+  expect(view.getByRole("button", { name: "Paused" }).hasAttribute("disabled")).toBe(true);
+});
+
+test("shows why an unavailable empty objective cannot be created", () => {
+  const view = render(
+    <SongBountiesSheet
+      capabilities={{ canCreate: true, canFund: false }}
+      open
+      slots={[{
+        actionDisabledReason: "A Study bounty already occupies this song. A separate Karaoke bounty is not available yet.",
+        canCreate: false,
+        canFund: false,
+        objective: "karaoke",
+        status: "empty",
+      }]}
+    />,
+  );
+
+  expect(view.getByText("A Study bounty already occupies this song. A separate Karaoke bounty is not available yet.")).toBeTruthy();
+  expect(view.getByRole("button", { name: "Unavailable" }).hasAttribute("disabled")).toBe(true);
+});
+
 test("legacy Either bounty occupies both cash slots while the ticket pool remains visible", () => {
   const view = render(
     <SongBountiesSheet
       capabilities={capabilities}
       legacyEither={{ rewardLabel: "$1.00 USDC", status: "active" }}
       open
+      showTicketPool
       slots={[]}
       ticketPool={{
         drawingLabel: "Drawing 7,710",
@@ -132,10 +174,10 @@ test("resolved third-party capabilities disable all creation without blocking th
   );
 
   expect(thirdPartyView.getByText("The song owner is not accepting third-party funding.")).toBeTruthy();
-  expect(thirdPartyView.getAllByRole("button", { name: "Unavailable" })).toHaveLength(3);
+  expect(thirdPartyView.getAllByRole("button", { name: "Unavailable" })).toHaveLength(2);
   thirdPartyView.unmount();
 
-  const ownerView = render(<SongBountiesSheet capabilities={capabilities} open slots={[]} />);
+  const ownerView = render(<SongBountiesSheet capabilities={capabilities} open showTicketPool slots={[]} />);
   expect(ownerView.getByRole("button", { name: "Create ticket pool" })).toBeTruthy();
   expect(ownerView.getAllByRole("button", { name: "Create" })).toHaveLength(2);
 });
@@ -164,7 +206,8 @@ test("exhausted ticket pool keeps cash bounties active and offers only pool fund
       capabilities={capabilities}
       onTicketPoolAction={(action) => actions.push(action)}
       open
-      slots={[{ objective: "study", rewardLabel: "$0.40 USDC", status: "active" }]}
+      showTicketPool
+      slots={[{ canCreate: false, canFund: true, objective: "study", rewardLabel: "$0.40 USDC", status: "active" }]}
       ticketPool={{
         drawingLabel: "Next eligible drawing",
         status: "exhausted",

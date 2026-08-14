@@ -25,7 +25,7 @@ import {
   findConnectedFundingWallet,
   resolveRewardFundingTransferInput,
 } from "@/lib/commerce/routed-checkout";
-import { formatUsdLabel, parseUsdInput, usdToCents } from "@/lib/formatting/currency";
+import { formatUsdCentsLabel, parseUsdInput, usdToCents } from "@/lib/formatting/currency";
 import { getErrorMessage } from "@/lib/error-utils";
 import { getPirateNetworkConfig } from "@/lib/network-config";
 import {
@@ -86,6 +86,7 @@ function songBountyLifecycleStatus(status: RewardCampaign["status"]): SongBounty
     case "active":
       return "active";
     case "paused":
+      return "paused";
     case "operational_hold":
       return "operational_hold";
     case "exhausted":
@@ -98,6 +99,21 @@ function songBountyLifecycleStatus(status: RewardCampaign["status"]): SongBounty
       return exhaustive;
     }
   }
+}
+
+function campaignRewardLabel(campaign: RewardCampaign): string {
+  const amounts = [
+    campaign.daily_reward_cents,
+    ...campaign.payout_tiers.map((tier) => tier.amount_cents),
+  ].filter((amount): amount is number => Number.isFinite(amount) && amount > 0);
+  if (amounts.length === 0) return "$0.00 per day";
+  const minimum = Math.min(...amounts);
+  const maximum = Math.max(...amounts);
+  const minimumLabel = formatUsdCentsLabel(minimum) ?? "$0.00";
+  const maximumLabel = formatUsdCentsLabel(maximum) ?? minimumLabel;
+  return minimum === maximum
+    ? `${minimumLabel} per day`
+    : `${minimumLabel}–${maximumLabel} per day`;
 }
 
 export function useBoostCampaignController(input: BoostCampaignControllerInput) {
@@ -343,7 +359,10 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
         });
       }
     }).catch(() => {
-      if (!cancelled) setCapabilities(null);
+      if (!cancelled) {
+        setCapabilities(null);
+        setCampaignResolved(true);
+      }
     });
     // The song-owner policy read is advisory: the API enforces the policy on
     // its own at campaign creation and activation. Fetch it independently so a
@@ -812,24 +831,36 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
       && !campaignOccupiesSlots
       && capabilities?.eligible_activities.includes(objective),
   );
-  const bountiesSlots: SongBountySlot[] = campaignOccupiesSlots && campaign && campaign.eligible_activity !== "either"
-    ? [{
+  const bountiesSlots: SongBountySlot[] = (["study", "karaoke"] as const).map((objective) => {
+    if (campaignOccupiesSlots && campaign && campaign.eligible_activity === objective) {
+      return {
+        canCreate: false,
         canFund: canFundCampaign,
-        objective: campaign.eligible_activity,
-        remainingLabel: formatUsdLabel(campaign.remaining_cents / 100) ?? undefined,
-        rewardLabel: `${formatUsdLabel(campaign.daily_reward_cents / 100) ?? "$0.00"} per day`,
+        objective,
+        remainingLabel: formatUsdCentsLabel(campaign.remaining_cents) ?? undefined,
+        rewardLabel: campaignRewardLabel(campaign),
         status: campaignStatus,
-      }]
-    : ["study", "karaoke"].map((objective) => ({
-        canCreate: canCreateObjective(objective as BountyObjective),
-        objective: objective as BountyObjective,
-        status: "empty" as const,
-      }));
+      } satisfies SongBountySlot;
+    }
+    const canCreate = canCreateObjective(objective);
+    const actionDisabledReason = campaignOccupiesSlots && campaign
+      ? `A ${campaign.eligible_activity === "either" ? "Study or Karaoke" : campaign.eligible_activity} bounty already occupies this song. A separate ${objective} bounty is not available yet.`
+      : !canCreate
+        ? `${objective[0].toUpperCase()}${objective.slice(1)} bounties are not eligible for this song right now.`
+        : undefined;
+    return {
+      actionDisabledReason,
+      canCreate,
+      canFund: false,
+      objective,
+      status: "empty" as const,
+    } satisfies SongBountySlot;
+  });
   const legacyEither: LegacyEitherBounty | undefined = campaignOccupiesSlots
     && campaign?.eligible_activity === "either"
     ? {
-        remainingLabel: formatUsdLabel(campaign.remaining_cents / 100) ?? undefined,
-        rewardLabel: `${formatUsdLabel(campaign.daily_reward_cents / 100) ?? "$0.00"} per day`,
+        remainingLabel: formatUsdCentsLabel(campaign.remaining_cents) ?? undefined,
+        rewardLabel: campaignRewardLabel(campaign),
         status: campaignStatus === "empty" ? "active" : campaignStatus,
       }
     : undefined;
@@ -839,10 +870,10 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
     reason: !campaignResolved
       ? "Loading bounties…"
       : !capabilities
-      ? "Bounty funding is unavailable right now."
-      : thirdPartyBlocked
-        ? "The song owner is not accepting bounties from other people."
-        : undefined,
+        ? "Bounty funding is unavailable right now."
+        : thirdPartyBlocked
+          ? "The song owner is not accepting bounties from other people."
+          : undefined,
   };
   const onBountySlotAction = React.useCallback((objective: BountyObjective | "either", action: "create" | "fund" | "view") => {
     if (action === "view") return;
@@ -894,7 +925,7 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
     sheetProps: {
       busy,
       canRestartFunding: terminalCode === "funding_failed",
-      budgetDisplayLabel: formatUsdLabel((plan?.budgetCents ?? 0) / 100) ?? "$0.00",
+      budgetDisplayLabel: formatUsdCentsLabel(plan?.budgetCents ?? 0) ?? "$0.00",
       budgetLabel: budgetInput,
       budgetPresets: sheetState === "top_up"
         ? ["$10.00", "$25.00", "$50.00"]
@@ -902,7 +933,7 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
       completionRangeLabel,
       dailyRewardLabel: dailyRewardInput,
       dailyRewardDisplayLabel: plan?.dailyRewardCents != null
-        ? formatUsdLabel(plan.dailyRewardCents / 100) ?? undefined
+        ? formatUsdCentsLabel(plan.dailyRewardCents) ?? undefined
         : undefined,
       eligibleActivity: authoritativeEligibleActivity,
       eligibleActivities: capabilities?.eligible_activities,
@@ -915,8 +946,8 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
       explorerTxUrl: (transactionHash ?? campaignFundingTxHash(campaign))
         ? `${explorerBase}/tx/${transactionHash ?? campaignFundingTxHash(campaign)}`
         : undefined,
-      fundingAmountLabel: quote ? formatUsdLabel(quote.amount_cents / 100) ?? undefined : undefined,
-      fundedLabel: campaign ? formatUsdLabel(campaign.funded_cents / 100) ?? undefined : undefined,
+      fundingAmountLabel: quote ? formatUsdCentsLabel(quote.amount_cents) ?? undefined : undefined,
+      fundedLabel: campaign ? formatUsdCentsLabel(campaign.funded_cents) ?? undefined : undefined,
       onBudgetChange: setBudgetInput,
       ...(tiersPreviewAvailable ? {
         nationalityPricingEnabled,
@@ -937,7 +968,7 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
           (tier) => tier.id === tierId ? { ...tier, amountLabel } : tier,
         )),
         maxClaimDisplayLabel: plan?.maxClaimCents != null
-          ? formatUsdLabel(plan.maxClaimCents / 100) ?? undefined
+          ? formatUsdCentsLabel(plan.maxClaimCents) ?? undefined
           : undefined,
       } : {}),
       onConfirm: handleConfirm,
@@ -986,8 +1017,8 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
           ? boostPlanProblemLabel(plan.problem, limits!)
           : undefined),
       rewardCountLabel: boostRewardCountLabel(rewardCount),
-      rewardsPaidLabel: campaign ? formatUsdLabel(campaign.credited_cents / 100) ?? undefined : undefined,
-      remainingLabel: campaign ? formatUsdLabel(campaign.remaining_cents / 100) ?? undefined : undefined,
+      rewardsPaidLabel: campaign ? formatUsdCentsLabel(campaign.credited_cents) ?? undefined : undefined,
+      remainingLabel: campaign ? formatUsdCentsLabel(campaign.remaining_cents) ?? undefined : undefined,
       retryLabel: transactionHash ? "Check funding" : "Start again",
       state: sheetState,
       supportReference,

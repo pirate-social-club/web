@@ -36,6 +36,25 @@ export interface StemSpec {
   onDownload?: () => void;
 }
 
+export interface GenericAssetContentSpec {
+  type: "generic_asset";
+  assetId: string;
+  assetKind: "download_file";
+  communityId: string;
+  title: string;
+  filename?: string | null;
+  mimeType?: string | null;
+  sizeBytes?: number | null;
+  accessMode: AccessMode;
+  listingMode?: ListingMode;
+  listingStatus?: ListingStatus;
+  priceLabel?: string;
+  hasEntitlement?: boolean;
+  accessState?: "unknown" | "available" | "purchase_required" | "delivery_pending";
+  onBuy?: () => void;
+  onDownload?: () => void;
+}
+
 export interface SongStorageProof {
   cid: string;
   gatewayUrl: string;
@@ -444,7 +463,8 @@ export type PostCardContent =
       oembedHtml?: string | null;
     }
   | LiveRoomContentSpec
-  | SongContentSpec;
+  | SongContentSpec
+  | GenericAssetContentSpec;
 
 export type PostCardMenuItem = ActionMenuItem;
 export type PostCardShareAction = ActionMenuItem & {

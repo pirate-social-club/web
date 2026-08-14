@@ -33,6 +33,7 @@ import type {
   SongStudyPayload,
   SongStudyTranscriptionResponse,
   TelegramStudyVoiceIntent,
+  ApiContentBlob,
 } from "./client-api-types";
 import { buildQueryPath, type ApiRequest } from "./client-internal";
 import { deviceTimezone } from "@/lib/device-timezone";
@@ -244,6 +245,36 @@ export function createCommunityContentApi(request: ApiRequest) {
         body: JSON.stringify(body),
         headers: altchaHeaders(options),
       }),
+    createContentBlob: (
+      communityId: string,
+      body: {
+        validation_profile: "download_file_v1";
+        declared_filename: string;
+        declared_mime_type: string;
+        declared_size_bytes: number;
+        declared_content_hash?: string | null;
+        upload_mode: "proxy";
+      },
+    ): Promise<ApiContentBlob> =>
+      request<ApiContentBlob>(`/communities/${encodeURIComponent(communityId)}/content-blobs`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    uploadContentBlob: async (
+      communityId: string,
+      contentBlobId: string,
+      content: ArrayBuffer,
+      mimeType: string,
+      onUploadProgress?: (fraction: number) => void,
+    ): Promise<ApiContentBlob> =>
+      request<ApiContentBlob>(`/communities/${encodeURIComponent(communityId)}/content-blobs/${encodeURIComponent(contentBlobId)}/content`, {
+        method: "PUT",
+        body: content,
+        headers: { "Content-Type": mimeType },
+        onUploadProgress,
+      }),
+    getContentBlob: (communityId: string, contentBlobId: string): Promise<ApiContentBlob> =>
+      request<ApiContentBlob>(`/communities/${encodeURIComponent(communityId)}/content-blobs/${encodeURIComponent(contentBlobId)}`),
     listPendingPosts: (
       communityId: string,
       opts?: { locale?: string | null },

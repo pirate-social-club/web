@@ -22,7 +22,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { buildAnonymousLabel } from "@/lib/anonymous-label";
 import { isPowSatisfiableGate } from "@/lib/identity-gates";
 import { useApi } from "@/lib/api";
-import { resolveApiBaseUrl } from "@/lib/api/base-url";
+import { resolveApiBaseUrl, resolveApiUrl } from "@/lib/api/base-url";
 import { buildCommunityPath } from "@/lib/community-routing";
 import { getFreedomBrowserDetectionSnapshot } from "@/lib/resource-links";
 import { useUiLocale } from "@/lib/ui-locale";
@@ -54,6 +54,7 @@ import { logger } from "@/lib/logger";
 import { normalizeUserId, sameUserId } from "@/app/authenticated-helpers/user-id";
 import { useBoostCampaignController } from "@/app/authenticated-helpers/use-boost-campaign-controller";
 import { useActiveSongRewardOffer } from "@/app/authenticated-helpers/use-active-song-reward-offer";
+import { readStoryCdrAsset } from "@/lib/story/cdr-browser";
 function closeMobileThread(fallbackPath: string) {
   if (typeof window !== "undefined" && window.history.length > 1) {
     window.history.back();
@@ -251,7 +252,10 @@ export function PostPage({
   });
   const authRuntime = usePiratePrivyRuntime();
   const { connectedWallets } = usePiratePrivyWallets({
-    enabled: Boolean(session?.accessToken && activeLiveRoomId),
+    enabled: Boolean(
+      session?.accessToken
+        && (activeLiveRoomId || activeAssetPostType === "file"),
+    ),
   });
 
   const { connect: authConnect, loadError: authLoadError } = authRuntime;
@@ -475,7 +479,7 @@ export function PostPage({
     session?.user?.id
       && community?.id
       && (
-        ((post?.post.post_type === "song" || post?.post.post_type === "video") && post.post.asset)
+        ((post?.post.post_type === "song" || post?.post.post_type === "video" || post?.post.post_type === "file") && post.post.asset)
           || activeLiveRoomId
       ),
   );
@@ -498,7 +502,7 @@ export function PostPage({
     listing: ApiCommunityListing,
     titleText: string,
     nextCommunityId: string,
-    assetLabel: "song" | "video" = "song",
+    assetLabel: "song" | "video" | "file" = "song",
   ) => {
     await buySong({
       assetLabel,
@@ -508,6 +512,55 @@ export function PostPage({
       titleText,
     });
   }, [buySong, locale]);
+
+  const handleDownloadGenericAsset = React.useCallback(async (nextCommunityId: string, assetId: string, titleText: string) => {
+    try {
+      const access = await api.communities.resolveAssetAccess(nextCommunityId, assetId);
+      if (!access.access_granted) {
+        toast.info(access.decision_reason === "purchase_required" ? "Purchase required before downloading this file." : "This asset is not ready for delivery yet.");
+        return;
+      }
+      let blob: Blob;
+      if (access.delivery_kind === "story_cdr_ref" && access.story_cdr_access) {
+        const wallet = connectedWallets[0];
+        if (!wallet) {
+          authRuntime.reconnectEthereumWallet?.();
+          authRuntime.connect?.();
+          toast.info("Connect a wallet to unlock this download.");
+          return;
+        }
+        blob = await readStoryCdrAsset({
+          access: access.story_cdr_access,
+          accessToken: session?.accessToken ?? null,
+          wallet,
+        });
+      } else if (access.delivery_kind === "primary_content_ref" && access.delivery_ref) {
+        const response = await fetch(resolveApiUrl(access.delivery_ref), {
+          headers: session?.accessToken ? { Authorization: `Bearer ${session.accessToken}` } : undefined,
+        });
+        if (!response.ok) throw new Error("Could not download this asset.");
+        blob = await response.blob();
+      } else {
+        throw new Error("Could not download this asset.");
+      }
+      const expectedHash = access.payload?.content_hash?.trim().toLowerCase();
+      if (expectedHash) {
+        const bytes = await blob.arrayBuffer();
+        const digest = await globalThis.crypto.subtle.digest("SHA-256", bytes);
+        const actualHash = `0x${Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("")}`;
+        if (actualHash !== expectedHash) throw new Error("Downloaded asset integrity check failed.");
+        blob = new Blob([bytes], { type: blob.type || access.payload?.mime_type || "application/octet-stream" });
+      }
+      const href = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = href;
+      anchor.download = access.payload?.display_filename?.trim() || titleText;
+      anchor.click();
+      URL.revokeObjectURL(href);
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Could not download this asset."));
+    }
+  }, [api.communities, authRuntime, connectedWallets, session?.accessToken]);
 
   const handleBuyLiveTicket = React.useCallback(async (
     listing: ApiCommunityListing,
@@ -1009,6 +1062,25 @@ export function PostPage({
       studyRewardLabel: rewardOffer?.eligible_activity !== "karaoke" ? rewardLabel : undefined,
     }
     : undefined;
+  const genericAssetOptions = post.post.post_type === "file" && community && threadAssetId
+    ? {
+      genericAsset: {
+        accessState: threadPurchase || post.viewer_is_author ? "available" as const : threadListing ? "purchase_required" as const : "unknown" as const,
+        hasEntitlement: Boolean(threadPurchase || post.viewer_is_author),
+        listingMode: threadListing ? "listed" as const : "not_listed" as const,
+        listingStatus: threadListing?.status === "active"
+          ? "active" as const
+          : threadListing?.status === "paused"
+            ? "paused" as const
+            : undefined,
+        onBuy: threadListing ? () => void handleBuySong(threadListing, post.post.title ?? "digital good", community.id, "file") : undefined,
+        onDownload: post.post.post_type === "file" ? () => void handleDownloadGenericAsset(community.id, threadAssetId, post.post.title ?? "download") : undefined,
+        priceLabel: threadListing?.price_cents === 100
+          ? "1 WIP"
+          : threadListing ? `${threadListing.price_cents}¢ WIP` : undefined,
+      },
+    }
+    : undefined;
   const liveRoom = liveRoomAccess?.room ?? null;
   const eventStore = liveRoom?.store_url
     ? {
@@ -1106,6 +1178,7 @@ export function PostPage({
     showOriginalLabel: copy.common.showOriginal,
     showTranslationLabel: copy.common.showTranslation,
     viewerContentLocale: contentLocale,
+    ...genericAssetOptions,
   });
   const originalPostCard = shouldShowOriginalPost(post)
     ? toThreadPostCard(post, community, authorProfile ?? undefined, songOptions, {
@@ -1129,6 +1202,7 @@ export function PostPage({
       showOriginalLabel: copy.common.showOriginal,
       showTranslationLabel: copy.common.showTranslation,
       viewerContentLocale: contentLocale,
+      ...genericAssetOptions,
     })
     : undefined;
   const communityPath = community?.id

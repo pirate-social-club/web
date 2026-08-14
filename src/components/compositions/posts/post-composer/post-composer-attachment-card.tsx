@@ -1,5 +1,6 @@
 import {
   Image as ImageIcon,
+  FileText,
   MusicNotes,
   Pause,
   Play,
@@ -252,6 +253,20 @@ export function PostComposerAttachmentCard({
           }}
           type="button"
         >
+          <X className="size-5" weight="bold" />
+        </button>
+      </div>
+    );
+  }
+
+  if (attachment.kind === "file") {
+    return (
+      <div className="flex min-h-16 w-full items-center gap-3 rounded-[var(--radius-lg)] border border-border-soft bg-card px-4 py-3">
+        <span className="grid size-12 place-items-center rounded-[var(--radius-md)] bg-muted text-muted-foreground">
+          <FileText className="size-6" />
+        </span>
+        <Type as="span" variant="body-strong" className="min-w-0 flex-1 truncate">{attachment.label}</Type>
+        <button aria-label="Remove asset" className="grid size-10 place-items-center rounded-full text-muted-foreground" onClick={onRemove} type="button">
           <X className="size-5" weight="bold" />
         </button>
       </div>

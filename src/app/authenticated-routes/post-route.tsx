@@ -54,7 +54,6 @@ import { logger } from "@/lib/logger";
 import { normalizeUserId, sameUserId } from "@/app/authenticated-helpers/user-id";
 import { useBoostCampaignController } from "@/app/authenticated-helpers/use-boost-campaign-controller";
 import { useActiveSongRewardOffer } from "@/app/authenticated-helpers/use-active-song-reward-offer";
-
 function closeMobileThread(fallbackPath: string) {
   if (typeof window !== "undefined" && window.history.length > 1) {
     window.history.back();
@@ -63,7 +62,6 @@ function closeMobileThread(fallbackPath: string) {
 
   navigate(fallbackPath);
 }
-
 function viewerCanModerateCommunity(
   viewerUserId: string | null | undefined,
   community:

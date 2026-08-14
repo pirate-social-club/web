@@ -33,7 +33,7 @@ export type SongBountyLifecycleStatus =
   | "funding_confirming"
   | "operational_hold";
 
-export interface SongBountyCapabilities {
+interface SongBountyCapabilities {
   canCreate: boolean;
   canFund: boolean;
   reason?: string;

@@ -10,13 +10,6 @@ import type {
   BoostPayoutTierDraft,
   BoostRewardIdentityProvider,
 } from "@/components/compositions/rewards/reward-booster-surfaces";
-import type {
-  BountyObjective,
-  LegacyEitherBounty,
-  SongBountiesSheetProps,
-  SongBountyLifecycleStatus,
-  SongBountySlot,
-} from "@/components/compositions/rewards/song-bounties-sheet";
 import { usePiratePrivyRuntime, usePiratePrivyWallets } from "@/components/auth/privy-provider";
 import { useApi } from "@/lib/api";
 import { ApiError, isApiNotFoundError } from "@/lib/api/client";
@@ -26,7 +19,6 @@ import {
   resolveRewardFundingTransferInput,
 } from "@/lib/commerce/routed-checkout";
 import { formatUsdCentsLabel, parseUsdInput, usdToCents } from "@/lib/formatting/currency";
-import { getErrorMessage } from "@/lib/error-utils";
 import { getPirateNetworkConfig } from "@/lib/network-config";
 import {
   boostPlanProblemLabel,
@@ -50,6 +42,8 @@ import {
 } from "./boost-campaign-resource";
 import type { BoostCampaignControllerInput } from "./boost-campaign-controller-types";
 import { boostFundingErrorMessage } from "./boost-funding-errors";
+import { useSongBountiesController } from "./use-song-bounties-controller";
+import { useSongOwnerPolicyUpdate } from "./use-song-owner-policy-update";
 import {
   nationalityTiersPreviewEnabled,
   rewardIdentityProviderChoices,
@@ -76,46 +70,6 @@ export { useBoostMenuEligibility } from "./use-boost-menu-eligibility";
 const SCORE_THRESHOLD_BPS = 7_000;
 const FUNDING_FINALITY_POLL_INTERVAL_MS = 10_000;
 
-function songBountyLifecycleStatus(status: RewardCampaign["status"]): SongBountyLifecycleStatus {
-  switch (status) {
-    case "draft":
-    case "funding_quoted":
-    case "funding_confirming":
-      return "funding_confirming";
-    case "scheduled":
-    case "active":
-      return "active";
-    case "paused":
-      return "paused";
-    case "operational_hold":
-      return "operational_hold";
-    case "exhausted":
-      return "exhausted";
-    case "ended":
-    case "canceled":
-      return "empty";
-    default: {
-      const exhaustive: never = status;
-      return exhaustive;
-    }
-  }
-}
-
-function campaignRewardLabel(campaign: RewardCampaign): string {
-  const amounts = [
-    campaign.daily_reward_cents,
-    ...campaignPayoutTiers(campaign).map((tier) => tier.amount_cents),
-  ].filter((amount): amount is number => Number.isFinite(amount) && amount > 0);
-  if (amounts.length === 0) return "$0.00 per day";
-  const minimum = Math.min(...amounts);
-  const maximum = Math.max(...amounts);
-  const minimumLabel = formatUsdCentsLabel(minimum) ?? "$0.00";
-  const maximumLabel = formatUsdCentsLabel(maximum) ?? minimumLabel;
-  return minimum === maximum
-    ? `${minimumLabel} per day`
-    : `${minimumLabel}–${maximumLabel} per day`;
-}
-
 export function useBoostCampaignController(input: BoostCampaignControllerInput) {
   const api = useApi();
   const { connectedWallets } = usePiratePrivyWallets({ enabled: input.authenticated && input.song });
@@ -125,7 +79,6 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
   const [campaign, setCampaign] = React.useState<RewardCampaign | null>(null);
   const [campaignResolved, setCampaignResolved] = React.useState(false);
   const [quote, setQuote] = React.useState<RewardCampaignFundingQuote | null>(null);
-  const [bountiesOpen, setBountiesOpen] = React.useState(false);
   const [sheetOpen, setSheetOpen] = React.useState(false);
   const [policyOpen, setPolicyOpen] = React.useState(false);
   const [eligibleActivity, setEligibleActivity] = React.useState<BoostEligibleActivity>("karaoke");
@@ -155,7 +108,6 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
   const createQuoteInFlight = React.useRef(false);
   const sendFundingInFlight = React.useRef(false);
   const confirmFundingInFlight = React.useRef(false);
-  const policyUpdateInFlight = React.useRef(false);
   const recoveredFundingConfirm = React.useRef(false);
   const fundingOwnerKey = `${input.communityId ?? ""}:${input.postId}`;
   const fundingOwnerKeyRef = React.useRef(fundingOwnerKey);
@@ -166,16 +118,9 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
     confirmFundingInFlight.current = false;
     recoveredFundingConfirm.current = false;
   }
-  const policyOwnerKey = `${input.communityId ?? ""}:${input.postId}`;
-  const policyOwnerKeyRef = React.useRef(policyOwnerKey);
-  if (policyOwnerKeyRef.current !== policyOwnerKey) {
-    policyOwnerKeyRef.current = policyOwnerKey;
-    policyUpdateInFlight.current = false;
-  }
-
   React.useEffect(() => {
     dispatchPolicyWorkflow({ type: "owner-changed" });
-  }, [policyOwnerKey]);
+  }, [fundingOwnerKey]);
 
   React.useEffect(() => {
     dispatchFundingWorkflow({ type: "owner-changed" });
@@ -777,39 +722,13 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
     setSheetOpen(true);
   }, [campaign, campaignAcceptsTopUp, createQuote, input, quote, sheetState, tierFundingEnabled, transactionHash]);
 
-  const openBounties = React.useCallback(() => {
-    if (!input.authenticated) {
-      input.requestAuth();
-      return;
-    }
-    setBountiesOpen(true);
-  }, [input]);
-
-  const updatePolicy = React.useCallback(async (allowed: boolean) => {
-    if (!input.communityId || policyUpdateInFlight.current) return;
-    const requestOwnerKey = policyOwnerKeyRef.current;
-    policyUpdateInFlight.current = true;
-    dispatchPolicyWorkflow({ type: "update-started" });
-    try {
-      const policy = await api.rewards.updateSongOwnerPolicy(input.communityId, input.postId, {
-        third_party_rewards: allowed ? "allowed" : "blocked",
-      });
-      if (policyOwnerKeyRef.current !== requestOwnerKey) return;
-      setPolicyAllowed(policy.third_party_rewards === "allowed");
-      dispatchPolicyWorkflow({ type: "update-succeeded" });
-    } catch (error) {
-      if (policyOwnerKeyRef.current !== requestOwnerKey) return;
-      dispatchPolicyWorkflow({
-        type: "update-failed",
-        message: getErrorMessage(error, "Could not update bounty settings."),
-      });
-    } finally {
-      if (policyOwnerKeyRef.current === requestOwnerKey) {
-        policyUpdateInFlight.current = false;
-      }
-    }
-  }, [api.rewards, input.communityId, input.postId]);
-
+  const updatePolicy = useSongOwnerPolicyUpdate({
+    api,
+    communityId: input.communityId,
+    dispatch: dispatchPolicyWorkflow,
+    postId: input.postId,
+    setPolicyAllowed,
+  });
   const explorerBase = getPirateNetworkConfig().base.explorerUrl.replace(/\/$/u, "");
   const rewardCount = plan?.rewardCount ?? 0;
   const canUseBounties = Boolean(
@@ -819,79 +738,18 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
       && capabilities.post_eligible,
   );
   const canBrowseBounties = canUseBounties && campaignResolved;
-  const campaignOccupiesSlots = Boolean(
-    campaign
-      && campaign.status !== "ended"
-      && campaign.status !== "canceled",
-  );
-  const campaignStatus = campaign ? songBountyLifecycleStatus(campaign.status) : "empty";
-  const canFundCampaign = Boolean(canBrowseBounties && campaignAcceptsTopUp && !thirdPartyBlocked);
-  const canCreateObjective = (objective: BountyObjective) => Boolean(
-    canBrowseBounties
-      && !campaignOccupiesSlots
-      && capabilities?.eligible_activities.includes(objective),
-  );
-  const bountiesSlots: SongBountySlot[] = (["study", "karaoke"] as const).map((objective) => {
-    if (campaignOccupiesSlots && campaign && campaign.eligible_activity === objective) {
-      return {
-        canCreate: false,
-        canFund: canFundCampaign,
-        objective,
-        remainingLabel: formatUsdCentsLabel(campaign.remaining_cents) ?? undefined,
-        rewardLabel: campaignRewardLabel(campaign),
-        status: campaignStatus,
-      } satisfies SongBountySlot;
-    }
-    const canCreate = canCreateObjective(objective);
-    const actionDisabledReason = campaignOccupiesSlots && campaign
-      ? `A ${campaign.eligible_activity === "either" ? "Study or Karaoke" : campaign.eligible_activity} bounty already occupies this song. A separate ${objective} bounty is not available yet.`
-      : !canCreate
-        ? `${objective[0].toUpperCase()}${objective.slice(1)} bounties are not eligible for this song right now.`
-        : undefined;
-    return {
-      actionDisabledReason,
-      canCreate,
-      canFund: false,
-      objective,
-      status: "empty" as const,
-    } satisfies SongBountySlot;
+  const { bountiesSheetProps, openBounties } = useSongBountiesController({
+    authenticated: input.authenticated,
+    campaign,
+    campaignAcceptsTopUp,
+    campaignResolved,
+    canBrowseBounties,
+    capabilities,
+    openBoost,
+    requestAuth: input.requestAuth,
+    setEligibleActivity,
+    thirdPartyBlocked,
   });
-  const legacyEither: LegacyEitherBounty | undefined = campaignOccupiesSlots
-    && campaign?.eligible_activity === "either"
-    ? {
-        remainingLabel: formatUsdCentsLabel(campaign.remaining_cents) ?? undefined,
-        rewardLabel: campaignRewardLabel(campaign),
-        status: campaignStatus === "empty" ? "active" : campaignStatus,
-      }
-    : undefined;
-  const bountiesCapabilities: SongBountiesSheetProps["capabilities"] = {
-    canCreate: canBrowseBounties && !campaignOccupiesSlots,
-    canFund: canFundCampaign,
-    reason: !campaignResolved
-      ? "Loading bounties…"
-      : !capabilities
-        ? "Bounty funding is unavailable right now."
-        : thirdPartyBlocked
-          ? "The song owner is not accepting bounties from other people."
-          : undefined,
-  };
-  const onBountySlotAction = React.useCallback((objective: BountyObjective | "either", action: "create" | "fund" | "view") => {
-    if (action === "view") return;
-    if (objective !== "either" && action === "create") {
-      setEligibleActivity(objective);
-    }
-    setBountiesOpen(false);
-    openBoost();
-  }, [openBoost]);
-  const bountiesSheetProps: SongBountiesSheetProps = {
-    capabilities: bountiesCapabilities,
-    legacyEither,
-    onOpenChange: setBountiesOpen,
-    onSlotAction: onBountySlotAction,
-    open: bountiesOpen,
-    showTicketPool: false,
-    slots: bountiesSlots,
-  };
   const availabilityProblem = hasCampaignConflict
       ? campaignContributionProblem(campaign)
     : thirdPartyBlocked

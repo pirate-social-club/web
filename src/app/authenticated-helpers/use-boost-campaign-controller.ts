@@ -722,9 +722,9 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
       // Terminal review is intentionally sticky until an explicit retry is allowed.
     }
     else if (
-      quote
-      && transactionHash
-      && ["confirming", "awaiting-finality"].includes(sheetState)
+        targetQuote
+        && transactionHash
+        && ["confirming", "awaiting-finality"].includes(sheetState)
     ) {
       dispatchFundingWorkflow({ type: "awaiting-finality", transactionHash });
     }
@@ -739,7 +739,7 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
     else if (campaignPayoutTiers(targetCampaign).length > 0 && !tierFundingEnabled) {
       dispatchFundingWorkflow({ type: "show", status: "draft-preview" });
     }
-    else if (campaignPayoutTiers(targetCampaign).length > 0 && !quote) void createQuote(targetCampaign);
+    else if (campaignPayoutTiers(targetCampaign).length > 0 && !targetQuote) void createQuote(targetCampaign);
     else if (!targetQuote) {
       dispatchFundingWorkflow({ type: "restart" });
     }

@@ -65,33 +65,33 @@ jobs:
         run: |
           set -euo pipefail
           export CONTROL_PLANE_DATABASE_URL_BUN="$(node -e "const raw=process.env.CONTROL_PLANE_DATABASE_URL;if(!raw)process.exit(2);const url=new URL(raw);url.searchParams.delete('sslrootcert');process.stdout.write(url.toString())")"
-          bun -e '
-            import { sanitizePostgresUrlForBunSql } from "./scripts/lib/postgres-url.ts";
-            const db = new Bun.SQL(sanitizePostgresUrlForBunSql(process.env.CONTROL_PLANE_DATABASE_URL_BUN));
-            try {
-              await db.begin(async (tx) => {
-                await tx`SET TRANSACTION READ ONLY`;
-                const rows = await tx`
-                  WITH candidates AS (
-                    SELECT a.provider, a.capability_key, a.status,
-                      CASE
-                        WHEN a.source_identity_nullifier_id IS NULL THEN \'unbound\'
-                        WHEN n.identity_nullifier_id IS NULL THEN \'dangling\'
-                        WHEN n.status <> \'active\' THEN \'inactive_nullifier\'
-                        WHEN n.user_id <> a.user_id OR n.provider <> a.provider THEN \'ownership_or_provider_mismatch\'
-                        ELSE \'valid\'
-                      END AS link_state
-                    FROM user_attestations a
-                    LEFT JOIN identity_nullifiers n ON n.identity_nullifier_id = a.source_identity_nullifier_id
-                    WHERE a.status = \'accepted\'
-                      AND a.capability_key IN (\'unique_human\', \'minimum_age\', \'age_over_18\', \'nationality\', \'gender\')
-                  )
-                  SELECT provider, capability_key, status, link_state, COUNT(*)::integer AS rows
-                  FROM candidates
-                  GROUP BY provider, capability_key, status, link_state
-                  ORDER BY provider, capability_key, status, link_state
-                `;
-                console.log(JSON.stringify({ decision_ref: process.env.DECISION_REF, rows }, null, 2));
-              });
-            } finally { await db.end(); }
-          '
+          bun <<'BUN'
+          import { sanitizePostgresUrlForBunSql } from "./scripts/lib/postgres-url.ts";
+          const db = new Bun.SQL(sanitizePostgresUrlForBunSql(process.env.CONTROL_PLANE_DATABASE_URL_BUN));
+          try {
+            await db.begin(async (tx) => {
+              await tx`SET TRANSACTION READ ONLY`;
+              const rows = await tx`
+                WITH candidates AS (
+                  SELECT a.provider, a.capability_key, a.status,
+                    CASE
+                      WHEN a.source_identity_nullifier_id IS NULL THEN 'unbound'
+                      WHEN n.identity_nullifier_id IS NULL THEN 'dangling'
+                      WHEN n.status <> 'active' THEN 'inactive_nullifier'
+                      WHEN n.user_id <> a.user_id OR n.provider <> a.provider THEN 'ownership_or_provider_mismatch'
+                      ELSE 'valid'
+                    END AS link_state
+                  FROM user_attestations a
+                  LEFT JOIN identity_nullifiers n ON n.identity_nullifier_id = a.source_identity_nullifier_id
+                  WHERE a.status = 'accepted'
+                    AND a.capability_key IN ('unique_human', 'minimum_age', 'age_over_18', 'nationality', 'gender')
+                )
+                SELECT provider, capability_key, status, link_state, COUNT(*)::integer AS rows
+                FROM candidates
+                GROUP BY provider, capability_key, status, link_state
+                ORDER BY provider, capability_key, status, link_state
+              `;
+              console.log(JSON.stringify({ decision_ref: process.env.DECISION_REF, rows }, null, 2));
+            });
+          } finally { await db.end(); }
+          BUN

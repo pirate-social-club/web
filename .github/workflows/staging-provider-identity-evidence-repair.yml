@@ -15,6 +15,11 @@ on:
         options:
           - dry-run
           - execute
+      supersede_attestation_id:
+        description: Optional exact staging attestation ID for an approved same-document nationality repeat disposition
+        required: false
+        default: ""
+        type: string
 
 concurrency:
   group: staging-provider-identity-evidence-repair
@@ -29,7 +34,7 @@ jobs:
       contents: read
       id-token: write
     env:
-      REPAIR_CORE_SHA: 470be8d1627805f1aa6fd0c8f90550b8dd8c1493
+      REPAIR_CORE_SHA: 6d76ddaef305a0b085d01ce4ecea0f614e2ec636
     steps:
       - name: Require main branch dispatch
         shell: bash
@@ -52,9 +57,13 @@ jobs:
         shell: bash
         env:
           DECISION_REF: ${{ inputs.decision_ref }}
+          SUPERSEDE_ATTESTATION_ID: ${{ inputs.supersede_attestation_id }}
         run: |
           set -euo pipefail
           [[ "$DECISION_REF" =~ ^[A-Za-z0-9][A-Za-z0-9._:/-]{2,159}$ ]]
+          if [[ -n "$SUPERSEDE_ATTESTATION_ID" ]]; then
+            [[ "$SUPERSEDE_ATTESTATION_ID" =~ ^[A-Za-z0-9][A-Za-z0-9._:-]{2,159}$ ]]
+          fi
 
       - name: Fetch staging control-plane credential through Web OIDC
         id: fetch_secrets
@@ -98,6 +107,7 @@ jobs:
         env:
           DECISION_REF: ${{ inputs.decision_ref }}
           REPAIR_MODE: ${{ inputs.mode }}
+          SUPERSEDE_ATTESTATION_ID: ${{ inputs.supersede_attestation_id }}
         run: |
           set -euo pipefail
           args=(
@@ -109,6 +119,9 @@ jobs:
           )
           if [[ "$REPAIR_MODE" == execute ]]; then
             args+=(--execute --confirm-repair provider-identity-evidence)
+          fi
+          if [[ -n "$SUPERSEDE_ATTESTATION_ID" ]]; then
+            args+=(--supersede-attestation-id "$SUPERSEDE_ATTESTATION_ID")
           fi
           bun "${args[@]}"
 

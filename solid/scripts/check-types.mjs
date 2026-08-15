@@ -31,4 +31,17 @@ const args = [
 console.error(`[typecheck] compiler=${path.relative(rootDir, typecheckBin)}`);
 
 const child = spawn(process.execPath, args, { cwd: rootDir, stdio: "inherit" });
-child.on("exit", (code) => process.exit(code ?? 1));
+
+child.on("error", (error) => {
+  console.error(`[typecheck] failed to start compiler: ${error.message}`);
+  process.exit(1);
+});
+
+child.on("exit", (code, signal) => {
+  if (signal) {
+    process.kill(process.pid, signal);
+    return;
+  }
+
+  process.exit(code ?? 1);
+});

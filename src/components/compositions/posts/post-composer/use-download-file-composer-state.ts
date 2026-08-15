@@ -7,12 +7,13 @@ export function useDownloadFileComposerState(input: {
   file?: DownloadFileComposerState;
   onChange?: (next: DownloadFileComposerState) => void;
 }) {
+  const { file, onChange } = input;
   const [uncontrolledFileState, setUncontrolledFileState] = React.useState<DownloadFileComposerState>(
-    () => defaultDownloadFileState(input.file),
+    () => defaultDownloadFileState(file),
   );
   const setFile = React.useCallback((next: DownloadFileComposerState) => {
-    if (input.file === undefined) setUncontrolledFileState(next);
-    input.onChange?.(next);
-  }, [input.file, input.onChange]);
-  return { file: input.file ?? uncontrolledFileState, setFile };
+    if (file === undefined) setUncontrolledFileState(next);
+    onChange?.(next);
+  }, [file, onChange]);
+  return { file: file ?? uncontrolledFileState, setFile };
 }

@@ -10,7 +10,8 @@ export const MOBILE_BREAKPOINT_QUERY = `(max-width: ${MOBILE_BREAKPOINT - 1}px)`
  * hydration.
  */
 export function createMediaQuery(query: string, serverFallback = false): Accessor<boolean> {
-  const [matches, setMatches] = createSignal(serverFallback);
+  // ownedWrite: the tracking effect below writes matches from its apply phase.
+  const [matches, setMatches] = createSignal(serverFallback, { ownedWrite: true });
 
   createEffect(
     () => query,

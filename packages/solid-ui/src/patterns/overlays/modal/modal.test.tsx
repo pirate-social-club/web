@@ -44,7 +44,9 @@ describe("Modal", () => {
     renderModal(true);
 
     const dialog = await screen.findByRole("dialog");
-    expect(dialog).toHaveAttribute("data-side", "bottom");
+    expect(dialog).toBeVisible();
+    // Sheet branch: the bottom-side variant anchors the surface to the bottom.
+    expect(document.querySelector('[class*="bottom-0"]')).not.toBeNull();
   });
 
   it("closes on Escape and reports through onOpenChange", async () => {

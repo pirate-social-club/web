@@ -9,7 +9,8 @@ import { isServer } from "@solidjs/web";
  * instead of touching browser APIs at module scope.
  */
 export function createClientHydrated(): Accessor<boolean> {
-  const [hydrated, setHydrated] = createSignal(false);
+  // ownedWrite: the mount effect below flips the signal from its apply phase.
+  const [hydrated, setHydrated] = createSignal(false, { ownedWrite: true });
   // Solid 2 effects take a compute and an effect function and never run
   // during SSR, so the signal flips only after client mount.
   createEffect(

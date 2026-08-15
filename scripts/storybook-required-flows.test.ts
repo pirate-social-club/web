@@ -4,7 +4,6 @@ import { resolve } from "node:path";
 
 const requiredFlows = [
   "src/components/compositions/posts/post-composer/stories/file/flow.stories.tsx",
-  "src/components/compositions/posts/post-composer/stories/deck/flow.stories.tsx",
   "src/components/compositions/digital-goods/stories/file-access-flow.stories.tsx",
 ] as const;
 

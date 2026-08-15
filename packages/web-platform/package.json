@@ -1,0 +1,11 @@
+{
+  "name": "@pirate/web-platform",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./api-origin": "./src/api-origin.ts",
+    "./csp": "./src/csp.ts",
+    "./hns": "./src/hns.ts"
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "name": "@pirate/route-contracts",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  }
+}

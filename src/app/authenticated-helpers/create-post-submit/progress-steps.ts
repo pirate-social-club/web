@@ -47,7 +47,7 @@ export function videoSubmitProgressSteps(input: { monetized: boolean }): SubmitP
 }
 
 export function simpleSubmitProgressSteps(input: {
-  mode: "text" | "image" | "link" | "live";
+  mode: "text" | "image" | "link" | "live" | "file" | "deck";
   monetized?: boolean;
   hasMedia?: boolean;
 }): SubmitProgressStep[] {
@@ -58,14 +58,14 @@ export function simpleSubmitProgressSteps(input: {
     steps.push({
       key: "prepare_media",
       phase: input.mode === "image" ? "uploading_media" : "preparing_media",
-      label: input.mode === "live" ? "Preparing media" : "Uploading image",
+      label: input.mode === "live" ? "Preparing media" : input.mode === "file" ? "Uploading file" : "Uploading image",
     });
   }
   if (input.monetized) {
     steps.push({ key: "create_listing", phase: "creating_listing", label: "Creating listing" });
   }
   steps.push(
-    { key: "publish_post", phase: "publishing_post", label: input.mode === "live" ? "Publishing live room" : "Publishing" },
+    { key: "publish_post", phase: "publishing_post", label: input.mode === "live" ? "Publishing live room" : input.mode === "deck" ? "Publishing deck" : "Publishing" },
     { key: "done", phase: "done", label: input.mode === "live" ? "Live room published" : "Post published" },
   );
   return steps;

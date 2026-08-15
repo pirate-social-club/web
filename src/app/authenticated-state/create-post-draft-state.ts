@@ -12,6 +12,8 @@ import {
   defaultAssetRoyaltySplitState,
   defaultSongState,
   defaultVideoState,
+  defaultDownloadFileState,
+  defaultLearningDeckState,
 } from "@/components/compositions/posts/post-composer/post-composer-config";
 import type {
   AuthorMode,
@@ -29,6 +31,8 @@ import type {
   SongComposerState,
   SongMode,
   VideoComposerState,
+  DownloadFileComposerState,
+  LearningDeckComposerState,
 } from "@/components/compositions/posts/post-composer/post-composer.types";
 
 export type CreatePostDraftState = {
@@ -41,6 +45,8 @@ export type CreatePostDraftState = {
   composerMode: ComposerTab;
   derivativeStep: DerivativeStepState | undefined;
   event: ComposerEventState;
+  fileState: DownloadFileComposerState;
+  deckState: LearningDeckComposerState;
   identityMode: "public" | "anonymous";
   imageUpload: File | null;
   imageUploadLabel: string | undefined;
@@ -70,6 +76,8 @@ type DraftAction =
   | { type: "setComposerMode"; value: React.SetStateAction<ComposerTab> }
   | { type: "setDerivativeStep"; value: React.SetStateAction<DerivativeStepState | undefined> }
   | { type: "setEvent"; value: React.SetStateAction<ComposerEventState> }
+  | { type: "setFileState"; value: React.SetStateAction<DownloadFileComposerState> }
+  | { type: "setDeckState"; value: React.SetStateAction<LearningDeckComposerState> }
   | { type: "setIdentityMode"; value: React.SetStateAction<"public" | "anonymous"> }
   | { type: "setImageUpload"; value: React.SetStateAction<File | null> }
   | { type: "setImageUploadLabel"; value: React.SetStateAction<string | undefined> }
@@ -99,6 +107,8 @@ type CreatePostDraftActions = {
   setComposerMode: React.Dispatch<React.SetStateAction<ComposerTab>>;
   setDerivativeStep: React.Dispatch<React.SetStateAction<DerivativeStepState | undefined>>;
   setEvent: React.Dispatch<React.SetStateAction<ComposerEventState>>;
+  setFileState: React.Dispatch<React.SetStateAction<DownloadFileComposerState>>;
+  setDeckState: React.Dispatch<React.SetStateAction<LearningDeckComposerState>>;
   setIdentityMode: React.Dispatch<React.SetStateAction<"public" | "anonymous">>;
   setImageUpload: React.Dispatch<React.SetStateAction<File | null>>;
   setImageUploadLabel: React.Dispatch<React.SetStateAction<string | undefined>>;
@@ -133,6 +143,8 @@ function createInitialDraftState(): CreatePostDraftState {
     composerMode: "text",
     derivativeStep: undefined,
     event: defaultEventState(),
+    fileState: defaultDownloadFileState(),
+    deckState: defaultLearningDeckState(),
     identityMode: "public",
     imageUpload: null,
     imageUploadLabel: undefined,
@@ -173,6 +185,10 @@ function createPostDraftReducer(state: CreatePostDraftState, action: DraftAction
       return { ...state, derivativeStep: resolveSetState(state.derivativeStep, action.value) };
     case "setEvent":
       return { ...state, event: resolveSetState(state.event, action.value) };
+    case "setFileState":
+      return { ...state, fileState: resolveSetState(state.fileState, action.value) };
+    case "setDeckState":
+      return { ...state, deckState: resolveSetState(state.deckState, action.value) };
     case "setIdentityMode":
       return { ...state, identityMode: resolveSetState(state.identityMode, action.value) };
     case "setImageUpload":
@@ -237,6 +253,8 @@ export function useCreatePostDraftState(initial?: Partial<CreatePostDraftState>)
     setComposerMode: (value) => dispatch({ type: "setComposerMode", value }),
     setDerivativeStep: (value) => dispatch({ type: "setDerivativeStep", value }),
     setEvent: (value) => dispatch({ type: "setEvent", value }),
+    setFileState: (value) => dispatch({ type: "setFileState", value }),
+    setDeckState: (value) => dispatch({ type: "setDeckState", value }),
     setIdentityMode: (value) => dispatch({ type: "setIdentityMode", value }),
     setImageUpload: (value) => dispatch({ type: "setImageUpload", value }),
     setImageUploadLabel: (value) => dispatch({ type: "setImageUploadLabel", value }),

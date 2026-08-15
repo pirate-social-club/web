@@ -7,6 +7,7 @@ import { useQuery, useQueryClient, type QueryClient } from "@tanstack/react-quer
 import type { FeedSort } from "@/components/compositions/posts/feed/feed";
 
 import { sortCommunityFeedPosts } from "@/app/authenticated-helpers/feed-sorting";
+import { filterSupportedPostTypes } from "@/app/authenticated-helpers/post-type-compat";
 
 type CommunityFeedLoader = (input: {
   communityId: string;
@@ -32,6 +33,7 @@ export function upsertCommunityFeedPostCache(input: {
   locale: string;
   post: ApiPost;
 }): void {
+  if (!filterSupportedPostTypes([input.post]).length) return;
   const sorts: FeedSort[] = ["best", "new", "top"];
   for (const sort of sorts) {
     input.queryClient.setQueryData<CommunityFeedPage>(
@@ -76,14 +78,17 @@ export function useCommunityFeedPosts(input: {
     setLoadingMore(false);
   }, [communityId, locale, sort]);
 
-  const rawPosts = query.data?.items ?? EMPTY_POSTS;
+  const rawPosts = React.useMemo(
+    () => filterSupportedPostTypes(query.data?.items ?? EMPTY_POSTS),
+    [query.data?.items],
+  );
 
   const posts = React.useMemo(() => sortCommunityFeedPosts(rawPosts, sort), [rawPosts, sort]);
   const setPosts = React.useCallback((update: React.SetStateAction<ApiPost[]>) => {
     queryClient.setQueryData<CommunityFeedPage>(queryKey, (current) => ({
-      items: typeof update === "function"
+      items: filterSupportedPostTypes(typeof update === "function"
         ? (update as (value: ApiPost[]) => ApiPost[])(current?.items ?? [])
-        : update,
+        : update),
       next_cursor: current?.next_cursor ?? null,
     }));
   }, [queryClient, queryKey]);
@@ -101,7 +106,7 @@ export function useCommunityFeedPosts(input: {
       queryClient.setQueryData<CommunityFeedPage>(queryKey, (latest) => {
         if (!latest || latest.next_cursor !== cursor) return latest;
         const seen = new Set(latest.items.map((item) => item.post.id));
-        const uniqueNextItems = next.items.filter((item) => {
+        const uniqueNextItems = filterSupportedPostTypes(next.items).filter((item) => {
           if (seen.has(item.post.id)) return false;
           seen.add(item.post.id);
           return true;

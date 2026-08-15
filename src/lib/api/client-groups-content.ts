@@ -33,9 +33,14 @@ import type {
   SongStudyPayload,
   SongStudyTranscriptionResponse,
   TelegramStudyVoiceIntent,
+  ApiContentBlob,
+  ApiLearningDeckDraft,
+  ApiLearningDeckValidation,
+  ApiLearningStudySession,
 } from "./client-api-types";
 import { buildQueryPath, type ApiRequest } from "./client-internal";
 import { deviceTimezone } from "@/lib/device-timezone";
+import { readCanonicalLearningDeckPackage } from "@/lib/learning-decks/deck-package-reader";
 
 const ALTCHA_HEADER = "x-pirate-altcha";
 
@@ -244,6 +249,91 @@ export function createCommunityContentApi(request: ApiRequest) {
         body: JSON.stringify(body),
         headers: altchaHeaders(options),
       }),
+    createContentBlob: (
+      communityId: string,
+      body: {
+        validation_profile: "download_file_v1" | "deck_import_csv_v1";
+        declared_filename: string;
+        declared_mime_type: string;
+        declared_size_bytes: number;
+        declared_content_hash?: string | null;
+        upload_mode: "proxy";
+      },
+    ): Promise<ApiContentBlob> =>
+      request<ApiContentBlob>(`/communities/${encodeURIComponent(communityId)}/content-blobs`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    uploadContentBlob: async (
+      communityId: string,
+      contentBlobId: string,
+      content: ArrayBuffer,
+      mimeType: string,
+      onUploadProgress?: (fraction: number) => void,
+    ): Promise<ApiContentBlob> =>
+      request<ApiContentBlob>(`/communities/${encodeURIComponent(communityId)}/content-blobs/${encodeURIComponent(contentBlobId)}/content`, {
+        method: "PUT",
+        body: content,
+        headers: { "Content-Type": mimeType },
+        onUploadProgress,
+      }),
+    getContentBlob: (communityId: string, contentBlobId: string): Promise<ApiContentBlob> =>
+      request<ApiContentBlob>(`/communities/${encodeURIComponent(communityId)}/content-blobs/${encodeURIComponent(contentBlobId)}`),
+    createLearningDeck: (
+      communityId: string,
+      body: { title: string; description?: string | null },
+    ): Promise<ApiLearningDeckDraft> =>
+      request<ApiLearningDeckDraft>(`/communities/${encodeURIComponent(communityId)}/learning-decks`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    getLearningDeck: (communityId: string, deckId: string): Promise<ApiLearningDeckDraft> =>
+      request<ApiLearningDeckDraft>(`/communities/${encodeURIComponent(communityId)}/learning-decks/${encodeURIComponent(deckId)}`),
+    getLearningDeckByAsset: (communityId: string, assetId: string): Promise<ApiLearningDeckDraft> =>
+      request<ApiLearningDeckDraft>(`/communities/${encodeURIComponent(communityId)}/learning-decks/by-asset/${encodeURIComponent(assetId)}`),
+    upsertLearningDeckCard: (
+      communityId: string,
+      deckId: string,
+      body: { card_id?: string; card_type: "basic" | "cloze"; prompt: string; answer: string; tags?: string[]; ordinal?: number },
+    ): Promise<ApiLearningDeckDraft> =>
+      request<ApiLearningDeckDraft>(`/communities/${encodeURIComponent(communityId)}/learning-decks/${encodeURIComponent(deckId)}/cards`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    validateLearningDeck: async (communityId: string, deckId: string): Promise<ApiLearningDeckValidation> => {
+      const result = await request<ApiLearningDeckValidation>(
+        `/communities/${encodeURIComponent(communityId)}/learning-decks/${encodeURIComponent(deckId)}/validate`,
+        { method: "POST", body: JSON.stringify({}) },
+      );
+      if (!result.canonical?.json) return result;
+      try {
+        const parsed = readCanonicalLearningDeckPackage(result.canonical.json);
+        if (parsed.status === "supported") return result;
+        return {
+          ...result,
+          canonical: null,
+          issues: [...result.issues, { code: "unsupported_package_schema", message: `Learning deck schema ${parsed.schemaVersion} is not supported by this client` }],
+        };
+      } catch {
+        return {
+          ...result,
+          canonical: null,
+          issues: [...result.issues, { code: "invalid_package", message: "Learning deck package could not be read by this client" }],
+        };
+      }
+    },
+    previewLearningDeckCsv: (communityId: string, csv: string): Promise<unknown> =>
+      request<unknown>(`/communities/${encodeURIComponent(communityId)}/learning-decks/imports/preview`, { method: "POST", body: JSON.stringify({ csv }) }),
+    commitLearningDeckCsv: (communityId: string, deckId: string, body: { csv: string; prompt_column: number; answer_column: number; tags_column?: number | null }): Promise<ApiLearningDeckDraft> =>
+      request<ApiLearningDeckDraft>(`/communities/${encodeURIComponent(communityId)}/learning-decks/${encodeURIComponent(deckId)}/imports/commit`, { method: "POST", body: JSON.stringify(body) }),
+    createLearningStudySession: (communityId: string, deckId: string, body?: { now_ms?: number; limit?: number }): Promise<ApiLearningStudySession> =>
+      request<ApiLearningStudySession>(`/communities/${encodeURIComponent(communityId)}/learning-decks/${encodeURIComponent(deckId)}/study-sessions`, { method: "POST", body: JSON.stringify(body ?? {}) }),
+    getLearningStudySession: (communityId: string, sessionId: string): Promise<ApiLearningStudySession> =>
+      request<ApiLearningStudySession>(`/communities/${encodeURIComponent(communityId)}/learning-study-sessions/${encodeURIComponent(sessionId)}`),
+    revealLearningStudyItem: (communityId: string, sessionId: string, expectedSessionRevision: number): Promise<ApiLearningStudySession> =>
+      request<ApiLearningStudySession>(`/communities/${encodeURIComponent(communityId)}/learning-study-sessions/${encodeURIComponent(sessionId)}/reveal`, { method: "POST", body: JSON.stringify({ expected_session_revision: expectedSessionRevision }) }),
+    rateLearningStudyItem: (communityId: string, sessionId: string, body: { item_id: string; rating: "again" | "hard" | "good" | "easy"; idempotency_key: string; expected_session_revision: number; reviewed_at_ms?: number }): Promise<ApiLearningStudySession> =>
+      request<ApiLearningStudySession>(`/communities/${encodeURIComponent(communityId)}/learning-study-sessions/${encodeURIComponent(sessionId)}/rate`, { method: "POST", body: JSON.stringify(body) }),
     listPendingPosts: (
       communityId: string,
       opts?: { locale?: string | null },

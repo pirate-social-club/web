@@ -6,6 +6,7 @@ import type {
 
 import type {
   LiveRoomContentSpec,
+  GenericAssetContentSpec,
   LiveRoomParticipant,
   PostCardProps,
 } from "@/components/compositions/posts/post-card/post-card.types";
@@ -50,10 +51,13 @@ export type LiveRoomPresentationOptions = {
   onViewerRenew?: (uid: number) => Promise<ApiLiveRoomViewerAttachResponse | null>;
 };
 
+export type GenericAssetPresentationOptions = Pick<GenericAssetContentSpec, "listingMode" | "listingStatus" | "priceLabel" | "hasEntitlement" | "accessState" | "onBuy" | "onDownload" | "onStudy">;
+
 export type PostPresentationOptions = {
   commentCountOverride?: number;
   processingTimedOut?: boolean;
   liveRoom?: LiveRoomPresentationOptions;
+  genericAsset?: GenericAssetPresentationOptions;
   onVerifyAge?: () => void;
   onVote?: PostCardProps["onVote"];
   voteBusy?: boolean;

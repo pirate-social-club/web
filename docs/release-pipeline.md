@@ -136,6 +136,13 @@ spend a second binding merely to retry post-allocation assertions.
 
 ## Production migration OIDC doctor
 
+The `GENERIC_DIGITAL_GOODS_ENABLED` repository variable is the shared writer
+and schema-gate authority. When `true`, both staging and production schema
+gates pass `--features generic_digital_goods`, which requires
+`1158_generic_assets_learning_foundation.sql`. Keep the variable `false` until
+the API runtime consumer and the generic writer are deployed together; turning
+on schema attestation without a runtime consumer creates false assurance.
+
 Production migration access is verified by the manual, read-only
 `Production migration OIDC doctor` workflow. Dispatch it from `main`; any other ref is rejected so
 the GitHub OIDC `sub` claim remains `repo:pirate-social-club/web:ref:refs/heads/main`.

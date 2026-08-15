@@ -44,6 +44,7 @@ import { submitLinkPost } from "@/app/authenticated-helpers/create-post-submit/l
 import { submitLiveRoom } from "@/app/authenticated-helpers/create-post-submit/live";
 import { submitTextPost } from "@/app/authenticated-helpers/create-post-submit/text";
 import { submitVideoPost } from "@/app/authenticated-helpers/create-post-submit/video";
+import { submitDownloadableFilePost, submitLearningDeckPost } from "@/app/authenticated-helpers/create-post-submit/generic";
 import {
   createSubmitProgressReporter,
 } from "@/app/authenticated-helpers/create-post-submit/progress";
@@ -298,6 +299,8 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
     composerMode,
     derivativeStep,
     event,
+    fileState,
+    deckState,
     imageUpload,
     imageUploadLabel,
     identityMode,
@@ -327,6 +330,8 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
     setComposerMode,
     setDerivativeStep,
     setEvent,
+    setFileState,
+    setDeckState,
     setImageUpload,
     setImageUploadLabel,
     setIdentityMode,
@@ -732,6 +737,8 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
   const canSubmitImage = title.trim().length > 0 && Boolean(imageUpload);
   const canSubmitVideo = title.trim().length > 0 && Boolean(videoState.primaryVideoUpload);
   const canSubmitLive = canSubmitLiveRoomDraft(liveState, title);
+  const canSubmitFile = title.trim().length > 0 && Boolean(fileState.upload);
+  const canSubmitDeck = title.trim().length > 0 && deckState.cards.length > 0 && deckState.cards.every((card) => card.prompt.trim() && card.answer.trim());
   const canSubmit = composerMode === "song"
     ? canSubmitSong
     : composerMode === "link"
@@ -742,6 +749,10 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
           ? canSubmitVideo
           : composerMode === "live"
             ? canSubmitLive
+            : composerMode === "file"
+              ? canSubmitFile
+              : composerMode === "deck"
+                ? canSubmitDeck
             : canSubmitText;
   const paidLiveRoomMode = composerMode === "live" && liveState.accessMode === "paid";
   const paidCommerceMode = ((composerMode === "song" || composerMode === "video") && monetizationState.visible) || paidLiveRoomMode;
@@ -847,8 +858,12 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
             })
           : composerMode === "image"
             ? simpleSubmitProgressSteps({ hasMedia: Boolean(imageUpload), mode: "image" })
-            : composerMode === "link"
+          : composerMode === "link"
               ? simpleSubmitProgressSteps({ mode: "link" })
+              : composerMode === "file"
+                ? simpleSubmitProgressSteps({ mode: "file", hasMedia: true })
+                : composerMode === "deck"
+                  ? simpleSubmitProgressSteps({ mode: "deck" })
               : simpleSubmitProgressSteps({ mode: "text" });
     const reportProgress = createSubmitProgressReporter(progressSteps, (progress) => {
       setPageState((current) => ({ ...current, submitProgress: progress }));
@@ -1107,6 +1122,63 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
           signAgentAuthoredBody,
           title,
         });
+      } else if (composerMode === "file") {
+        result = await submitDownloadableFilePost({
+          altchaPayload: postAltchaPayload,
+          authorMode,
+          baseRequest: buildBasePostRequest({
+            anonymousScope,
+            disclosedQualifierIds,
+            ageGatePolicy,
+            idempotencyKey: submissionOperation.idempotencyKey,
+            identityMode: resolvedIdentityMode,
+            visibility: audience.visibility,
+          }),
+          communityId,
+          contentBlobId: submissionOperation.contentBlobId,
+          createContentBlob: api.communities.createContentBlob,
+          createPost: api.communities.createPost,
+          file: fileState,
+          getContentBlob: api.communities.getContentBlob,
+          onContentBlobCreated: (blob) => {
+            submissionOperation.contentBlobId = blob.id;
+          },
+          reportProgress: (key) => {
+            if (key === "validating") reportProgress("validating");
+            else if (key === "uploading_media") reportProgress("prepare_media");
+            else reportProgress("publish_post");
+          },
+          signAgentAuthoredBody,
+          title,
+          uploadContentBlob: api.communities.uploadContentBlob,
+        }) as ApiCreatedPost;
+      } else if (composerMode === "deck") {
+        result = await submitLearningDeckPost({
+          altchaPayload: postAltchaPayload,
+          authorMode,
+          baseRequest: buildBasePostRequest({
+            anonymousScope,
+            disclosedQualifierIds,
+            ageGatePolicy,
+            idempotencyKey: submissionOperation.idempotencyKey,
+            identityMode: resolvedIdentityMode,
+            visibility: audience.visibility,
+          }),
+          communityId,
+          createLearningDeck: api.communities.createLearningDeck,
+          createPost: api.communities.createPost,
+          deck: deckState,
+          getLearningDeck: api.communities.getLearningDeck,
+          learningDeckId: submissionOperation.learningDeckId,
+          onLearningDeckCreated: (draft) => {
+            submissionOperation.learningDeckId = draft.deck.learning_deck_id;
+          },
+          reportProgress: (key) => reportProgress(key === "validating" ? "validating" : "publish_post"),
+          signAgentAuthoredBody,
+          title,
+          upsertLearningDeckCard: api.communities.upsertLearningDeckCard,
+          validateLearningDeck: api.communities.validateLearningDeck,
+        }) as ApiCreatedPost;
       } else {
         reportProgress("publish_post");
         logger.info("[create-post] creating text post");
@@ -1219,7 +1291,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
     api, audience, ageGatePolicy, authorMode, body, caption, charityContribution, charityPartner, community, communityId, composerMode, contentLocale, derivativeStep, draft, eligibility?.status, event, hasCommunityPostingRole, hasOpenPowPostingAccess,
     identityMode, imageUpload, license, linkUrl, liveState, lyrics, monetizationState, paidAssetPriceUsd, paidLiveRoomMode, pendingSongBundleId, postAltchaPayload, postAltchaRequired, pricingPolicy?.regional_pricing_enabled, royaltySplit,
     queryClient, selectedQualifierIds, session?.user.id, setPendingSongBundleId, setSubmitError, signAgentAuthoredBody, songMode, songState, submitSongPost, submitState.canPost, title,
-    videoState,
+    videoState, fileState, deckState,
     warnIfStoryRegistrationIncomplete,
   ]);
 
@@ -1229,6 +1301,8 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
   }, [setImageUpload, setImageUploadLabel]);
 
   return {
+    fileState,
+    deckState,
     availableIdentityQualifiers,
     ageGatePolicy,
     body,
@@ -1281,6 +1355,8 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
     setComposerMode,
     setDerivativeStep,
     setEvent,
+    setFileState,
+    setDeckState,
     setAuthorMode,
     setImageUpload: setImageUploadWithLabel,
     setIdentityMode,

@@ -12,7 +12,7 @@
 import type { ActionMenuItem } from "../../../design-system";
 
 /** Icon markers understood by the feature action menu. */
-export type PostCardMenuIcon = "download" | "external" | "flag" | "link";
+export type PostCardMenuIcon = "crosspost" | "download" | "external" | "flag" | "link" | "share";
 
 export type PostCardMenuItem = Omit<ActionMenuItem, "icon"> & {
   icon?: PostCardMenuIcon;

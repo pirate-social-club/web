@@ -115,7 +115,39 @@
   }
 }
 
+@keyframes sheet-enter-right {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+@keyframes sheet-enter-left {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+
+@keyframes sheet-enter-top {
+  from { transform: translateY(-100%); }
+  to { transform: translateY(0); }
+}
+
+@keyframes sheet-enter-bottom {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
 @layer components {
+  .sheet-enter-right[data-expanded] { animation: sheet-enter-right 300ms cubic-bezier(0.22, 1, 0.36, 1); }
+  .sheet-enter-left[data-expanded] { animation: sheet-enter-left 300ms cubic-bezier(0.22, 1, 0.36, 1); }
+  .sheet-enter-top[data-expanded] { animation: sheet-enter-top 300ms cubic-bezier(0.22, 1, 0.36, 1); }
+  .sheet-enter-bottom[data-expanded] { animation: sheet-enter-bottom 300ms cubic-bezier(0.22, 1, 0.36, 1); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .sheet-enter-right[data-expanded],
+    .sheet-enter-left[data-expanded],
+    .sheet-enter-top[data-expanded],
+    .sheet-enter-bottom[data-expanded] { animation: none; }
+  }
+
   .notification-count-badge {
     @apply inline-flex h-4 min-w-4 items-center justify-center rounded-full border border-background bg-primary px-1 text-primary-foreground;
     font-family: var(--font-sans);
@@ -140,5 +172,29 @@
 
   [data-appearance="media-overlay"] button[data-app-header-icon]:hover {
     background: rgb(0 0 0 / 0.25);
+  }
+
+  /* Prediction-market embed chart accents. Third-party provider brand colors
+     stay out of component markup; closed markets fall back to muted. */
+  .embed-market-chart {
+    --embed-market-fill: rgb(19 214 163 / 0.25);
+    --embed-market-line: rgb(19 214 163);
+    --embed-market-text: rgb(84 224 194);
+  }
+
+  .embed-market-chart[data-provider="polymarket"] {
+    --embed-market-fill: rgb(47 128 255 / 0.24);
+    --embed-market-line: rgb(47 128 255);
+    --embed-market-text: rgb(106 167 255);
+  }
+
+  .embed-market-chart[data-closed="true"] {
+    --embed-market-fill: rgb(148 163 184 / 0.18);
+    --embed-market-line: rgb(148 163 184 / 0.78);
+    --embed-market-text: var(--muted-foreground);
+  }
+
+  .embed-market-gridline {
+    border-color: rgb(255 255 255 / 0.1);
   }
 }

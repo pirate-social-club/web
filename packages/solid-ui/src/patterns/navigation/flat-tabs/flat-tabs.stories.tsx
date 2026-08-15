@@ -2,7 +2,7 @@ import { createSignal } from "solid-js";
 import type { Meta, StoryObj } from "storybook-solidjs-vite";
 import { expect, userEvent, within } from "storybook/test";
 
-import { Type } from "@/components/data-display/type/type";
+import { PillButton } from "@/components/actions/pill-button/pill-button";
 import { Tabs } from "@/components/disclosure/tabs/tabs";
 
 import {
@@ -59,13 +59,18 @@ export const TabBarWithButtons: Story = {
 export const TabBarWithActions: Story = {
   render: () => {
     const [active, setActive] = createSignal("feed");
+    const [optionsActive, setOptionsActive] = createSignal(false);
     return (
       <div class="p-4">
         <FlatTabBar
           actions={
-            <Type as="button" class="text-primary" variant="body-strong">
-              Sort
-            </Type>
+            <PillButton
+              aria-pressed={optionsActive() ? "true" : "false"}
+              onClick={() => setOptionsActive((current) => !current)}
+              tone={optionsActive() ? "selected" : "default"}
+            >
+              Options
+            </PillButton>
           }
           columns={2}
         >
@@ -78,6 +83,13 @@ export const TabBarWithActions: Story = {
         </FlatTabBar>
       </div>
     );
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const options = canvas.getByRole("button", { name: "Options" });
+    await expect(options).toHaveAttribute("aria-pressed", "false");
+    await userEvent.click(options);
+    await expect(options).toHaveAttribute("aria-pressed", "true");
   },
 };
 

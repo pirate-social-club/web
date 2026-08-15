@@ -79,17 +79,17 @@ Notes: React `sonner.stories.tsx` maps to the Solid `overlays/toast` implementat
 | --- | --- | --- | --- | --- |
 | 1 | `app/authenticated-routes/stories/live-index-route.stories.tsx` | solid/src/features/authenticated-routes | B12 | pending |
 | 2 | `app/authenticated-routes/stories/post-page.stories.tsx` | solid/src/features/authenticated-routes | B12 | pending |
-| 3 | `app/shell/stories/app-search-dialog.stories.tsx` | solid/src/features/shell | B6 | pending |
-| 4 | `app/shell/stories/app-shell.stories.tsx` | solid/src/features/shell | B6 | pending |
-| 5 | `app/shell/stories/desktop-chat-widget.stories.tsx` | solid/src/features/shell | B6 | pending |
+| 3 | `app/shell/stories/app-search-dialog.stories.tsx` | solid/src/features/shell | B6 | done — solid/src/features/shell/app-search-dialog.stories.tsx |
+| 4 | `app/shell/stories/app-shell.stories.tsx` | solid/src/features/shell | B6 | done — solid/src/features/shell/app-shell.stories.tsx |
+| 5 | `app/shell/stories/desktop-chat-widget.stories.tsx` | solid/src/features/shell | B12 | moved to B12 — story composes the real chat views; lands with components/compositions/chat |
 | 6 | `app/telegram-mini-app/stories/telegram-mini-app-self-return.stories.tsx` | solid/src/features/telegram-mini-app | B12 | pending |
 | 7 | `app/telegram-mini-app/stories/telegram-mini-app-verify.stories.tsx` | solid/src/features/telegram-mini-app | B12 | pending |
 | 8 | `components/compositions/ads/ad-creator/stories/ad-creator.stories.tsx` | solid/src/features/ads | B12 | pending |
-| 9 | `components/compositions/app/app-shell-chrome/stories/app-shell-chrome.stories.tsx` | solid/src/features/shell | B6 | pending |
-| 10 | `components/compositions/app/app-sidebar/stories/app-sidebar.stories.tsx` | solid/src/features/shell | B6 | pending |
-| 11 | `components/compositions/app/content-rail-shell/stories/content-rail-shell.stories.tsx` | solid/src/features/shell | B6 | pending |
-| 12 | `components/compositions/app/mobile-route-shell/stories/mobile-route-shell.stories.tsx` | solid/src/features/shell | B6 | pending |
-| 13 | `components/compositions/app/page-shell/stories/page-shell.stories.tsx` | solid/src/features/shell | B6 | pending |
+| 9 | `components/compositions/app/app-shell-chrome/stories/app-shell-chrome.stories.tsx` | solid/src/features/shell | B6 | done — states covered by DS Patterns/Navigation AppHeader + MobileFooterNav stories (B5e) |
+| 10 | `components/compositions/app/app-sidebar/stories/app-sidebar.stories.tsx` | solid/src/features/shell | B6 | done — solid/src/features/shell/app-sidebar.stories.tsx |
+| 11 | `components/compositions/app/content-rail-shell/stories/content-rail-shell.stories.tsx` | solid/src/features/shell | B6 | done — solid/src/features/shell/content-rail-shell.stories.tsx |
+| 12 | `components/compositions/app/mobile-route-shell/stories/mobile-route-shell.stories.tsx` | solid/src/features/shell | B6 | done — solid/src/features/shell/mobile-route-shell.stories.tsx |
+| 13 | `components/compositions/app/page-shell/stories/page-shell.stories.tsx` | solid/src/features/shell | B6 | done — solid/src/features/shell/page-shell.stories.tsx |
 | 14 | `components/compositions/bookings/add-to-calendar/add-to-calendar.stories.tsx` | solid/src/features/bookings | B9 | pending |
 | 15 | `components/compositions/bookings/availability-calendar/availability-calendar.stories.tsx` | solid/src/features/bookings | B9 | pending |
 | 16 | `components/compositions/bookings/booking-cancellation-dialog/booking-cancellation-dialog.stories.tsx` | solid/src/features/bookings | B9 | pending |

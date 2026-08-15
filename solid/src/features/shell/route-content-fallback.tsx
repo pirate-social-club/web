@@ -1,4 +1,4 @@
-import { RouteLoadingState } from "@pirate/web-solid-ui";
+import { RouteLoadingState } from "../../design-system";
 
 import { cn } from "../../lib/cn";
 import type { ShellRoute } from "./app-shell-header";

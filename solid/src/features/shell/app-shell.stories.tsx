@@ -2,7 +2,7 @@ import type { JSX } from "@solidjs/web";
 import type { Meta, StoryObj } from "storybook-solidjs-vite";
 import { expect, within } from "storybook/test";
 
-import { SidebarProvider, Type } from "@pirate/web-solid-ui";
+import { SidebarProvider, Type } from "../../design-system";
 
 import {
   AppShellHeader,

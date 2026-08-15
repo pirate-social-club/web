@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "storybook-solidjs-vite";
 
-import { Button, IconButton, Type } from "@pirate/web-solid-ui";
+import { Button, IconButton, Type } from "../../design-system";
 
 import { MobileRouteShell } from "./mobile-route-shell";
 

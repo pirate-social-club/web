@@ -27,7 +27,7 @@ import {
   SidebarSeparator,
   Type,
   useSidebar,
-} from "@pirate/web-solid-ui";
+} from "../../design-system";
 
 import { cn } from "../../lib/cn";
 import { VersionBadge } from "./version-badge";

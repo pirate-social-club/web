@@ -7,7 +7,7 @@ import {
   MobileFooterNav,
   Type,
   type FooterNavItemId,
-} from "@pirate/web-solid-ui";
+} from "../../design-system";
 
 /** Minimal route model for the shell chrome: the kind union the React shell
     switches on, plus the fields those branches read. The host router maps its

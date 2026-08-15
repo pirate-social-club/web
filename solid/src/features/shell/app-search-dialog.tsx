@@ -11,7 +11,7 @@ import {
   Input,
   Spinner,
   Type,
-} from "@pirate/web-solid-ui";
+} from "../../design-system";
 
 export interface AppSearchCommunity {
   community: string;

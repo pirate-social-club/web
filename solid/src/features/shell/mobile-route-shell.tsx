@@ -1,6 +1,6 @@
 import type { JSX } from "@solidjs/web";
 
-import { MobilePageHeader } from "@pirate/web-solid-ui";
+import { MobilePageHeader } from "../../design-system";
 
 import { cn } from "../../lib/cn";
 

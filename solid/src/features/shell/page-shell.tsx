@@ -1,7 +1,7 @@
 import type { JSX } from "@solidjs/web";
 
-import { PageContainer, type PageContainerProps } from "@pirate/web-solid-ui";
-import { MobilePageHeader } from "@pirate/web-solid-ui";
+import { PageContainer, type PageContainerProps } from "../../design-system";
+import { MobilePageHeader } from "../../design-system";
 import { cn } from "../../lib/cn";
 
 type PageContainerSize = NonNullable<PageContainerProps["size"]>;

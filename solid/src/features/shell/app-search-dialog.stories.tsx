@@ -2,7 +2,7 @@ import { createSignal } from "solid-js";
 import type { Meta, StoryObj } from "storybook-solidjs-vite";
 import { expect, within } from "storybook/test";
 
-import { Button } from "@pirate/web-solid-ui";
+import { Button } from "../../design-system";
 
 import { AppSearchDialog, type AppSearchCommunity } from "./app-search-dialog";
 

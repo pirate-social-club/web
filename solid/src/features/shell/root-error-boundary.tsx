@@ -1,7 +1,7 @@
 import type { JSX } from "@solidjs/web";
 import { Errored } from "solid-js";
 
-import { RootAppErrorState } from "@pirate/web-solid-ui";
+import { RootAppErrorState } from "../../design-system";
 
 export interface RootErrorBoundaryProps {
   children: JSX.Element;

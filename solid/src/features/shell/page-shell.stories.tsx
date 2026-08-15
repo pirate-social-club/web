@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "storybook-solidjs-vite";
 
-import { Card, Type } from "@pirate/web-solid-ui";
+import { Card, Type } from "../../design-system";
 
 import {
   FullBleedMobileListSection,

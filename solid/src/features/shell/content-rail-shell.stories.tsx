@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "storybook-solidjs-vite";
 
-import { Type } from "@pirate/web-solid-ui";
+import { Type } from "../../design-system";
 
 import { ContentRailShell } from "./content-rail-shell";
 

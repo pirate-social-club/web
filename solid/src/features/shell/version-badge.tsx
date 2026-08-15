@@ -1,6 +1,6 @@
 import type { JSX } from "@solidjs/web";
 
-import { Type } from "@pirate/web-solid-ui";
+import { Type } from "../../design-system";
 
 export interface VersionBadgeProps {
   webSha?: string | null;

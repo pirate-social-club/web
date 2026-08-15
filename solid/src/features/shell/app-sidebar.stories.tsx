@@ -13,7 +13,7 @@ import {
   SidebarInset,
   SidebarProvider,
   Type,
-} from "@pirate/web-solid-ui";
+} from "../../design-system";
 
 import {
   AppSidebar,

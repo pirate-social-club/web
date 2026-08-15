@@ -85,7 +85,7 @@ Notes: React `sonner.stories.tsx` maps to the Solid `overlays/toast` implementat
 | 6 | `app/telegram-mini-app/stories/telegram-mini-app-self-return.stories.tsx` | solid/src/features/telegram-mini-app | B12 | pending |
 | 7 | `app/telegram-mini-app/stories/telegram-mini-app-verify.stories.tsx` | solid/src/features/telegram-mini-app | B12 | pending |
 | 8 | `components/compositions/ads/ad-creator/stories/ad-creator.stories.tsx` | solid/src/features/ads | B12 | pending |
-| 9 | `components/compositions/app/app-shell-chrome/stories/app-shell-chrome.stories.tsx` | solid/src/features/shell | B6 | done — states covered by DS Patterns/Navigation AppHeader + MobileFooterNav stories (B5e) |
+| 9 | `components/compositions/app/app-shell-chrome/stories/app-shell-chrome.stories.tsx` | solid/src/features/shell | B6 | done — coverage split: DS Patterns/Navigation AppHeader + MobileFooterNav stories (B5e) hold the chrome states; App/Shell/AppShell stories (B6c) hold the route-wired adapters |
 | 10 | `components/compositions/app/app-sidebar/stories/app-sidebar.stories.tsx` | solid/src/features/shell | B6 | done — solid/src/features/shell/app-sidebar.stories.tsx |
 | 11 | `components/compositions/app/content-rail-shell/stories/content-rail-shell.stories.tsx` | solid/src/features/shell | B6 | done — solid/src/features/shell/content-rail-shell.stories.tsx |
 | 12 | `components/compositions/app/mobile-route-shell/stories/mobile-route-shell.stories.tsx` | solid/src/features/shell | B6 | done — solid/src/features/shell/mobile-route-shell.stories.tsx |

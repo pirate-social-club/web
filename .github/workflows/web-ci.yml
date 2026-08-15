@@ -90,7 +90,7 @@ jobs:
       - name: Read pinned API commit
         id: api-pin
         shell: bash
-        run: echo "sha=$(tr -d '[:space:]' < web/.github/release-refs/api.sha)" >> "$GITHUB_OUTPUT"
+        run: echo "sha=$(tr -d '[:space:]' < .github/release-refs/api.sha)" >> "$GITHUB_OUTPUT"
 
       - name: Check out API workspace dependencies
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5

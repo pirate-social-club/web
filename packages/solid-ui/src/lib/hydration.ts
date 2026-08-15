@@ -10,9 +10,13 @@ import { isServer } from "@solidjs/web";
  */
 export function createClientHydrated(): Accessor<boolean> {
   const [hydrated, setHydrated] = createSignal(false);
-  createEffect(() => {
-    if (isServer) return;
-    setHydrated(true);
-  });
+  // Solid 2 effects take a compute and an effect function and never run
+  // during SSR, so the signal flips only after client mount.
+  createEffect(
+    () => !isServer,
+    (isClient) => {
+      if (isClient) setHydrated(true);
+    },
+  );
   return hydrated;
 }

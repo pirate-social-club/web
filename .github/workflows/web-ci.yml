@@ -146,6 +146,109 @@ jobs:
             exit 1
           fi
 
+  generic-goods-storybook:
+    name: generic goods Storybook (${{ matrix.flow }})
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: web
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - flow: components/compositions/posts/post-composer/stories/file
+            artifact: post-composer-file
+          - flow: components/compositions/digital-goods/stories
+            artifact: digital-goods
+
+    steps:
+      - name: Check out Web
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          path: web
+
+      - name: Read pinned API commit
+        id: api-pin
+        shell: bash
+        run: echo "sha=$(tr -d '[:space:]' < .github/release-refs/api.sha)" >> "$GITHUB_OUTPUT"
+
+      - name: Check out pinned API workspace dependencies
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          repository: pirate-social-club/api
+          path: api
+          ref: ${{ steps.api-pin.outputs.sha }}
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: 1.3.10
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Install API workspace dependency dependencies
+        working-directory: api/services/efp-shared
+        run: bun install --frozen-lockfile
+
+      - name: Verify required flow interaction contracts
+        run: bun test scripts/storybook-required-flows.test.ts
+
+      - name: Build focused Storybook cold and warm
+        env:
+          STORYBOOK_ONLY: ${{ matrix.flow }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          # The release gate requires three consecutive cold/warm trials. Keep
+          # each cold run genuinely cold while the following warm run reuses
+          # the seeded manager cache from that pair.
+          for trial in 1 2 3; do
+            rm -rf storybook-static
+            /usr/bin/time -f '%M %e' -o /tmp/storybook-cold-rss bun run build-storybook
+            read -r cold_kb cold_seconds < /tmp/storybook-cold-rss
+            rm -rf storybook-static
+            /usr/bin/time -f '%M %e' -o /tmp/storybook-warm-rss bun run build-storybook
+            read -r warm_kb warm_seconds < /tmp/storybook-warm-rss
+            echo "focused=${STORYBOOK_ONLY} trial=${trial} cold_rss_kb=${cold_kb} cold_seconds=${cold_seconds} warm_rss_kb=${warm_kb} warm_seconds=${warm_seconds}"
+            # Focused discovery must stay below the workstation-safe envelope.
+            if (( cold_kb > 2500000 || warm_kb > 2500000 )); then
+              echo "focused Storybook RSS exceeded 2.5 GiB"
+              exit 1
+            fi
+          done
+
+      - name: Serve focused Storybook
+        shell: bash
+        run: |
+          python3 -m http.server 6006 --directory storybook-static >/tmp/storybook-server.log 2>&1 &
+          echo $! > /tmp/storybook-server.pid
+          for attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:6006/index.html >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/storybook-server.log
+          exit 1
+
+      - name: Install Chromium for focused interactions
+        run: bunx playwright install chromium
+
+      - name: Run focused Storybook interactions
+        run: bun run test-storybook --index-json --url http://127.0.0.1:6006 --includeTags digital-goods --browsers chromium --maxWorkers=2 --testTimeout=30000 --no-cache --junit --ci
+
+      - name: Upload focused Storybook artifacts
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: generic-goods-storybook-${{ matrix.artifact }}
+          path: |
+            web/storybook-static
+            web/junit.xml
+            /tmp/storybook-server.log
+          if-no-files-found: warn
+          retention-days: 7
+
   promotion-shadow-store:
     name: promotion-shadow-store
     runs-on: ubuntu-latest

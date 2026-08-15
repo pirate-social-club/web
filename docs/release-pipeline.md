@@ -64,6 +64,10 @@ requirements manifest from the pinned API (`api/services/api/community-schema-re
   missing on 104 live staging shards that the multipart test passed anyway. **Keep both.**
 - Requirements have two classes: `unconditional` (always) and `features` (only required when
   that flag bundle is being enabled, so e.g. flipping `REWARDS_*` cannot bypass its migration).
+- `GENERIC_DIGITAL_GOODS_ENABLED` is a strict `true`/`false` repository variable and the sole
+  release authority for the API flag with the same name. When true, both staging and production
+  pass `--features generic_digital_goods`, making migration 1158 a blocking fleet requirement.
+  The first generic writer must consume this exact flag; an independent runtime toggle is forbidden.
 - When a Core pin adds a new `community-template` migration, the `release-inputs` ratchet
   requires it to be classified exactly once in the pinned API manifest: unconditional,
   feature-conditional, or explicitly deferred with a non-empty rationale. The comparison
@@ -135,6 +139,13 @@ If a run allocates a fixture but fails during verification, resume that exact fi
 spend a second binding merely to retry post-allocation assertions.
 
 ## Production migration OIDC doctor
+
+The `GENERIC_DIGITAL_GOODS_ENABLED` repository variable is the shared writer
+and schema-gate authority. When `true`, both staging and production schema
+gates pass `--features generic_digital_goods`, which requires
+`1158_generic_assets_learning_foundation.sql`. Keep the variable `false` until
+the API runtime consumer and the generic writer are deployed together; turning
+on schema attestation without a runtime consumer creates false assurance.
 
 Production migration access is verified by the manual, read-only
 `Production migration OIDC doctor` workflow. Dispatch it from `main`; any other ref is rejected so

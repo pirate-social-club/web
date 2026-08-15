@@ -72,6 +72,7 @@ export function canAdvanceComposerWriteStep({
   songAudioUploadPresent,
   title,
   videoUploadPresent,
+  fileUploadPresent = false,
 }: {
   body: string;
   imageUploadPresent: boolean;
@@ -81,12 +82,14 @@ export function canAdvanceComposerWriteStep({
   songAudioUploadPresent: boolean;
   title: string;
   videoUploadPresent: boolean;
+  fileUploadPresent: boolean;
 }) {
   if (mode === "song") return songAudioUploadPresent;
   if (mode === "video") return title.trim().length > 0 && videoUploadPresent;
   if (mode === "image") return title.trim().length > 0 && imageUploadPresent;
   if (mode === "link") return isValidHttpUrl(linkUrl);
   if (mode === "live") return Boolean(liveState && canSubmitLiveRoomDraft(liveState, title));
+  if (mode === "file") return title.trim().length > 0 && fileUploadPresent;
   return title.trim().length > 0;
 }
 

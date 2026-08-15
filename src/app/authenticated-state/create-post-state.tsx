@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import type { Asset as ApiAsset, Community as ApiCommunity, CommunityPreview as ApiCommunityPreview, UserAgent as ApiUserAgent } from "@pirate/api-contracts";
+import type { Community as ApiCommunity, CommunityPreview as ApiCommunityPreview, UserAgent as ApiUserAgent } from "@pirate/api-contracts";
 import type { CommunityPricingPolicy as ApiCommunityPricingPolicy } from "@pirate/api-contracts";
 import type { JoinEligibility as ApiJoinEligibility } from "@pirate/api-contracts";
 import type { Post as ApiCreatedPost } from "@pirate/api-contracts";
@@ -11,7 +11,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { navigate } from "@/app/router";
 import { useApi } from "@/lib/api";
 import { resolveApiBaseUrl } from "@/lib/api/base-url";
-import { buildAgentActionProof } from "@/lib/agents/browser-agent-action-proof";
 import { findStoredOwnedAgentKey } from "@/lib/agents/agent-key-store";
 import { useSession } from "@/lib/api/session-store";
 import { useUiLocale } from "@/lib/ui-locale";
@@ -19,7 +18,6 @@ import { getLocaleMessages } from "@/locales";
 import { rememberKnownCommunity } from "@/lib/known-communities-store";
 import { logger } from "@/lib/logger";
 import { getErrorMessage } from "@/lib/error-utils";
-import { toast } from "@/components/primitives/sonner";
 import type {
   CommunityCharityPartner,
   ComposerAudienceState,
@@ -37,13 +35,14 @@ import { parseUsdInput } from "@/lib/formatting/currency";
 import { getFreedomBrowserDetectionSnapshot, prefersNativeRadicleLinks } from "@/lib/resource-links";
 import { resolveComposerSubmitState } from "@/app/authenticated-helpers/asset-submit";
 import { buildBasePostRequest, buildCreatePostEventRequest, resolveCreatePostIdentity } from "@/app/authenticated-helpers/create-post-submit/base";
-import { buildStoryRegistrationCreationWarning } from "@/app/authenticated-helpers/story-registration-warning";
+import { useAgentAuthoredBodySigner, useStoryRegistrationCreationWarning } from "@/app/authenticated-helpers/create-post-side-effects";
 import { buildStoryLicenseReuseNotice, rememberStoryLicenseReuseNotice } from "@/app/authenticated-helpers/story-license-reuse-notice";
 import { submitImagePost } from "@/app/authenticated-helpers/create-post-submit/image";
 import { submitLinkPost } from "@/app/authenticated-helpers/create-post-submit/link";
 import { submitLiveRoom } from "@/app/authenticated-helpers/create-post-submit/live";
 import { submitTextPost } from "@/app/authenticated-helpers/create-post-submit/text";
 import { submitVideoPost } from "@/app/authenticated-helpers/create-post-submit/video";
+import { submitDownloadableFilePost } from "@/app/authenticated-helpers/create-post-submit/generic";
 import {
   createSubmitProgressReporter,
 } from "@/app/authenticated-helpers/create-post-submit/progress";
@@ -298,6 +297,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
     composerMode,
     derivativeStep,
     event,
+    fileState,
     imageUpload,
     imageUploadLabel,
     identityMode,
@@ -327,6 +327,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
     setComposerMode,
     setDerivativeStep,
     setEvent,
+    setFileState,
     setImageUpload,
     setImageUploadLabel,
     setIdentityMode,
@@ -732,6 +733,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
   const canSubmitImage = title.trim().length > 0 && Boolean(imageUpload);
   const canSubmitVideo = title.trim().length > 0 && Boolean(videoState.primaryVideoUpload);
   const canSubmitLive = canSubmitLiveRoomDraft(liveState, title);
+  const canSubmitFile = title.trim().length > 0 && Boolean(fileState.upload);
   const canSubmit = composerMode === "song"
     ? canSubmitSong
     : composerMode === "link"
@@ -742,54 +744,16 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
           ? canSubmitVideo
           : composerMode === "live"
             ? canSubmitLive
+            : composerMode === "file"
+              ? canSubmitFile
             : canSubmitText;
   const paidLiveRoomMode = composerMode === "live" && liveState.accessMode === "paid";
   const paidCommerceMode = ((composerMode === "song" || composerMode === "video") && monetizationState.visible) || paidLiveRoomMode;
   const paidAssetPriceUsd = paidCommerceMode ? parseUsdInput(monetizationState.priceUsd ?? monetizationState.priceLabel) : null;
   const paidAssetPriceInvalid = paidCommerceMode && paidAssetPriceUsd == null;
   const submitState = resolveComposerSubmitState({ canSubmit, composerMode, derivativeStep, license, monetizationState, paidSongPriceInvalid: paidAssetPriceInvalid, songMode, submitError });
-  const warnIfStoryRegistrationIncomplete = React.useCallback(async (
-    post: ApiCreatedPost | null,
-    postType: "song" | "video",
-  ): Promise<ApiAsset | null> => {
-    if (!post?.asset) return null;
-    try {
-      const asset = await api.communities.getAsset(communityId, post.asset);
-      const warning = buildStoryRegistrationCreationWarning(asset, postType);
-      if (warning) {
-        toast.warning(warning.title, { description: warning.description });
-      }
-      return asset;
-    } catch (error) {
-      logger.warn("[create-post] could not load created asset Story registration status", {
-        assetId: post.asset,
-        communityId,
-        error,
-        postId: post.id,
-      });
-      return null;
-    }
-  }, [api.communities, communityId]);
-
-  const signAgentAuthoredBody = React.useCallback(async <T extends Record<string, unknown>>(path: string, body: T) => {
-    if (!availableAgent) {
-      throw new Error("No local agent key is available for this post.");
-    }
-
-    const proof = await buildAgentActionProof({
-      method: "POST",
-      url: path,
-      body,
-      privateKeyPem: availableAgent.privateKeyPem,
-    });
-
-    return {
-      ...body,
-      authorship_mode: "user_agent" as const,
-      agent_id: availableAgent.agentId,
-      agent_action_proof: proof,
-    };
-  }, [availableAgent]);
+  const warnIfStoryRegistrationIncomplete = useStoryRegistrationCreationWarning({ communityId, getAsset: api.communities.getAsset });
+  const signAgentAuthoredBody = useAgentAuthoredBodySigner(availableAgent);
   const submitSongPost = useSongSubmit({ communityId, signAgentAuthoredBody });
   const hasCommunityPostingRole = viewerHasCommunityPostingRole(session?.user.id, community, communityOwnerUserId);
   const postAltchaRequired = requiresPostAltchaProof({ eligibility, gateMatchMode: community?.gate_match_mode, hasCommunityPostingRole, requirements: community?.membership_gate_summaries ?? [] });
@@ -847,8 +811,10 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
             })
           : composerMode === "image"
             ? simpleSubmitProgressSteps({ hasMedia: Boolean(imageUpload), mode: "image" })
-            : composerMode === "link"
+          : composerMode === "link"
               ? simpleSubmitProgressSteps({ mode: "link" })
+              : composerMode === "file"
+                ? simpleSubmitProgressSteps({ mode: "file", hasMedia: true })
               : simpleSubmitProgressSteps({ mode: "text" });
     const reportProgress = createSubmitProgressReporter(progressSteps, (progress) => {
       setPageState((current) => ({ ...current, submitProgress: progress }));
@@ -1107,6 +1073,36 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
           signAgentAuthoredBody,
           title,
         });
+      } else if (composerMode === "file") {
+        result = await submitDownloadableFilePost({
+          altchaPayload: postAltchaPayload,
+          authorMode,
+          baseRequest: buildBasePostRequest({
+            anonymousScope,
+            disclosedQualifierIds,
+            ageGatePolicy,
+            idempotencyKey: submissionOperation.idempotencyKey,
+            identityMode: resolvedIdentityMode,
+            visibility: audience.visibility,
+          }),
+          communityId,
+          contentBlobId: submissionOperation.contentBlobId,
+          createContentBlob: api.communities.createContentBlob,
+          createPost: api.communities.createPost,
+          file: fileState,
+          getContentBlob: api.communities.getContentBlob,
+          onContentBlobCreated: (blob) => {
+            submissionOperation.contentBlobId = blob.id;
+          },
+          reportProgress: (key) => {
+            if (key === "validating") reportProgress("validating");
+            else if (key === "uploading_media") reportProgress("prepare_media");
+            else reportProgress("publish_post");
+          },
+          signAgentAuthoredBody,
+          title,
+          uploadContentBlob: api.communities.uploadContentBlob,
+        }) as ApiCreatedPost;
       } else {
         reportProgress("publish_post");
         logger.info("[create-post] creating text post");
@@ -1219,7 +1215,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
     api, audience, ageGatePolicy, authorMode, body, caption, charityContribution, charityPartner, community, communityId, composerMode, contentLocale, derivativeStep, draft, eligibility?.status, event, hasCommunityPostingRole, hasOpenPowPostingAccess,
     identityMode, imageUpload, license, linkUrl, liveState, lyrics, monetizationState, paidAssetPriceUsd, paidLiveRoomMode, pendingSongBundleId, postAltchaPayload, postAltchaRequired, pricingPolicy?.regional_pricing_enabled, royaltySplit,
     queryClient, selectedQualifierIds, session?.user.id, setPendingSongBundleId, setSubmitError, signAgentAuthoredBody, songMode, songState, submitSongPost, submitState.canPost, title,
-    videoState,
+    videoState, fileState,
     warnIfStoryRegistrationIncomplete,
   ]);
 
@@ -1229,6 +1225,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
   }, [setImageUpload, setImageUploadLabel]);
 
   return {
+    fileState,
     availableIdentityQualifiers,
     ageGatePolicy,
     body,
@@ -1281,6 +1278,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
     setComposerMode,
     setDerivativeStep,
     setEvent,
+    setFileState,
     setAuthorMode,
     setImageUpload: setImageUploadWithLabel,
     setIdentityMode,

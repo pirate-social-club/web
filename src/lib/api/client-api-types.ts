@@ -113,6 +113,28 @@ export type ApiCommunityMediaUploadResponse = {
   storage_object_key: string;
 };
 
+export type ApiContentBlob = {
+  id: string;
+  object: "content_blob";
+  community: string;
+  uploader_user: string;
+  status: "pending_upload" | "uploaded" | "verifying" | "ready" | "rejected" | "failed" | "cancelled";
+  validation_profile: string;
+  declared_filename: string | null;
+  declared_mime_type: string;
+  declared_size_bytes: number | null;
+  declared_content_hash: string | null;
+  detected_mime_type: string | null;
+  verified_size_bytes: number | null;
+  verified_content_hash: string | null;
+  security_scan_state: "pending" | "clean" | "suspicious" | "malicious" | "error" | "not_required";
+  rejection_code: string | null;
+  plaintext_retention_state: "active" | "purge_pending" | "purged" | "legal_hold";
+  upload_url: string | null;
+  upload_session: unknown;
+  created: number;
+};
+
 export type ApiProfileMediaUploadResponse = {
   kind: "avatar" | "cover";
   media_ref: string;

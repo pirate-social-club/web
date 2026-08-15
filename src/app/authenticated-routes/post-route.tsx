@@ -22,12 +22,12 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { buildAnonymousLabel } from "@/lib/anonymous-label";
 import { isPowSatisfiableGate } from "@/lib/identity-gates";
 import { useApi } from "@/lib/api";
-import { resolveApiBaseUrl } from "@/lib/api/base-url";
 import { buildCommunityPath } from "@/lib/community-routing";
 import { getFreedomBrowserDetectionSnapshot } from "@/lib/resource-links";
 import { useUiLocale } from "@/lib/ui-locale";
 
 import { buildCommunityPreviewSidebar } from "@/app/authenticated-helpers/community-sidebar-helpers";
+import { buildPostLiveRoomLaunch } from "@/app/authenticated-helpers/post-live-room-launch";
 import { loadProfilesByUserId } from "@/app/authenticated-data/community-data";
 import { NotFoundPage } from "./misc-routes";
 import { buildLiveRoomParticipants } from "@/app/authenticated-helpers/post-live-room-participants";
@@ -42,6 +42,8 @@ import { useSongCommerceState, useSongPlayback } from "@/app/authenticated-helpe
 import { loadLiveRoomReplayPlayback } from "@/app/authenticated-helpers/live-room-replay-playback";
 import { takeStoryLicenseReuseNotice, type StoryLicenseReuseNotice } from "@/app/authenticated-helpers/story-license-reuse-notice";
 import { usePost } from "@/app/authenticated-state/post-state";
+import { buildGenericAssetPresentation } from "@/app/authenticated-helpers/generic-asset-presentation";
+import { useGenericAssetDownload } from "@/app/authenticated-helpers/use-generic-asset-download";
 import { useSelfVerification } from "@/lib/verification/use-self-verification";
 import { usePiratePrivyRuntime, usePiratePrivyWallets } from "@/components/auth/privy-provider";
 import { isCanonicalAuthOrigin, buildCanonicalAuthUrl } from "@/lib/auth-origin";
@@ -86,40 +88,6 @@ function viewerCanModerateCommunity(
     if (!sameUserId(viewerUserId, roleHolder.user)) return false;
     return roleHolder.role === "owner" || roleHolder.role === "admin" || roleHolder.role === "moderator";
   }));
-}
-
-function buildLiveRoomLaunch(input: {
-  communityId?: string | null;
-  liveRoomId?: string | null;
-  postId?: string | null;
-  seat?: "host" | "guest" | null;
-}): { href: string; liveRoomId: string; shareUrl: string | null } | null {
-  const liveRoomId = input.liveRoomId?.trim();
-  const communityId = input.communityId?.trim();
-  const postId = input.postId?.trim();
-  if (!liveRoomId || !communityId) return null;
-  const apiBase = resolveApiBaseUrl(typeof window === "undefined" ? null : window.location.hostname);
-  const webBase = typeof window === "undefined" ? null : window.location.origin;
-  const sharePath = postId ? `/p/${encodeURIComponent(postId)}` : null;
-  const shareUrl = sharePath && typeof window !== "undefined"
-    ? new URL(sharePath, window.location.origin).toString()
-    : sharePath;
-  const hrefParams = [
-    `roomId=${encodeURIComponent(liveRoomId)}`,
-    `communityId=${encodeURIComponent(communityId)}`,
-    `apiBase=${encodeURIComponent(apiBase)}`,
-  ];
-  if (webBase) {
-    hrefParams.push(`webBase=${encodeURIComponent(webBase)}`);
-  }
-  if (input.seat) {
-    hrefParams.push(`seat=${encodeURIComponent(input.seat)}`);
-  }
-  return {
-    href: `freedom://live-room?${hrefParams.join("&")}`,
-    liveRoomId,
-    shareUrl,
-  };
 }
 
 function MobileThreadShell({
@@ -251,7 +219,10 @@ export function PostPage({
   });
   const authRuntime = usePiratePrivyRuntime();
   const { connectedWallets } = usePiratePrivyWallets({
-    enabled: Boolean(session?.accessToken && activeLiveRoomId),
+    enabled: Boolean(
+      session?.accessToken
+        && (activeLiveRoomId || activeAssetPostType === "file"),
+    ),
   });
 
   const { connect: authConnect, loadError: authLoadError } = authRuntime;
@@ -475,7 +446,7 @@ export function PostPage({
     session?.user?.id
       && community?.id
       && (
-        ((post?.post.post_type === "song" || post?.post.post_type === "video") && post.post.asset)
+        ((post?.post.post_type === "song" || post?.post.post_type === "video" || post?.post.post_type === "file") && post.post.asset)
           || activeLiveRoomId
       ),
   );
@@ -498,7 +469,7 @@ export function PostPage({
     listing: ApiCommunityListing,
     titleText: string,
     nextCommunityId: string,
-    assetLabel: "song" | "video" = "song",
+    assetLabel: "song" | "video" | "file" = "song",
   ) => {
     await buySong({
       assetLabel,
@@ -508,6 +479,14 @@ export function PostPage({
       titleText,
     });
   }, [buySong, locale]);
+
+  const handleDownloadGenericAsset = useGenericAssetDownload({
+    accessToken: session?.accessToken,
+    connectedWallet: connectedWallets[0],
+    connectWallet: authRuntime.connect ?? undefined,
+    reconnectWallet: authRuntime.reconnectEthereumWallet ?? undefined,
+    resolveAssetAccess: api.communities.resolveAssetAccess,
+  });
 
   const handleBuyLiveTicket = React.useCallback(async (
     listing: ApiCommunityListing,
@@ -871,7 +850,7 @@ export function PostPage({
   const diagnosticGuestInviteStatus = liveRoomAccess?.access.guest_invite_status ?? null;
   const diagnosticViewerIsLiveRoomHost = sameUserId(session?.user?.id, diagnosticLiveRoom?.host_user);
   const diagnosticViewerIsLiveRoomGuest = sameUserId(session?.user?.id, diagnosticLiveRoom?.guest_user);
-  const diagnosticLiveRoomLaunch = buildLiveRoomLaunch({
+  const diagnosticLiveRoomLaunch = buildPostLiveRoomLaunch({
     communityId: community?.id,
     liveRoomId: activeLiveRoomId,
     postId,
@@ -1009,6 +988,19 @@ export function PostPage({
       studyRewardLabel: rewardOffer?.eligible_activity !== "karaoke" ? rewardLabel : undefined,
     }
     : undefined;
+  const genericAssetOptions = post.post.post_type === "file" && community && threadAssetId
+    ? {
+      genericAsset: buildGenericAssetPresentation({
+        hasEntitlement: Boolean(threadPurchase || post.viewer_is_author),
+        listedAccessState: "purchase_required",
+        listing: threadListing,
+        onBuy: threadListing
+          ? () => void handleBuySong(threadListing, post.post.title ?? "digital good", community.id, "file")
+          : undefined,
+        onDownload: () => void handleDownloadGenericAsset(community.id, threadAssetId, post.post.title ?? "download"),
+      }),
+    }
+    : undefined;
   const liveRoom = liveRoomAccess?.room ?? null;
   const eventStore = liveRoom?.store_url
     ? {
@@ -1020,7 +1012,7 @@ export function PostPage({
     || Boolean(threadLiveRoomId && sameUserId(session?.user?.id, post.post.author_user));
   const viewerIsLiveRoomGuest = sameUserId(session?.user?.id, liveRoom?.guest_user);
   const liveRoomGuestInviteStatus = liveRoomAccess?.access.guest_invite_status ?? null;
-  const liveRoomLaunch = buildLiveRoomLaunch({
+  const liveRoomLaunch = buildPostLiveRoomLaunch({
     communityId: community?.id,
     liveRoomId: post.post.anchor_live_room,
     postId,
@@ -1106,6 +1098,7 @@ export function PostPage({
     showOriginalLabel: copy.common.showOriginal,
     showTranslationLabel: copy.common.showTranslation,
     viewerContentLocale: contentLocale,
+    ...genericAssetOptions,
   });
   const originalPostCard = shouldShowOriginalPost(post)
     ? toThreadPostCard(post, community, authorProfile ?? undefined, songOptions, {
@@ -1129,6 +1122,7 @@ export function PostPage({
       showOriginalLabel: copy.common.showOriginal,
       showTranslationLabel: copy.common.showTranslation,
       viewerContentLocale: contentLocale,
+      ...genericAssetOptions,
     })
     : undefined;
   const communityPath = community?.id

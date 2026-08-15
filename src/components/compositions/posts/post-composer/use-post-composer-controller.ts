@@ -38,7 +38,9 @@ import {
   defaultSongState,
   defaultTabs,
   defaultVideoState,
+  buildComposerTabLabels,
 } from "./post-composer-config";
+import { useDownloadFileComposerState } from "./use-download-file-composer-state";
 import {
   deriveLiveStateForRoomKindChange,
   shouldClearSelectedQualifiers,
@@ -473,6 +475,8 @@ export function usePostComposerController(props: PostComposerProps) {
     onEventChange?.(next);
   }, [onEventChange]);
 
+  const generic = useDownloadFileComposerState({ file: draft?.file ?? props.file, onChange: actions?.onFileChange ?? props.onFileChange });
+
   React.useEffect(() => {
     const nextLiveState = deriveLiveStateForRoomKindChange({
       current: liveState,
@@ -583,14 +587,7 @@ export function usePostComposerController(props: PostComposerProps) {
   const assetLicenseCopy = activeTab === "song" || activeTab === "video"
     ? copy.assetLicense[activeTab]
     : null;
-  const tabLabels: Record<ComposerTab, string> = {
-    text: copy.tabs.text,
-    image: copy.tabs.image,
-    video: copy.tabs.video,
-    link: copy.tabs.link,
-    song: copy.tabs.song,
-    live: copy.tabs.live,
-  };
+  const tabLabels = buildComposerTabLabels(copy);
 
   return {
     audience: {
@@ -680,6 +677,7 @@ export function usePostComposerController(props: PostComposerProps) {
       state: eventState,
       update: setEventStateWithCallback,
     },
+    generic,
     song: {
       state: songState,
       update: updateSongState,

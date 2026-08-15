@@ -21,7 +21,7 @@ import { centsToUsd, formatUsdCentsLabel, formatUsdLabel } from "@/lib/formattin
 import { useSelfVerification } from "@/lib/verification/use-self-verification";
 import { useUiLocale } from "@/lib/ui-locale";
 
-type PurchaseAssetLabel = "song" | "video" | "ticket" | "replay" | "asset";
+type PurchaseAssetLabel = "song" | "video" | "file" | "ticket" | "replay" | "asset";
 type PurchaseSuccessKind = "replay" | "ticket" | "unlocked";
 
 const SETTLEMENT_POLL_ATTEMPTS = 60;

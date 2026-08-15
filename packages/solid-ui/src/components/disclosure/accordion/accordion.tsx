@@ -85,7 +85,7 @@ function AccordionContent(props: ParentProps<AccordionContentProps>) {
   const rest = omit(props, "class", "children");
 
   return (
-    <KAccordion.Content class={className()} {...rest}>
+    <KAccordion.Content class={cn("accordion-content overflow-hidden", className())} {...rest}>
       <div class="min-w-0 pb-4 pt-0">{props.children}</div>
     </KAccordion.Content>
   );

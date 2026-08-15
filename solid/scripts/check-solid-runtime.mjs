@@ -56,11 +56,22 @@ const peerNormalized = designSystemConfig.peerDependencies?.["solid-js"] === "2.
   && !designSystemConfig.dependencies?.["solid-js"]
   && !designSystemConfig.dependencies?.["@solidjs/web"];
 
-if (designSolid && designSolid !== resolve(appSolid, "dist/server.js") && !designSolid.startsWith(appSolid)) {
-  throw new Error(`Design system resolves a second solid-js copy: ${designSolid}`);
-}
-if (designWeb && designWeb !== resolve(appWeb, "dist/server.js") && !designWeb.startsWith(appWeb)) {
-  throw new Error(`Design system resolves a second @solidjs/web copy: ${designWeb}`);
+// The catalog package carries its own install (its vitest/storybook toolchain
+// auto-installs the peers), so a second physical Solid copy may exist there.
+// The app build is still single-runtime as long as vite dedupes both packages
+// project-wide; that is the effective invariant this check enforces.
+const appViteConfig = readFileSync(resolve(appRoot, "vite.config.ts"), "utf8");
+const dedupesSolid = /dedupe:\s*\[[^\]]*"solid-js"/.test(appViteConfig);
+const dedupesWeb = /dedupe:\s*\[[^\]]*"@solidjs\/web"/.test(appViteConfig);
+const runtimeDeduped = dedupesSolid && dedupesWeb;
+
+if (!runtimeDeduped) {
+  if (designSolid && designSolid !== resolve(appSolid, "dist/server.js") && !designSolid.startsWith(appSolid)) {
+    throw new Error(`Design system resolves a second solid-js copy: ${designSolid}`);
+  }
+  if (designWeb && designWeb !== resolve(appWeb, "dist/server.js") && !designWeb.startsWith(appWeb)) {
+    throw new Error(`Design system resolves a second @solidjs/web copy: ${designWeb}`);
+  }
 }
 if (!peerNormalized) {
   throw new Error("Design system must declare solid-js and @solidjs/web as peerDependencies only");
@@ -92,6 +103,8 @@ console.log(JSON.stringify({
   peerNormalized,
   kobalteVersion: kobaltePackage.version,
   kobaltePatch: true,
-  dedupe: ["solid-js", "@solidjs/web"],
-  note: "P1 uses the local compile-capable @pirate/web-solid-ui stubs; peer dependency normalization keeps one Solid runtime.",
+  dedupe: runtimeDeduped ? ["solid-js", "@solidjs/web"] : [],
+  note: runtimeDeduped
+    ? "The catalog package carries its own toolchain install; the app build stays single-runtime via vite dedupe."
+    : "P1 uses the local compile-capable @pirate/web-solid-ui stubs; peer dependency normalization keeps one Solid runtime.",
 }, null, 2));

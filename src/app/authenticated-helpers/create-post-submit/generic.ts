@@ -42,6 +42,9 @@ export async function submitDownloadableFilePost(input: {
       upload_mode: "proxy",
     });
   input.onContentBlobCreated?.(contentBlob);
+  if (contentBlob.status === "failed" || contentBlob.status === "rejected" || contentBlob.status === "cancelled") {
+    throw new Error("This file upload can no longer be resumed. Remove the file and choose it again before publishing.");
+  }
   if (contentBlob.status === "pending_upload") {
     input.reportProgress?.("uploading_media");
     await input.uploadContentBlob(input.communityId, contentBlob.id, await upload.arrayBuffer(), contentBlob.declared_mime_type, (fraction) => {

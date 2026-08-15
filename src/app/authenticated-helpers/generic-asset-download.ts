@@ -1,42 +1,73 @@
+"use client";
+
 import type { AssetAccessResponse } from "@pirate/api-contracts";
 
-import { resolveApiUrl } from "@/lib/api/base-url";
-import type { PirateConnectedEvmWallet } from "@/lib/auth/privy-wallet";
-import { readStoryCdrAsset } from "@/lib/story/cdr-browser";
+type StoryCdrAccess = NonNullable<AssetAccessResponse["story_cdr_access"]>;
+
+export type GenericAssetDownloadTelemetryEvent =
+  | "generic_asset_download_hash_mismatch"
+  | "generic_asset_download_missing_hash";
+
+export class GenericAssetDownloadIntegrityError extends Error {
+  readonly code: "hash_mismatch" | "missing_hash";
+
+  constructor(code: "hash_mismatch" | "missing_hash", message: string) {
+    super(message);
+    this.name = "GenericAssetDownloadIntegrityError";
+    this.code = code;
+  }
+}
+
+export class GenericAssetWalletRequiredError extends Error {
+  constructor() {
+    super("Connect a wallet to unlock this download.");
+    this.name = "GenericAssetWalletRequiredError";
+  }
+}
 
 export type GenericAssetDownloadResult =
-  | { kind: "blocked"; message: string }
-  | { kind: "wallet_required" }
-  | { kind: "ready"; blob: Blob; filename: string };
+  | { kind: "access_denied"; decisionReason: AssetAccessResponse["decision_reason"] }
+  | { kind: "downloaded" };
 
-export async function resolveGenericAssetDownload(input: {
-  resolveAssetAccess: (communityId: string, assetId: string) => Promise<AssetAccessResponse>;
-  communityId: string;
+export async function downloadGenericAsset(input: {
+  accessToken: string | null;
   assetId: string;
+  communityId: string;
+  fetchContent: (url: string, init?: RequestInit) => Promise<Response>;
+  readStoryCdr: (access: StoryCdrAccess) => Promise<Blob>;
+  reportTelemetry: (event: GenericAssetDownloadTelemetryEvent, context: {
+    assetId: string;
+    communityId: string;
+    expectedHash?: string;
+    actualHash?: string;
+  }) => void;
+  resolveAccess: (communityId: string, assetId: string) => Promise<AssetAccessResponse>;
+  resolveContentUrl: (deliveryRef: string) => string;
+  saveBlob: (blob: Blob, filename: string) => void;
   titleText: string;
-  accessToken: string | null | undefined;
-  wallet?: PirateConnectedEvmWallet;
 }): Promise<GenericAssetDownloadResult> {
-  const access = await input.resolveAssetAccess(input.communityId, input.assetId);
+  const access = await input.resolveAccess(input.communityId, input.assetId);
   if (!access.access_granted) {
-    return {
-      kind: "blocked",
-      message: access.decision_reason === "purchase_required"
-        ? "Purchase required before downloading this file."
-        : "This asset is not ready for delivery yet.",
-    };
+    return { kind: "access_denied", decisionReason: access.decision_reason };
+  }
+
+  const expectedHash = access.payload?.content_hash?.trim().toLowerCase();
+  if (!expectedHash) {
+    input.reportTelemetry("generic_asset_download_missing_hash", {
+      assetId: input.assetId,
+      communityId: input.communityId,
+    });
+    throw new GenericAssetDownloadIntegrityError(
+      "missing_hash",
+      "Downloaded asset is missing integrity metadata.",
+    );
   }
 
   let blob: Blob;
   if (access.delivery_kind === "story_cdr_ref" && access.story_cdr_access) {
-    if (!input.wallet) return { kind: "wallet_required" };
-    blob = await readStoryCdrAsset({
-      access: access.story_cdr_access,
-      accessToken: input.accessToken ?? null,
-      wallet: input.wallet,
-    });
+    blob = await input.readStoryCdr(access.story_cdr_access);
   } else if (access.delivery_kind === "primary_content_ref" && access.delivery_ref) {
-    const response = await fetch(resolveApiUrl(access.delivery_ref), {
+    const response = await input.fetchContent(input.resolveContentUrl(access.delivery_ref), {
       headers: input.accessToken ? { Authorization: `Bearer ${input.accessToken}` } : undefined,
     });
     if (!response.ok) throw new Error("Could not download this asset.");
@@ -45,18 +76,40 @@ export async function resolveGenericAssetDownload(input: {
     throw new Error("Could not download this asset.");
   }
 
-  const expectedHash = access.payload?.content_hash?.trim().toLowerCase();
-  if (expectedHash) {
-    const bytes = await blob.arrayBuffer();
-    const digest = await globalThis.crypto.subtle.digest("SHA-256", bytes);
-    const actualHash = `0x${Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("")}`;
-    if (actualHash !== expectedHash) throw new Error("Downloaded asset integrity check failed.");
-    blob = new Blob([bytes], { type: blob.type || access.payload?.mime_type || "application/octet-stream" });
+  const bytes = await blob.arrayBuffer();
+  const digest = await globalThis.crypto.subtle.digest("SHA-256", bytes);
+  const actualHash = `0x${Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("")}`;
+  if (actualHash.toLowerCase() !== expectedHash) {
+    input.reportTelemetry("generic_asset_download_hash_mismatch", {
+      actualHash,
+      assetId: input.assetId,
+      communityId: input.communityId,
+      expectedHash,
+    });
+    throw new GenericAssetDownloadIntegrityError(
+      "hash_mismatch",
+      "Downloaded asset integrity check failed.",
+    );
   }
 
-  return {
-    kind: "ready",
-    blob,
-    filename: access.payload?.display_filename?.trim() || input.titleText,
-  };
+  const verifiedBlob = new Blob([bytes], {
+    type: blob.type || access.payload?.mime_type || "application/octet-stream",
+  });
+  input.saveBlob(
+    verifiedBlob,
+    access.payload?.display_filename?.trim() || input.titleText,
+  );
+  return { kind: "downloaded" };
+}
+
+export function saveBlobToBrowser(blob: Blob, filename: string): void {
+  const href = URL.createObjectURL(blob);
+  try {
+    const anchor = document.createElement("a");
+    anchor.href = href;
+    anchor.download = filename;
+    anchor.click();
+  } finally {
+    URL.revokeObjectURL(href);
+  }
 }

@@ -12,6 +12,16 @@ describe("Solid locale catalogs", () => {
     expect(getLocaleMessages("pseudo", "routes").home.title).toStartWith("[!!");
   });
 
+  test("preserves placeholder tokens while pseudo-localizing literal text", () => {
+    const message = getLocaleMessages("pseudo", "feed").videoBy;
+    const interpolated = interpolateMessage(message, { author: "Ada" });
+
+    expect(message).toContain("{author}");
+    expect(interpolated).toContain("Ada");
+    expect(interpolated).not.toContain("{author}");
+    expect(interpolated).not.toContain("{aauuthoor}");
+  });
+
   test("interpolates known values and preserves unknown placeholders", () => {
     expect(interpolateMessage("@{handle}: {count} / {missing}", { handle: "ada", count: 2 }))
       .toBe("@ada: 2 / {missing}");

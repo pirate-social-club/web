@@ -21,11 +21,16 @@ type NamespaceMessages<N extends LocaleNamespace> =
 
 function pseudoExpand(input: string): string {
   const expanded = input
-    .replace(/a/gi, "aa")
-    .replace(/e/gi, "ee")
-    .replace(/i/gi, "ii")
-    .replace(/o/gi, "oo")
-    .replace(/u/gi, "uu");
+    .split(/(\{[a-zA-Z][a-zA-Z0-9_]*\})/g)
+    .map(segment => /^\{[a-zA-Z][a-zA-Z0-9_]*\}$/.test(segment)
+      ? segment
+      : segment
+        .replace(/a/gi, "aa")
+        .replace(/e/gi, "ee")
+        .replace(/i/gi, "ii")
+        .replace(/o/gi, "oo")
+        .replace(/u/gi, "uu"))
+    .join("");
   return `[!! ${expanded} ::: ${expanded} !!]`;
 }
 

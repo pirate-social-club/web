@@ -2,19 +2,23 @@ import type { JSX } from "@solidjs/web";
 import type { RouteSectionProps } from "@solidjs/router";
 import { useHostContext } from "../lib/host-context";
 import { RenderErrorBoundary } from "../lib/render-boundary";
+import { useUiLocale } from "../lib/ui-locale";
+import { getLocaleMessages } from "../locales";
 
 export default function AppShellLayout(props: RouteSectionProps): JSX.Element {
   const host = useHostContext();
+  const { locale } = useUiLocale();
+  const shell = () => getLocaleMessages(locale(), "shell");
   return (
-    <RenderErrorBoundary fallback={<main><h1>App shell unavailable</h1></main>}>
+    <RenderErrorBoundary fallback={<main><h1>{shell().error.title}</h1></main>}>
       <div data-layout="app-shell">
         <header>
-          <a href="/" aria-label="Pirate home">Pirate Web</a>
+          <a href="/" aria-label={shell().navigation.home}>{shell().appName}</a>
           <span data-layout-surface={host.surface}>{host.communitySlug ?? "canonical"}</span>
           <nav aria-label="Primary navigation">
-            <a href="/">Home</a>
-            <a href="/c/demo/threads">Community</a>
-            <a href="/settings">Settings</a>
+            <a href="/">{shell().navigation.home}</a>
+            <a href="/c/demo/threads">{shell().navigation.community}</a>
+            <a href="/settings">{shell().navigation.settings}</a>
           </nav>
         </header>
         {props.children}

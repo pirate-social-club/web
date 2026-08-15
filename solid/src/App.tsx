@@ -5,6 +5,7 @@ import { QueryClientProvider } from "@tanstack/solid-query";
 import { pageRoutes } from "virtual:file-routes";
 import { HostContextProvider, readHostContext } from "./lib/host-context";
 import { createAppQueryClient } from "./lib/query-client";
+import { readInitialUiLocale, UiLocaleProvider } from "./lib/ui-locale";
 import "./index.css";
 
 const Router = createRouter({ routes: fileRoutes(pageRoutes) });
@@ -12,15 +13,18 @@ const Router = createRouter({ routes: fileRoutes(pageRoutes) });
 export default function App() {
   const hostContext = readHostContext();
   const queryClient = createAppQueryClient();
+  const uiLocale = readInitialUiLocale();
 
   return (
-    <HostContextProvider value={hostContext}>
-      <QueryClientProvider client={queryClient}>
-        <Head>
-          <Title>Pirate Web</Title>
-          <Router>{props => props.children}</Router>
-        </Head>
-      </QueryClientProvider>
-    </HostContextProvider>
+    <UiLocaleProvider locale={uiLocale}>
+      <HostContextProvider value={hostContext}>
+        <QueryClientProvider client={queryClient}>
+          <Head>
+            <Title>Pirate Web</Title>
+            <Router>{props => props.children}</Router>
+          </Head>
+        </QueryClientProvider>
+      </HostContextProvider>
+    </UiLocaleProvider>
   );
 }

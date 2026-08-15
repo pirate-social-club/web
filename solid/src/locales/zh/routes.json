@@ -1,0 +1,16 @@
+{
+  "home": {
+    "title": "首页 · Pirate Web",
+    "description": "Pirate Web 视频动态",
+    "heading": "Pirate Web Solid 界面"
+  },
+  "profile": {
+    "title": "@{handle} · Pirate Web",
+    "heading": "个人资料：@{handle}"
+  },
+  "notFound": {
+    "title": "未找到",
+    "description": "请求的页面不存在。",
+    "returnHome": "返回首页"
+  }
+}

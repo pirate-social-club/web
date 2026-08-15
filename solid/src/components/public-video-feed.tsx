@@ -3,6 +3,8 @@ import { isServer } from "@solidjs/web";
 import { useQuery } from "@tanstack/solid-query";
 import { Button } from "../design-system";
 import { RequireSession } from "../lib/auth/require-session";
+import { resolveLocaleLanguageTag, useUiLocale } from "../lib/ui-locale";
+import { getLocaleMessages, interpolateMessage } from "../locales";
 import {
   createPublicVideoFeedQuery,
   normalizeAuthorUser,
@@ -11,15 +13,18 @@ import {
 
 const FEED_CACHE_KEY = "pirate-solid-public-video-feed";
 
-function videoForItem(item: PublicVideoFeedItem) {
+function videoForItem(
+  item: PublicVideoFeedItem,
+  fallback: { title: string; author: string },
+) {
   const media = item.post.post.media_refs?.find(ref => ref.mime_type?.startsWith("video/"))
     ?? item.post.post.media_refs?.[0];
   return {
     source: media?.storage_ref ?? "",
     poster: media?.poster_ref ?? undefined,
-    title: item.post.post.title?.trim() || "Public video",
+    title: item.post.post.title?.trim() || fallback.title,
     caption: item.post.post.caption?.trim() || "",
-    author: normalizeAuthorUser(item.post.post.author_user) ?? "public creator",
+    author: normalizeAuthorUser(item.post.post.author_user) ?? fallback.author,
   };
 }
 
@@ -48,10 +53,12 @@ function writePosition(position: FeedPosition): void {
 }
 
 export default function PublicVideoFeed() {
-  const firstPage = useQuery(() => createPublicVideoFeedQuery());
+  const { locale } = useUiLocale();
+  const copy = () => getLocaleMessages(locale(), "feed");
+  const firstPage = useQuery(() => createPublicVideoFeedQuery(null, locale()));
   const [cursor, setCursor] = createSignal<string | null>(null);
   const nextPage = useQuery(() => ({
-    ...createPublicVideoFeedQuery(cursor()),
+    ...createPublicVideoFeedQuery(cursor(), locale()),
     enabled: Boolean(cursor()),
   }));
   const [pages, setPages] = createSignal<PublicVideoFeedItem[]>(firstPage.data?.items ?? []);
@@ -172,7 +179,7 @@ export default function PublicVideoFeed() {
       id="public-video-feed"
       data-feed-status={firstPage.isSuccess ? "ready" : firstPage.isError ? "error" : "loading"}
       data-active-video={activeId() ?? "none"}
-      aria-label="Public video feed"
+      aria-label={copy().label}
       tabindex="0"
       onKeyDown={event => {
         if (event.key === "ArrowDown") { event.preventDefault(); scrollToItem(1); }
@@ -180,14 +187,17 @@ export default function PublicVideoFeed() {
       }}
     >
       <Show when={firstPage.isError}>
-        <p data-feed-error="true" role="alert">The public video feed is unavailable.</p>
+        <p data-feed-error="true" role="alert">{copy().unavailable}</p>
       </Show>
       <Show when={firstPage.isSuccess && items().length === 0}>
-        <p data-feed-empty="true">No public videos are available yet.</p>
+        <p data-feed-empty="true">{copy().empty}</p>
       </Show>
       <For each={items()}>
         {(item, index) => {
-          const video = videoForItem(item);
+          const video = videoForItem(item, {
+            title: copy().fallbackTitle,
+            author: copy().fallbackAuthor,
+          });
           const id = item.post.post.id;
           return (
             <article
@@ -206,25 +216,35 @@ export default function PublicVideoFeed() {
                 playsinline
                 muted
                 preload={index() === activeIndex() + 1 ? "auto" : "metadata"}
-                aria-label={`${video.title} video`}
+                aria-label={interpolateMessage(copy().videoLabel, { title: video.title })}
                 aria-describedby={`video-caption-${id}`}
               >
-                <track kind="captions" label="Video description" srclang="en" />
+                <track
+                  kind="captions"
+                  label={copy().videoDescription}
+                  srclang={resolveLocaleLanguageTag(locale())}
+                />
               </video>
               <div class="public-video-card__scrim">
                 <h2>{video.title}</h2>
-                <p id={`video-caption-${id}`}>{video.caption || `Video by ${video.author}`}</p>
-                <p data-video-author={video.author}>by {video.author}</p>
+                <p id={`video-caption-${id}`}>
+                  {video.caption || interpolateMessage(copy().videoBy, { author: video.author })}
+                </p>
+                <p data-video-author={video.author}>
+                  {interpolateMessage(copy().byAuthor, { author: video.author })}
+                </p>
                 <div class="public-video-card__actions">
                   <RequireSession>
-                    <Button type="button" disabled aria-disabled="true" data-auth-action="like">Like · connect to act</Button>
+                    <Button type="button" disabled aria-disabled="true" data-auth-action="like">
+                      {copy().likeRequiresSession}
+                    </Button>
                   </RequireSession>
                   <Button type="button" onClick={() => {
                     const element = videos.get(id);
                     if (!element) return;
                     if (element.paused) { setActiveId(id); void element.play(); } else element.pause();
                   }} data-video-toggle={id}>
-                    {activeId() === id ? "Pause" : "Play"}
+                    {activeId() === id ? copy().pause : copy().play}
                   </Button>
                 </div>
               </div>
@@ -234,11 +254,11 @@ export default function PublicVideoFeed() {
       </For>
       <Show when={nextCursor()}>
         <Button type="button" onClick={loadMore} disabled={isLoadingMore()} data-feed-load-more>
-          {isLoadingMore() ? "Loading more" : "Load more videos"}
+          {isLoadingMore() ? copy().loadingMore : copy().loadMore}
         </Button>
       </Show>
       <Show when={nextPage.isError}>
-        <p data-feed-pagination-error="true" role="alert">More videos could not be loaded.</p>
+        <p data-feed-pagination-error="true" role="alert">{copy().paginationError}</p>
       </Show>
     </section>
   );

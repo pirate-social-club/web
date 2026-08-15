@@ -46,11 +46,6 @@ const meta = {
           <DialogTitle>{args.title}</DialogTitle>
           <DialogDescription>{args.description}</DialogDescription>
         </DialogHeader>
-        <div class="py-4">
-          <p class="text-base text-muted-foreground">
-            Dialog body content goes here.
-          </p>
-        </div>
         {args.footer ? (
           <StoryDialogFooter
             as={DialogFooter}

@@ -55,6 +55,11 @@ import { normalizeUserId, sameUserId } from "@/app/authenticated-helpers/user-id
 import { useBoostCampaignController } from "@/app/authenticated-helpers/use-boost-campaign-controller";
 import { useActiveSongRewardOffer } from "@/app/authenticated-helpers/use-active-song-reward-offer";
 import { readStoryCdrAsset } from "@/lib/story/cdr-browser";
+import {
+  downloadGenericAsset,
+  GenericAssetWalletRequiredError,
+  saveBlobToBrowser,
+} from "@/app/authenticated-helpers/generic-asset-download";
 function closeMobileThread(fallbackPath: string) {
   if (typeof window !== "undefined" && window.history.length > 1) {
     window.history.back();
@@ -515,49 +520,39 @@ export function PostPage({
 
   const handleDownloadGenericAsset = React.useCallback(async (nextCommunityId: string, assetId: string, titleText: string) => {
     try {
-      const access = await api.communities.resolveAssetAccess(nextCommunityId, assetId);
-      if (!access.access_granted) {
-        toast.info(access.decision_reason === "purchase_required" ? "Purchase required before downloading this file." : "This asset is not ready for delivery yet.");
+      const result = await downloadGenericAsset({
+        accessToken: session?.accessToken ?? null,
+        assetId,
+        communityId: nextCommunityId,
+        fetchContent: (url, init) => fetch(url, init),
+        readStoryCdr: async (storyCdrAccess) => {
+          const wallet = connectedWallets[0];
+          if (!wallet) throw new GenericAssetWalletRequiredError();
+          return readStoryCdrAsset({
+            access: storyCdrAccess,
+            accessToken: session?.accessToken ?? null,
+            wallet,
+          });
+        },
+        reportTelemetry: (event, context) => {
+          logger.warn(`[generic-asset-download] ${event}`, context);
+        },
+        resolveAccess: api.communities.resolveAssetAccess,
+        resolveContentUrl: resolveApiUrl,
+        saveBlob: saveBlobToBrowser,
+        titleText,
+      });
+      if (result.kind === "access_denied") {
+        toast.info(result.decisionReason === "purchase_required" ? "Purchase required before downloading this file." : "This asset is not ready for delivery yet.");
         return;
       }
-      let blob: Blob;
-      if (access.delivery_kind === "story_cdr_ref" && access.story_cdr_access) {
-        const wallet = connectedWallets[0];
-        if (!wallet) {
-          authRuntime.reconnectEthereumWallet?.();
-          authRuntime.connect?.();
-          toast.info("Connect a wallet to unlock this download.");
-          return;
-        }
-        blob = await readStoryCdrAsset({
-          access: access.story_cdr_access,
-          accessToken: session?.accessToken ?? null,
-          wallet,
-        });
-      } else if (access.delivery_kind === "primary_content_ref" && access.delivery_ref) {
-        const response = await fetch(resolveApiUrl(access.delivery_ref), {
-          headers: session?.accessToken ? { Authorization: `Bearer ${session.accessToken}` } : undefined,
-        });
-        if (!response.ok) throw new Error("Could not download this asset.");
-        blob = await response.blob();
-      } else {
-        throw new Error("Could not download this asset.");
-      }
-      const expectedHash = access.payload?.content_hash?.trim().toLowerCase();
-      if (expectedHash) {
-        const bytes = await blob.arrayBuffer();
-        const digest = await globalThis.crypto.subtle.digest("SHA-256", bytes);
-        const actualHash = `0x${Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("")}`;
-        if (actualHash !== expectedHash) throw new Error("Downloaded asset integrity check failed.");
-        blob = new Blob([bytes], { type: blob.type || access.payload?.mime_type || "application/octet-stream" });
-      }
-      const href = URL.createObjectURL(blob);
-      const anchor = document.createElement("a");
-      anchor.href = href;
-      anchor.download = access.payload?.display_filename?.trim() || titleText;
-      anchor.click();
-      URL.revokeObjectURL(href);
     } catch (error) {
+      if (error instanceof GenericAssetWalletRequiredError) {
+        authRuntime.reconnectEthereumWallet?.();
+        authRuntime.connect?.();
+        toast.info(error.message);
+        return;
+      }
       toast.error(getErrorMessage(error, "Could not download this asset."));
     }
   }, [api.communities, authRuntime, connectedWallets, session?.accessToken]);

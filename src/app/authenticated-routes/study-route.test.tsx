@@ -28,6 +28,7 @@ const { mock } = await import("bun:test") as unknown as {
 };
 
 function songPost(overrides: {
+  asset?: string | null;
   community?: string | null;
   postType?: string;
   title?: string;
@@ -37,6 +38,7 @@ function songPost(overrides: {
       community: overrides.community ?? "cmt_study",
       id: "pst_song",
       post_type: overrides.postType ?? "song",
+      asset: overrides.asset ?? null,
       song_title: overrides.title ?? "Study Song",
       title: overrides.title ?? "Study Post",
     },
@@ -124,6 +126,7 @@ let publicPostResult: LocalizedPostResponse = songPost({ title: "Public Study So
 let publicPostError: unknown = null;
 let studyResult: SongStudyPayload = readyStudyPayload();
 let studyError: unknown = null;
+let learningDeckError: unknown = null;
 let rewardCampaignResult: ApiPublicRewardOffer | null = null;
 let privyConnectCalls = 0;
 let submitPostStudyAttemptError: unknown = null;
@@ -169,6 +172,15 @@ fakeApi.communities.getPostStudy = async () => {
   calls.push("communities.getPostStudy");
   if (studyError) throw studyError;
   return studyResult;
+};
+fakeApi.communities.getLearningDeckByAsset = async () => {
+  calls.push("communities.getLearningDeckByAsset");
+  if (learningDeckError) throw learningDeckError;
+  return {
+    cards: [],
+    deck: { description: null, learning_deck_id: "ldk_test", status: "published", title: "Deck title" },
+    version: { learning_deck_version_id: "ldv_test", status: "published", version: 1 },
+  };
 };
 fakeApi.communities.transcribePostStudyAudio = async () => {
   calls.push("communities.transcribePostStudyAudio");
@@ -245,6 +257,7 @@ beforeEach(() => {
   publicPostError = null;
   studyResult = readyStudyPayload();
   studyError = null;
+  learningDeckError = null;
   rewardCampaignResult = null;
   privyConnectCalls = 0;
   submitPostStudyAttemptError = null;
@@ -361,6 +374,18 @@ async function recordSayItBack(view: ReturnType<typeof render>): Promise<void> {
 }
 
 describe("StudyRoutePage", () => {
+  test("shows an explicit error when a deck cannot be loaded", async () => {
+    postResult = songPost({ asset: "asset_deck", postType: "deck", title: "Deck post" });
+    learningDeckError = new ApiError("server_error", "deck unavailable", 503);
+
+    const view = renderRoute();
+
+    await waitFor(() => expect(view.getByText("Could not load learning deck")).toBeTruthy());
+    expect(view.getByText("The learning deck could not be loaded. Try again.")).toBeTruthy();
+    expect(view.queryByText("Say it back")).toBeNull();
+    expect(calls).toEqual(["posts.get", "communities.getLearningDeckByAsset"]);
+  });
+
   test("offers age verification when the lesson requires proof", async () => {
     studyError = new ApiError("verification_required", "Age verification is required", 403);
 

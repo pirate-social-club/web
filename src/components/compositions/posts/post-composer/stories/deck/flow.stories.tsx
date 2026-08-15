@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import * as React from "react";
 import { userEvent } from "storybook/test";
 
+import { Type } from "@/components/primitives/type";
 import { PostComposer } from "../../post-composer";
 import type { ComposerStep } from "../../post-composer.types";
 
@@ -36,9 +37,9 @@ function DeckComposerFlow({
           onSubmit: () => setPublished(true),
         }}
       />
-      {initialState === "csv_row_error" ? <p className="mt-3 rounded-md bg-rose-100 p-3 text-sm text-rose-900">CSV row 3 has an unmatched quote; no card is silently accepted.</p> : null}
-      {initialState === "processing" ? <p className="mt-3 text-sm text-amber-800">Publication processing · scanner, Story, CDR, and listing stages are resumable.</p> : null}
-      {published ? <p className="mt-3 text-sm text-emerald-700">Published immutable version · package hash remains pinned.</p> : null}
+      {initialState === "csv_row_error" ? <Type as="p" className="mt-3 rounded-md bg-destructive/5 p-3 text-destructive" variant="body">CSV row 3 has an unmatched quote; no card is silently accepted.</Type> : null}
+      {initialState === "processing" ? <Type as="p" className="mt-3 text-warning" variant="body">Publication processing · scanner, Story, CDR, and listing stages are resumable.</Type> : null}
+      {published ? <Type as="p" className="mt-3 text-success" variant="body">Published immutable version · package hash remains pinned.</Type> : null}
     </div>
   );
 }

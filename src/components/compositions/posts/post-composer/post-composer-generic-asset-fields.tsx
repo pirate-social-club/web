@@ -84,7 +84,7 @@ export function PostComposerGenericAssetFields({
             </div>
             <select
               aria-label={`Card ${index + 1} type`}
-              className="h-10 w-full rounded-md border border-border-soft bg-background px-3 text-sm"
+              className="h-10 w-full rounded-md border border-border-soft bg-background px-3 text-base"
               onChange={(event) => onDeckChange({
                 ...deck,
                 cards: deck.cards.map((item) => item.id === card.id ? { ...item, cardType: event.target.value as "basic" | "cloze" } : item),

@@ -3,6 +3,7 @@ import * as React from "react";
 
 import { PostCardMedia } from "@/components/compositions/posts/post-card/post-card-media";
 import type { GenericAssetContentSpec } from "@/components/compositions/posts/post-card/post-card.types";
+import { Type } from "@/components/primitives/type";
 
 type State = "listing" | "quoted" | "entitled" | "downloaded" | "cdr_preparing" | "decrypting" | "verified" | "expired" | "quarantined" | "takedown";
 
@@ -36,13 +37,13 @@ function FileAccessFlow({ initialState = "listing" }: { initialState?: State }) 
   };
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-xl flex-col gap-5 p-6">
-      <p className="text-sm text-muted-foreground">Buyer flow · simulated Base Sepolia USDC</p>
+      <Type as="p" className="text-muted-foreground" variant="body">Buyer flow · simulated Base Sepolia USDC</Type>
       <h1 className="text-3xl font-semibold">Quarterly data export.csv</h1>
       <PostCardMedia content={content} />
-      {staticMessage[initialState] ? <p className="rounded-md bg-muted p-3 text-sm">{staticMessage[initialState]}</p> : null}
+      {staticMessage[initialState] ? <Type as="p" className="rounded-md bg-muted p-3" variant="body">{staticMessage[initialState]}</Type> : null}
       {state === "quoted" ? <button className="rounded-md bg-primary px-4 py-2 text-primary-foreground" onClick={() => setState("entitled")} type="button">Pay simulated $1 WIP</button> : null}
-      {state === "downloaded" ? <p className="font-medium text-emerald-700">Download authorized</p> : null}
-      <p className="text-xs text-muted-foreground">If enforcement is quarantined or missing, the ordinary response remains “Asset not found.”</p>
+      {state === "downloaded" ? <Type as="p" className="text-success" variant="body-strong">Download authorized</Type> : null}
+      <Type as="p" className="text-muted-foreground" variant="body">If enforcement is quarantined or missing, the ordinary response remains “Asset not found.”</Type>
     </main>
   );
 }

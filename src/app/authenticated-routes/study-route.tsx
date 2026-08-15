@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import type { LocalizedPostResponse } from "@pirate/api-contracts";
 import { navigate, replaceRoute } from "@/app/router";
 import { routeReturnPath } from "@/app/authenticated-helpers/video-viewer-return-state";
 import { loadSongRoutePost } from "@/app/authenticated-helpers/load-song-route-post";
@@ -15,6 +16,7 @@ import {
 import { Spinner } from "@/components/primitives/spinner";
 import { Type } from "@/components/primitives/type";
 import { LearningDeckStudySurface } from "@/components/compositions/learning-decks/learning-deck-study-surface";
+import { RouteLoadFailureState } from "@/app/authenticated-helpers/route-shell";
 import { useClientHydrated } from "@/hooks/use-client-hydrated";
 import { useRouteContentLocale } from "@/hooks/use-route-content-locale";
 import { useRouteMessages } from "@/hooks/use-route-messages";
@@ -41,6 +43,10 @@ import {
   usesFillBlankOrchestration,
 } from "./study-route-state";
 type StudyFeedbackOutcome = "correct" | "incorrect";
+
+type InitialSongStudyLoad =
+  | { error: unknown }
+  | { post: LocalizedPostResponse };
 
 const STUDY_FEEDBACK_OUTCOMES: readonly StudyFeedbackOutcome[] = ["correct", "incorrect"];
 
@@ -245,10 +251,12 @@ function StudyAuthRequiredMessage({
 }
 
 function SongStudyRoutePage({
+  initialLoad,
   postId,
   returnPath,
   telegramMiniApp = false,
 }: {
+  initialLoad?: InitialSongStudyLoad | null;
   postId: string;
   returnPath?: string;
   telegramMiniApp?: boolean;
@@ -416,7 +424,12 @@ function SongStudyRoutePage({
 
       setState({ phase: "loading" });
       try {
-        const post = await loadSongRoutePost({ api, contentLocale, hasAccessToken: true, postId });
+        if (reloadKey === 0 && initialLoad && "error" in initialLoad) {
+          throw initialLoad.error;
+        }
+        const post = reloadKey === 0 && initialLoad && "post" in initialLoad
+          ? initialLoad.post
+          : await loadSongRoutePost({ api, contentLocale, hasAccessToken: true, postId });
         if (canceled) return;
 
         if (post.post.post_type !== "song") {
@@ -537,7 +550,7 @@ function SongStudyRoutePage({
     return () => {
       canceled = true;
     };
-  }, [api, contentLocale, hydrated, postId, reloadKey, routeCopy.ageVerificationRequired, session?.accessToken, telegramMiniApp]);
+  }, [api, contentLocale, hydrated, initialLoad, postId, reloadKey, routeCopy.ageVerificationRequired, session?.accessToken, telegramMiniApp]);
 
   const handleVerifyAge = React.useCallback(() => {
     void startAgeSelfVerification({
@@ -1173,8 +1186,10 @@ export function StudyRoutePage(props: {
 }) {
   const api = useApi();
   const session = useSession();
+  const contentLocale = useRouteContentLocale();
   const [deck, setDeck] = React.useState<{ communityId: string; deckId: string; title: string } | null>(null);
-  const [kind, setKind] = React.useState<"deck" | "song" | "unknown">(session?.accessToken ? "unknown" : "song");
+  const [initialSongLoad, setInitialSongLoad] = React.useState<InitialSongStudyLoad | null>(null);
+  const [kind, setKind] = React.useState<"deck" | "error" | "song" | "unknown">(session?.accessToken ? "unknown" : "song");
 
   React.useEffect(() => {
     let canceled = false;
@@ -1182,27 +1197,38 @@ export function StudyRoutePage(props: {
       setKind("song");
       return () => { canceled = true; };
     }
-    void api.posts.get(props.postId)
+    void loadSongRoutePost({ api, contentLocale, hasAccessToken: true, postId: props.postId })
       .then(async (postResponse) => {
         if (canceled) return;
         if (postResponse.post.post_type !== "deck" || !postResponse.post.asset) {
+          setInitialSongLoad({ post: postResponse });
           setKind("song");
           return;
         }
-        const draft = await api.communities.getLearningDeckByAsset(postResponse.post.community, postResponse.post.asset);
-        if (canceled) return;
-        setDeck({ communityId: postResponse.post.community, deckId: draft.deck.learning_deck_id, title: draft.deck.title });
-        setKind("deck");
+        try {
+          const draft = await api.communities.getLearningDeckByAsset(postResponse.post.community, postResponse.post.asset);
+          if (canceled) return;
+          setDeck({ communityId: postResponse.post.community, deckId: draft.deck.learning_deck_id, title: draft.deck.title });
+          setKind("deck");
+        } catch {
+          if (!canceled) setKind("error");
+        }
       })
-      .catch(() => {
-        if (!canceled) setKind("song");
+      .catch((error: unknown) => {
+        if (!canceled) {
+          setInitialSongLoad({ error });
+          setKind("song");
+        }
       });
     return () => { canceled = true; };
-  }, [api.communities, api.posts, props.postId, session?.accessToken]);
+  }, [api, api.communities, contentLocale, props.postId, session?.accessToken]);
 
   if (kind === "deck" && deck) {
     return <LearningDeckStudySurface communityId={deck.communityId} deckId={deck.deckId} returnPath={props.returnPath ?? `/p/${encodeURIComponent(props.postId)}`} title={deck.title} />;
   }
+  if (kind === "error") {
+    return <RouteLoadFailureState description="The learning deck could not be loaded. Try again." title="Could not load learning deck" />;
+  }
   if (kind === "unknown") return <div className="grid min-h-dvh place-items-center"><Spinner /></div>;
-  return <SongStudyRoutePage {...props} />;
+  return <SongStudyRoutePage {...props} initialLoad={initialSongLoad} />;
 }

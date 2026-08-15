@@ -157,6 +157,7 @@
   .sheet-enter-bottom[data-expanded] { animation: sheet-enter-bottom 300ms cubic-bezier(0.22, 1, 0.36, 1); }
   .accordion-content[data-expanded] { animation: accordion-expand 200ms ease-out; }
   .accordion-content[data-closed] { animation: accordion-collapse 200ms ease-out; }
+  .tabs-content[data-selected] { animation: tabs-content-enter 160ms ease-out; }
 
   @media (prefers-reduced-motion: reduce) {
     .sheet-enter-right[data-expanded],
@@ -165,6 +166,7 @@
     .sheet-enter-bottom[data-expanded] { animation: none; }
     .accordion-content[data-expanded],
     .accordion-content[data-closed] { animation: none; }
+    .tabs-content[data-selected] { animation: none; }
   }
 
   .notification-count-badge {

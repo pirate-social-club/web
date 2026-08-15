@@ -7,6 +7,8 @@ import { defineConfig } from "vite";
 import solid from "@solidjs/vite-plugin";
 
 const appRoot = fileURLToPath(new URL(".", import.meta.url));
+const solidRuntimeRoot = path.resolve(appRoot, "node_modules/solid-js");
+const solidWebRuntimeRoot = path.resolve(appRoot, "node_modules/@solidjs/web");
 
 export default defineConfig({
   plugins: [
@@ -17,6 +19,14 @@ export default defineConfig({
       configResolved(config) {
         if (!config.resolve.dedupe?.includes("solid-js") || !config.resolve.dedupe?.includes("@solidjs/web")) {
           throw new Error("Solid runtime dedupe must remain configured");
+        }
+        const aliases = Array.isArray(config.resolve.alias) ? config.resolve.alias : [];
+        const runtimeAlias = (find: string | RegExp, replacement: string) =>
+          aliases.some(alias => String(alias.find) === String(find) && alias.replacement === replacement);
+        if (!runtimeAlias(/^solid-js$/, solidRuntimeRoot)
+          || !runtimeAlias(/^solid-js\/web$/, solidWebRuntimeRoot)
+          || !runtimeAlias(/^@solidjs\/web$/, solidWebRuntimeRoot)) {
+          throw new Error("Solid runtime aliases must pin app and catalog imports to one physical runtime");
         }
       },
     },
@@ -35,10 +45,12 @@ export default defineConfig({
   ],
   resolve: {
     dedupe: ["solid-js", "@solidjs/web"],
-    alias: {
-      "solid-js/web": "@solidjs/web",
-      "@": path.resolve(appRoot, "../packages/solid-ui/src"),
-    },
+    alias: [
+      { find: /^solid-js$/, replacement: solidRuntimeRoot },
+      { find: /^solid-js\/web$/, replacement: solidWebRuntimeRoot },
+      { find: /^@solidjs\/web$/, replacement: solidWebRuntimeRoot },
+      { find: "@", replacement: path.resolve(appRoot, "../packages/solid-ui/src") },
+    ],
   },
   server: {
     fs: {

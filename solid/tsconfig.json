@@ -9,6 +9,9 @@
       "@pirate/web-solid-ui": ["../packages/solid-ui/src/index.tsx"],
       "@pirate/web-platform": ["../packages/web-platform/src/index.ts"],
       "@pirate/route-contracts": ["../packages/route-contracts/src/index.ts"],
+      "@/*": ["../packages/solid-ui/src/*"],
+      "@kobalte/core": ["./node_modules/@kobalte/core"],
+      "@kobalte/core/*": ["./node_modules/@kobalte/core/dist/*"],
       "solid-js": ["./node_modules/solid-js"],
       "@solidjs/web": ["./node_modules/@solidjs/web"],
       "@solidjs/web/jsx-runtime": ["./node_modules/@solidjs/web/types/jsx.d.ts"],
@@ -19,8 +22,16 @@
     "strict": true,
     "allowJs": false,
     "skipLibCheck": true,
-    "types": ["@cloudflare/workers-types", "vite/client"]
+    "types": ["@cloudflare/workers-types", "vite/client", "node"]
   },
-  "include": ["src", "workers", "vite.config.ts", "scripts"],
-  "exclude": ["src/**/*.test.ts", "src/**/*.test.tsx"]
+  "include": ["src", "workers", "vite.config.ts", "scripts", "../packages/solid-ui/src"],
+  "exclude": [
+    "src/**/*.test.ts",
+    "src/**/*.test.tsx",
+    "../packages/solid-ui/src/**/*.test.ts",
+    "../packages/solid-ui/src/**/*.test.tsx",
+    "../packages/solid-ui/src/**/*.stories.tsx",
+    "../packages/solid-ui/src/test",
+    "../packages/solid-ui/src/stories"
+  ]
 }

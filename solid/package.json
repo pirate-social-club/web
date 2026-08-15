@@ -18,7 +18,6 @@
     "check-solid-runtime": "node scripts/check-solid-runtime.mjs",
     "assert-solid-css": "node scripts/assert-solid-css.mjs",
     "typecheck": "node node_modules/typescript/bin/tsc --noEmit",
-    "solid-ui:ci": "bun run typecheck",
     "solid-routes:ci": "bun run typecheck && bun test src/lib/api src/routes",
     "verify": "node scripts/check-solid-runtime.mjs && bun test src/lib/api/origin.test.ts && node scripts/probe.mjs && node scripts/stream-check.mjs && node scripts/hydration-check.mjs"
   },
@@ -40,8 +39,8 @@
     "@cloudflare/vite-plugin": "1.52.1",
     "@cloudflare/workers-types": "5.20260813.1",
     "@solidjs/vite-plugin": "3.0.0-next.27",
-    "@types/node": "24.3.0",
     "@tailwindcss/vite": "4.3.3",
+    "@types/node": "24.3.0",
     "playwright": "1.60.0",
     "tailwindcss": "4.3.3",
     "typescript": "5.9.3",

@@ -66,3 +66,24 @@ components on top of the patched provider.
 Batch 2 cannot close until Button, one portalled overlay, and one compound
 form control all pass this app-level gate under enforced CSP, with the exact
 dependency pins and single-runtime check passing in a clean install.
+
+## Findings 2026-08-15 — standalone skeleton (B1 lane)
+
+Recorded during the B1 app-unblocking lane (pre-absorption) and carried into
+the absorbed tree; both failure modes predate the path renames.
+
+1. **Click step: handler attaches, DOM never updates.** On the pristine tree,
+   the click handler is attached (`$$click` invoked on click, verified via
+   wrap) and router client navigation works, yet the count DOM text never
+   updates. Candidates to isolate: the DS `button.tsx` drift (the merged
+   catalog PR #1 changed `ButtonRoot` after this skeleton's lockfile
+   snapshot), and a `sharedConfig.done`-never-set serialized-value lock in
+   Solid 2 RC hydration.
+2. **CSP violation cascade.** The live public feed loads external media
+   (`psc.myfilebase.com`, `api.pirate.sc`) under CSP `default-src 'self'`,
+   producing 30+ console errors that trip the gate's own `violations` check
+   independently of the click failure.
+
+Both were reproduced on the pristine pre-task arrangement; neither can be
+caused by workspace-path renames. The gate remains red until both are
+resolved; a dedicated follow-up lane owns the fix.

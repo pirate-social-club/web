@@ -13,23 +13,7 @@
       "solid-js": ["./node_modules/solid-js"],
       "@solidjs/web": ["./node_modules/@solidjs/web"],
       "@solidjs/web/jsx-runtime": ["./node_modules/@solidjs/web/types/jsx.d.ts"],
-      "@solidjs/web/jsx-dev-runtime": ["./node_modules/@solidjs/web/types/jsx.d.ts"],
-      "@kobalte/core": ["./node_modules/@kobalte/core"],
-      "@kobalte/core/*": ["./node_modules/@kobalte/core/dist/*"],
-      "@testing-library/*": ["./node_modules/@testing-library/*"],
-      "@storybook/*": ["./node_modules/@storybook/*"],
-      "storybook-solidjs-vite": ["./node_modules/storybook-solidjs-vite"],
-      "storybook/test": ["./node_modules/storybook/dist/test/index.d.ts"],
-      "storybook/theming/create": ["./node_modules/storybook/dist/theming/create.d.ts"],
-      "vitest": ["./node_modules/vitest"],
-      "vitest/config": ["./node_modules/vitest/config.d.ts"],
-      "axe-core": ["./node_modules/axe-core"],
-      "jsdom": ["./node_modules/jsdom"],
-      "vite-plugin-solid": ["./node_modules/vite-plugin-solid"],
-      "@tailwindcss/vite": ["./node_modules/@tailwindcss/vite/dist/index.d.mts"],
-      "tailwind-merge": ["./node_modules/tailwind-merge"],
-      "class-variance-authority": ["./node_modules/class-variance-authority"],
-      "remark-gfm": ["./node_modules/remark-gfm"]
+      "@solidjs/web/jsx-dev-runtime": ["./node_modules/@solidjs/web/types/jsx.d.ts"]
     },
     "jsx": "preserve",
     "jsxImportSource": "@solidjs/web",
@@ -38,15 +22,14 @@
     "skipLibCheck": true,
     "types": ["@cloudflare/workers-types", "vite/client", "node"]
   },
-  "include": [
-    "src",
-    "workers",
-    "vite.config.ts",
-    "scripts",
-    "../packages/solid-ui/src",
-    "../packages/solid-ui/scripts",
-    "../packages/solid-ui/.storybook",
-    "../packages/solid-ui/vitest.config.ts"
-  ],
-  "exclude": ["src/**/*.test.ts", "src/**/*.test.tsx"]
+  "include": ["src", "workers", "vite.config.ts", "scripts", "../packages/solid-ui/src"],
+  "exclude": [
+    "src/**/*.test.ts",
+    "src/**/*.test.tsx",
+    "../packages/solid-ui/src/**/*.test.ts",
+    "../packages/solid-ui/src/**/*.test.tsx",
+    "../packages/solid-ui/src/**/*.stories.tsx",
+    "../packages/solid-ui/src/test",
+    "../packages/solid-ui/src/stories"
+  ]
 }

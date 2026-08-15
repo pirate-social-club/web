@@ -185,14 +185,14 @@ Notes: React `sonner.stories.tsx` maps to the Solid `overlays/toast` implementat
 | 106 | `components/compositions/song-study/stories/song-streak-leaderboard.stories.tsx` | solid/src/features/song-study | B12 | pending |
 | 107 | `components/compositions/song-study/stories/song-streak-preview.stories.tsx` | solid/src/features/song-study | B12 | pending |
 | 108 | `components/compositions/song-study/stories/song-study-surface.stories.tsx` | solid/src/features/song-study | B12 | pending |
-| 109 | `components/compositions/system/avatar-badge/stories/avatar-badge.stories.tsx` | packages/solid-ui src/patterns/identity/avatar-badge | B5 | pending |
-| 110 | `components/compositions/system/flat-tabs/stories/flat-tabs.stories.tsx` | packages/solid-ui src/patterns/navigation/flat-tabs | B5 | pending |
-| 111 | `components/compositions/system/modal/stories/modal.stories.tsx` | packages/solid-ui src/patterns/overlays/modal | B5 | pending |
-| 112 | `components/compositions/system/responsive-option-select/stories/responsive-option-select.stories.tsx` | packages/solid-ui src/patterns/forms/responsive-option-select | B5 | pending |
-| 113 | `components/compositions/system/sidebar/stories/sidebar.stories.tsx` | packages/solid-ui src/patterns/navigation/sidebar | B5 | pending |
-| 114 | `components/compositions/system/stacked-section-nav/stories/stacked-section-nav.stories.tsx` | packages/solid-ui src/patterns/navigation/stacked-section-nav | B5 | pending |
-| 115 | `components/compositions/system/stories/stack-page-shell.stories.tsx` | packages/solid-ui src/patterns/layout/stack-page-shell | B5 | pending |
-| 116 | `components/compositions/system/stories/status-card.stories.tsx` | packages/solid-ui src/patterns/feedback/status-card | B5 | pending |
+| 109 | `components/compositions/system/avatar-badge/stories/avatar-badge.stories.tsx` | packages/solid-ui src/patterns/identity/avatar-badge | B5 | done — packages/solid-ui src/patterns/identity/avatar-badge |
+| 110 | `components/compositions/system/flat-tabs/stories/flat-tabs.stories.tsx` | packages/solid-ui src/patterns/navigation/flat-tabs | B5 | done — packages/solid-ui src/patterns/navigation/flat-tabs |
+| 111 | `components/compositions/system/modal/stories/modal.stories.tsx` | packages/solid-ui src/patterns/overlays/modal | B5 | done — packages/solid-ui src/patterns/overlays/modal |
+| 112 | `components/compositions/system/responsive-option-select/stories/responsive-option-select.stories.tsx` | packages/solid-ui src/patterns/forms/responsive-option-select | B5 | done — packages/solid-ui src/patterns/forms/responsive-option-select |
+| 113 | `components/compositions/system/sidebar/stories/sidebar.stories.tsx` | packages/solid-ui src/patterns/navigation/sidebar | B5 | done — packages/solid-ui src/patterns/navigation/sidebar |
+| 114 | `components/compositions/system/stacked-section-nav/stories/stacked-section-nav.stories.tsx` | packages/solid-ui src/patterns/navigation/stacked-section-nav | B5 | done — packages/solid-ui src/patterns/navigation/stacked-section-nav |
+| 115 | `components/compositions/system/stories/stack-page-shell.stories.tsx` | packages/solid-ui src/patterns/layout/stack-page-shell | B5 | done — packages/solid-ui src/patterns/layout/stack-page-shell |
+| 116 | `components/compositions/system/stories/status-card.stories.tsx` | packages/solid-ui src/patterns/feedback/status-card | B5 | done — packages/solid-ui src/patterns/feedback/status-card |
 | 117 | `components/compositions/verification/altcha-pow-widget/stories/altcha-pow-widget.stories.tsx` | solid/src/features/verification | B11 | pending |
 | 118 | `components/compositions/verification/namespace-verification/stories/hns-import-guidance.stories.tsx` | solid/src/features/verification | B11 | pending |
 | 119 | `components/compositions/verification/namespace-verification/stories/namespace-verification.stories.tsx` | solid/src/features/verification | B11 | pending |
@@ -205,5 +205,5 @@ Notes: React `sonner.stories.tsx` maps to the Solid `overlays/toast` implementat
 | 126 | `components/compositions/wallet/wallet-hub/stories/wallet-hub.stories.tsx` | solid/src/features/wallet | B8 | pending |
 | 127 | `components/compositions/wallet/wallet-receive-sheet/stories/wallet-receive-sheet.stories.tsx` | solid/src/features/wallet | B8 | pending |
 | 128 | `components/compositions/wallet/wallet-send-sheet/stories/wallet-send-sheet.stories.tsx` | solid/src/features/wallet | B8 | pending |
-| 129 | `components/states/stories/empty-inbox-state.stories.tsx` | packages/solid-ui src/patterns/feedback (route-states / empty-inbox-state) | B5 | pending |
-| 130 | `components/states/stories/route-states.stories.tsx` | packages/solid-ui src/patterns/feedback (route-states / empty-inbox-state) | B5 | pending |
+| 129 | `components/states/stories/empty-inbox-state.stories.tsx` | packages/solid-ui src/patterns/feedback (route-states / empty-inbox-state) | B5 | done — packages/solid-ui src/patterns/feedback/route-states |
+| 130 | `components/states/stories/route-states.stories.tsx` | packages/solid-ui src/patterns/feedback (route-states / empty-inbox-state) | B5 | done — packages/solid-ui src/patterns/feedback/route-states |

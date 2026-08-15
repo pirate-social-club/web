@@ -273,6 +273,29 @@ export {
   type IllustratedStateImage,
   type IllustratedStateProps,
 } from "./patterns/feedback/illustrated-state/illustrated-state";
+export {
+  AuthRequiredRouteState,
+  EmptyFeedState,
+  EmptyInboxState,
+  ErrorState,
+  FullPageSpinner,
+  NotFoundRouteState,
+  PublicRouteLoadingState,
+  PublicRouteMessageState,
+  RootAppErrorState,
+  RouteLoadFailureState,
+  RouteLoadingState,
+  type AuthRequiredRouteStateProps,
+  type EmptyInboxStateProps,
+  type ErrorStateProps,
+  type NotFoundRouteStateProps,
+  type RootAppErrorStateProps,
+  type RouteLoadFailureStateProps,
+} from "./patterns/feedback/route-states/route-states";
+export {
+  StatusCard,
+  type StatusCardProps,
+} from "./patterns/feedback/status-card/status-card";
 
 export {
   CheckboxCard,
@@ -321,6 +344,10 @@ export {
   PageContainer,
   type PageContainerProps,
 } from "./patterns/layout/layout-shell/layout-shell";
+export {
+  StackPageShell,
+  type StackPageShellProps,
+} from "./patterns/layout/stack-page-shell/stack-page-shell";
 
 export {
   FlatTabBar,

@@ -80,6 +80,13 @@ import {
 import { AppHeader } from "@/patterns/navigation/app-header/app-header";
 import { MobileFooterNav } from "@/patterns/navigation/mobile-footer-nav/mobile-footer-nav";
 import { MobilePageHeader } from "@/patterns/navigation/mobile-page-header/mobile-page-header";
+import {
+  AuthRequiredRouteState,
+  NotFoundRouteState,
+  RouteLoadingState,
+} from "@/patterns/feedback/route-states/route-states";
+import { StatusCard } from "@/patterns/feedback/status-card/status-card";
+import { StackPageShell } from "@/patterns/layout/stack-page-shell/stack-page-shell";
 import { VerticalFeed } from "@/patterns/engagement/vertical-feed/vertical-feed";
 
 function renderHtml(ui: () => unknown): string {
@@ -320,6 +327,34 @@ describe("SSR smoke", () => {
     expect(
       renderHtml(() => <MobilePageHeader title="Notifications" />),
     ).toContain("Notifications");
+  });
+
+  it("renders route states without browser APIs", () => {
+    expect(renderHtml(() => <RouteLoadingState />)).toContain("svg");
+    expect(
+      renderHtml(() => <NotFoundRouteState path="/missing" />),
+    ).toContain("/missing");
+    expect(
+      renderHtml(() => (
+        <AuthRequiredRouteState
+          description="Sign in to view your inbox."
+          title="Inbox"
+        />
+      )),
+    ).toContain("Inbox");
+  });
+
+  it("renders StatusCard and StackPageShell without browser APIs", () => {
+    expect(
+      renderHtml(() => <StatusCard title="All set" description="Done." tone="success" />),
+    ).toContain("All set");
+    expect(
+      renderHtml(() => (
+        <StackPageShell title="Settings">
+          <div>Body</div>
+        </StackPageShell>
+      )),
+    ).toContain("Settings");
   });
 
   it("renders Batch 3 form controls without browser APIs", () => {

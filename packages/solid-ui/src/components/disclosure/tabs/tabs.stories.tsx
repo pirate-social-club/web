@@ -59,6 +59,13 @@ export const Default: Story = {
     await expect(
       canvas.getByText("Make changes to your account here."),
     ).toBeVisible();
+  },
+};
+
+export const Interaction: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const account = canvas.getByRole("tab", { name: "Account" });
     await userEvent.click(account);
     await userEvent.keyboard("{ArrowRight}");
     await expect(

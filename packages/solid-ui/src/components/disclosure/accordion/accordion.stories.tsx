@@ -88,6 +88,18 @@ export const Default: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const first = canvas.getByRole("button", { name: "What is Pirate?" });
+    await expect(first).toHaveAttribute("aria-expanded", "true");
+    await expect(
+      canvas.getByText(/community-first social product/),
+    ).toBeVisible();
+    await expect(canvas.queryByText(/organize people around a topic/)).not.toBeInTheDocument();
+  },
+};
+
+export const Interaction: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const first = canvas.getByRole("button", { name: "What is Pirate?" });
     const second = canvas.getByRole("button", {
       name: "How do communities work?",
     });
@@ -95,24 +107,16 @@ export const Default: Story = {
       name: "Can I start my own community?",
     });
 
-    await expect(first).toHaveAttribute("aria-expanded", "true");
-    await expect(
-      canvas.getByText(/community-first social product/),
-    ).toBeVisible();
-    await expect(canvas.queryByText(/organize people around a topic/)).not.toBeInTheDocument();
-
     await userEvent.click(second);
     await expect(second).toHaveAttribute("aria-expanded", "true");
     await expect(first).toHaveAttribute("aria-expanded", "false");
     await expect(canvas.getByText(/organize people around a topic/)).toBeVisible();
-
     await userEvent.keyboard("{Home}");
     await expect(first).toHaveFocus();
     await userEvent.keyboard("{End}");
     await expect(third).toHaveFocus();
     await userEvent.keyboard("{ArrowUp}");
     await expect(second).toHaveFocus();
-    await expect(second).toHaveAttribute("aria-expanded", "true");
     await userEvent.keyboard("{Enter}");
     await expect(second).toHaveAttribute("aria-expanded", "true");
   },

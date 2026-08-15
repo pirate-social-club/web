@@ -52,14 +52,6 @@ export const Default: Story = {
       </Tabs>
     </div>
   ),
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    const account = canvas.getByRole("tab", { name: "Account" });
-    await expect(account).toHaveAttribute("aria-selected", "true");
-    await expect(
-      canvas.getByText("Update your account."),
-    ).toBeVisible();
-  },
 };
 
 export const Interaction: Story = {

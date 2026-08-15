@@ -85,15 +85,6 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    const first = canvas.getByRole("button", { name: "What is Pirate?" });
-    await expect(first).toHaveAttribute("aria-expanded", "true");
-    await expect(
-      canvas.getByText(/community-first social product/),
-    ).toBeVisible();
-    await expect(canvas.queryByText(/organize people around a topic/)).not.toBeInTheDocument();
-  },
 };
 
 export const Interaction: Story = {

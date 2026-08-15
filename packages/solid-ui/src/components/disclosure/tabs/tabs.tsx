@@ -53,7 +53,7 @@ function TabsTrigger(props: ParentProps<KTabsTriggerProps & { class?: string }>)
 function TabsContent(props: ParentProps<TabsContentProps>) {
   const className = createMemo(() =>
     cn(
-      "mt-4 min-h-12 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+      "tabs-content mt-4 min-h-12 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
       props.class,
     ),
   );

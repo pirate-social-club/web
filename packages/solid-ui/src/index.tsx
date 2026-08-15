@@ -1,12 +1,11 @@
-import { Portal } from "@solidjs/web";
+import { Portal, type JSX } from "@solidjs/web";
 import {
   createContext,
   createSignal,
+  omit,
   Show,
-  splitProps,
   useContext,
   type Accessor,
-  type JSX,
   type ParentProps,
 } from "solid-js";
 
@@ -34,9 +33,8 @@ export function buttonVariants(options: { variant?: ButtonVariant; size?: Button
 }
 
 export function Button(props: ParentProps<ButtonProps>): JSX.Element {
-  const [local, rest] = splitProps(props, [
-    "variant", "size", "loading", "leadingIcon", "trailingIcon", "children", "class", "disabled", "type", "as",
-  ]);
+  const local = props;
+  const rest = omit(props, "variant", "size", "loading", "leadingIcon", "trailingIcon", "children", "class", "disabled", "type", "as");
   return (
     <button
       {...rest}
@@ -75,13 +73,14 @@ export function Dialog(props: ParentProps<{ open?: boolean; onOpenChange?: (open
     open: () => props.open ?? internalOpen(),
     setOpen,
   };
-  return <DialogContext.Provider value={value}>{props.children}</DialogContext.Provider>;
+  return <DialogContext value={value}>{props.children}</DialogContext>;
 }
 
 export function DialogTrigger(props: ParentProps<JSX.ButtonHTMLAttributes<HTMLButtonElement> & { as?: unknown }>): JSX.Element {
   const context = useDialogContext();
-  const [local, rest] = splitProps(props, ["children", "as", "onClick"]);
-  return <button {...rest} onClick={event => { local.onClick?.(event); context.setOpen(true); }}>{local.children}</button>;
+  const local = props;
+  const rest = omit(props, "children", "as", "onClick");
+  return <button {...rest} onClick={event => { if (typeof local.onClick === "function") local.onClick(event); context.setOpen(true); }}>{local.children}</button>;
 }
 
 export function DialogContent(props: ParentProps<JSX.HTMLAttributes<HTMLDivElement> & { hideCloseButton?: boolean }>): JSX.Element {
@@ -100,7 +99,7 @@ export function DialogContent(props: ParentProps<JSX.HTMLAttributes<HTMLDivEleme
   );
 }
 
-export function DialogHeader(props: ParentProps<JSX.HTMLAttributes<HTMLDivElement>>): JSX.Element {
+export function DialogHeader(props: ParentProps<JSX.HTMLAttributes<HTMLElement>>): JSX.Element {
   return <header {...props}>{props.children}</header>;
 }
 
@@ -112,7 +111,7 @@ export function DialogDescription(props: ParentProps<JSX.HTMLAttributes<HTMLPara
   return <p {...props}>{props.children}</p>;
 }
 
-export interface TextFieldProps extends JSX.HTMLAttributes<HTMLDivElement> {
+export interface TextFieldProps extends Omit<JSX.HTMLAttributes<HTMLDivElement>, "onChange"> {
   name?: string;
   value?: string;
   onChange?: (value: string) => void;
@@ -126,12 +125,13 @@ interface TextFieldContextValue {
 const TextFieldContext = createContext<TextFieldContextValue>();
 
 export function TextField(props: ParentProps<TextFieldProps>): JSX.Element {
-  const [local, rest] = splitProps(props, ["children", "value", "onChange"]);
+  const local = props;
+  const rest = omit(props, "children", "value", "onChange");
   const value = () => local.value ?? "";
   return (
-    <TextFieldContext.Provider value={{ value, onChange: local.onChange }}>
+    <TextFieldContext value={{ value, onChange: local.onChange }}>
       <div {...rest}>{local.children}</div>
-    </TextFieldContext.Provider>
+    </TextFieldContext>
   );
 }
 
@@ -146,13 +146,14 @@ export interface TextFieldInputProps extends JSX.InputHTMLAttributes<HTMLInputEl
 
 export function TextFieldInput(props: TextFieldInputProps): JSX.Element {
   const context = useContext(TextFieldContext);
-  const [local, rest] = splitProps(props, ["variant", "size", "value", "onInput"]);
+  const local = props;
+  const rest = omit(props, "variant", "size", "value", "onInput");
   return (
     <input
       {...rest}
       value={local.value ?? context?.value()}
       onInput={event => {
-        local.onInput?.(event);
+        if (typeof local.onInput === "function") local.onInput(event);
         context?.onChange?.(event.currentTarget.value);
       }}
     />

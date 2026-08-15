@@ -15,7 +15,9 @@ export function createMediaQuery(query: string, serverFallback = false): Accesso
   createEffect(
     () => query,
     (activeQuery) => {
-      if (typeof window === "undefined") return;
+      if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+        return;
+      }
       const media = window.matchMedia(activeQuery);
       const update = () => setMatches(media.matches);
       update();

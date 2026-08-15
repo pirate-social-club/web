@@ -23,5 +23,5 @@ src/locales/generated.ts
 # karaoke audio worklet — emitted by scripts/build-karaoke-worklet.mjs (worklet:build)
 public/_lib/
 
-# Solid catalog dependency bridge (created by `bun run --cwd solid solid-ui:link`)
+# Solid UI catalog has its own install (packages/solid-ui/bun.lock, see solid-ui:ci)
 packages/solid-ui/node_modules

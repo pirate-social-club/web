@@ -57,6 +57,8 @@ import {
 import { Toaster } from "@/components/overlays/toast/toast";
 import { ActionMenu } from "@/patterns/overlays/action-menu/action-menu";
 import { ConfirmDialog } from "@/patterns/overlays/confirm-dialog/confirm-dialog";
+import { FlatTabBar, FlatTabButton } from "@/patterns/navigation/flat-tabs/flat-tabs";
+import { StackedSectionNav } from "@/patterns/navigation/stacked-section-nav/stacked-section-nav";
 import { VerticalFeed } from "@/patterns/engagement/vertical-feed/vertical-feed";
 
 function renderHtml(ui: () => unknown): string {
@@ -187,6 +189,32 @@ describe("SSR smoke", () => {
         />
       )),
     ).toContain("@wavemaker");
+  });
+
+  it("renders FlatTabs without browser APIs", () => {
+    expect(
+      renderHtml(() => (
+        <FlatTabBar columns={2}>
+          <FlatTabButton active>Feed</FlatTabButton>
+          <FlatTabButton>About</FlatTabButton>
+        </FlatTabBar>
+      )),
+    ).toContain("Feed");
+  });
+
+  it("renders StackedSectionNav without browser APIs", () => {
+    expect(
+      renderHtml(() => (
+        <StackedSectionNav
+          sections={[
+            {
+              label: "Account",
+              items: [{ label: "Profile", active: true }, { label: "Privacy" }],
+            },
+          ]}
+        />
+      )),
+    ).toContain("Profile");
   });
 
   it("renders Batch 3 form controls without browser APIs", () => {

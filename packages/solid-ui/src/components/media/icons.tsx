@@ -147,3 +147,194 @@ export function IconCopy(props: IconProps) {
     </svg>
   );
 }
+
+export function IconCaretDown(props: IconProps) {
+  return (
+    <svg
+      aria-hidden="true"
+      class={props.class}
+      fill="currentColor"
+      viewBox="0 0 24 24"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" />
+    </svg>
+  );
+}
+
+export function IconCaretLeft(props: IconProps) {
+  return (
+    <svg
+      aria-hidden="true"
+      class={props.class}
+      fill="currentColor"
+      viewBox="0 0 24 24"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path d="M15 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" />
+    </svg>
+  );
+}
+
+export function IconCaretRight(props: IconProps) {
+  return (
+    <svg
+      aria-hidden="true"
+      class={props.class}
+      fill="currentColor"
+      viewBox="0 0 24 24"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" />
+    </svg>
+  );
+}
+
+export function IconArrowLeft(props: IconProps) {
+  return (
+    <svg
+      aria-hidden="true"
+      class={props.class}
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2.5"
+      viewBox="0 0 24 24"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path d="M19 12H5M12 19l-7-7 7-7" stroke-linecap="round" stroke-linejoin="round" />
+    </svg>
+  );
+}
+
+export function IconArrowRight(props: IconProps) {
+  return (
+    <svg
+      aria-hidden="true"
+      class={props.class}
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2.5"
+      viewBox="0 0 24 24"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path d="M5 12h14M12 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round" />
+    </svg>
+  );
+}
+
+export function IconHouse(props: IconProps) {
+  return (
+    <svg
+      aria-hidden="true"
+      class={props.class}
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      viewBox="0 0 24 24"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path d="M3 10.5 12 3l9 7.5" stroke-linecap="round" stroke-linejoin="round" />
+      <path d="M5 9.5V21h14V9.5" stroke-linecap="round" stroke-linejoin="round" />
+      <path d="M9 21v-6h6v6" stroke-linecap="round" stroke-linejoin="round" />
+    </svg>
+  );
+}
+
+export function IconBell(props: IconProps) {
+  return (
+    <svg
+      aria-hidden="true"
+      class={props.class}
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      viewBox="0 0 24 24"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path d="M18 8a6 6 0 1 0-12 0c0 7-3 8-3 8h18s-3-1-3-8" stroke-linecap="round" stroke-linejoin="round" />
+      <path d="M13.7 20a2 2 0 0 1-3.4 0" stroke-linecap="round" stroke-linejoin="round" />
+    </svg>
+  );
+}
+
+export function IconWallet(props: IconProps) {
+  return (
+    <svg
+      aria-hidden="true"
+      class={props.class}
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      viewBox="0 0 24 24"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path d="M19 7V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2H5" stroke-linecap="round" stroke-linejoin="round" />
+      <circle cx="16" cy="14" r="1" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+export function IconPlus(props: IconProps) {
+  return (
+    <svg
+      aria-hidden="true"
+      class={props.class}
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2.5"
+      viewBox="0 0 24 24"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path d="M12 5v14M5 12h14" stroke-linecap="round" />
+    </svg>
+  );
+}
+
+export function IconList(props: IconProps) {
+  return (
+    <svg
+      aria-hidden="true"
+      class={props.class}
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2.5"
+      viewBox="0 0 24 24"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path d="M4 6h16M4 12h16M4 18h16" stroke-linecap="round" />
+    </svg>
+  );
+}
+
+export function IconSquare(props: IconProps) {
+  return (
+    <svg
+      aria-hidden="true"
+      class={props.class}
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      viewBox="0 0 24 24"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <rect height="16" rx="2" width="16" x="4" y="4" />
+    </svg>
+  );
+}
+
+export function IconSidebarSimple(props: IconProps) {
+  return (
+    <svg
+      aria-hidden="true"
+      class={props.class}
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      viewBox="0 0 24 24"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <rect height="16" rx="2" width="18" x="3" y="4" />
+      <path d="M9.5 4v16" />
+    </svg>
+  );
+}

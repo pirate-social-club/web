@@ -312,6 +312,23 @@ export {
 } from "./patterns/layout/layout-shell/layout-shell";
 
 export {
+  FlatTabBar,
+  FlatTabButton,
+  FlatTabsList,
+  FlatTabsTrigger,
+  type FlatTabBarProps,
+  type FlatTabButtonProps,
+  type FlatTabsListProps,
+  type FlatTabsTriggerProps,
+} from "./patterns/navigation/flat-tabs/flat-tabs";
+export {
+  StackedSectionNav,
+  type StackedSectionNavItem,
+  type StackedSectionNavProps,
+  type StackedSectionNavSection,
+} from "./patterns/navigation/stacked-section-nav/stacked-section-nav";
+
+export {
   ActionMenu,
   type ActionMenuGroup,
   type ActionMenuItem,

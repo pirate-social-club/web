@@ -624,24 +624,29 @@ merges, freeing a slot for phase B's `solid-ui` and `solid-routes`. If perimeter
 work must continue into phase B, file the documented exception — named owner,
 purpose, expiry — with the workspace steward *before* opening a third worktree.
 
-**Both of Web's slots are currently occupied**, with lane P already holding one
-of them:
+**Web has three registered auxiliary worktrees**, with lane P holding one
+default slot and a named capacity exception holding the third:
 
 | Worktree | Branch | State |
 | --- | --- | --- |
-| `.worktrees/web/solid-perimeter` | `solid/perimeter` | clean — reserved for lane P after clearance |
+| `.worktrees/web/solid-perimeter` | `solid/perimeter` | clean — P1 skeleton committed locally; clean-checkout gate pending |
 | `.worktrees/web/generic-digital-goods` | `feat/generic-digital-goods-flag-20260814` | 20 modified, 3 untracked — do not disturb |
+| `.worktrees/web/ci-cross-repo-pins` | `chore/ci-cross-repo-pins` | clean — named exception for CI pin correction, owner workspace coordinator, expiry 2026-08-22 |
 
-The former `audit/dead-code-current` worktree has been retired. Capacity no
-longer blocks lane P, but it does block opening lanes U and R concurrently until
-P1 merges and `solid-perimeter` is retired, or until a documented exception is
-approved. As of the 2026-08-15 03:02 audit, the workspace has **nine registered
-auxiliary worktrees against a limit of eight**: API has four, Core two,
-Contracts one, and Web two. API's `reward-asset-descriptor` worktree is a
-named second capacity exception: owner **workspace coordinator**, purpose
-dependency-backed verification and review handoff for the reward-campaign asset
-descriptor, expiry **2026-08-22 or immediately after handoff**. No additional
-worktree may open until an exception expires or a worktree is retired.
+The former `audit/dead-code-current` worktree has been retired. Capacity does
+not block lane P's existing worktree, but it does block opening lanes U and R
+concurrently until P1 merges and `solid-perimeter` is retired, or until another
+documented exception is approved. As of the current 2026-08-15 reconciliation,
+the workspace has **10 registered auxiliary worktrees against a limit of
+eight**: API has four, Core two, Contracts one, and Web three. API's
+`reward-asset-descriptor` worktree is a named second API capacity exception:
+owner **workspace coordinator**, purpose dependency-backed verification and
+review handoff for the reward-campaign asset descriptor, expiry **2026-08-22 or
+immediately after handoff**. Web's `ci-cross-repo-pins` worktree is a named
+Web/global exception: owner **workspace coordinator**, purpose prepare and
+verify the cross-repository CI pin correction, expiry **2026-08-22**. No
+additional worktree may open until an exception expires or a worktree is
+retired.
 
 ### Merge order
 

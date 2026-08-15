@@ -37,7 +37,7 @@ function TabsList(props: ParentProps<KTabsListProps & { class?: string }>) {
 function TabsTrigger(props: ParentProps<KTabsTriggerProps & { class?: string }>) {
   const className = createMemo(() =>
     cn(
-      "inline-flex cursor-pointer items-center justify-center whitespace-nowrap rounded-full px-4 py-2 text-base font-medium transition-all motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background disabled:pointer-events-none disabled:opacity-50 data-[selected]:bg-card data-[selected]:text-foreground data-[selected]:shadow-sm",
+      "inline-flex cursor-pointer items-center justify-center whitespace-nowrap rounded-full px-4 py-2 text-base font-medium transition-all motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border focus-visible:ring-offset-2 ring-offset-background disabled:pointer-events-none disabled:opacity-50 data-[selected]:bg-card data-[selected]:text-foreground data-[selected]:shadow-sm",
       props.class,
     ),
   );

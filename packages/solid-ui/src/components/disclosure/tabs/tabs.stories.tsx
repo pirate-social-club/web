@@ -33,22 +33,24 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   render: () => (
-    <Tabs defaultValue="account">
-      <TabsList>
-        <TabsTrigger value="account">Account</TabsTrigger>
-        <TabsTrigger value="password">Password</TabsTrigger>
-      </TabsList>
-      <TabsContent value="account">
-        <p class="text-base text-muted-foreground">
-          Make changes to your account here.
-        </p>
-      </TabsContent>
-      <TabsContent value="password">
-        <p class="text-base text-muted-foreground">
-          Change your password here.
-        </p>
-      </TabsContent>
-    </Tabs>
+    <div class="w-full p-4">
+      <Tabs defaultValue="account">
+        <TabsList>
+          <TabsTrigger value="account">Account</TabsTrigger>
+          <TabsTrigger value="password">Password</TabsTrigger>
+        </TabsList>
+        <TabsContent value="account">
+          <p class="text-base text-muted-foreground">
+            Make changes to your account here.
+          </p>
+        </TabsContent>
+        <TabsContent value="password">
+          <p class="text-base text-muted-foreground">
+            Change your password here.
+          </p>
+        </TabsContent>
+      </Tabs>
+    </div>
   ),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);

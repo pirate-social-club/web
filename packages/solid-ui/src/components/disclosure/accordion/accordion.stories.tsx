@@ -33,12 +33,13 @@ const meta = {
     shouldFocusWrap: { control: "boolean" },
   },
   render: (args) => (
-    <Accordion
-      class="w-[480px] max-w-full"
-      collapsible={args.collapsible}
-      defaultValue={args.defaultValue}
-      multiple={args.multiple}
-    >
+    <div class="w-full p-4">
+      <Accordion
+        class="w-full max-w-[480px]"
+        collapsible={args.collapsible}
+        defaultValue={args.defaultValue}
+        multiple={args.multiple}
+      >
       <AccordionItem value="item-1">
         <AccordionHeader>
           <AccordionTrigger>What is Pirate?</AccordionTrigger>
@@ -66,7 +67,8 @@ const meta = {
           shared resources around your focus.
         </AccordionContent>
       </AccordionItem>
-    </Accordion>
+      </Accordion>
+    </div>
   ),
   parameters: {
     docs: {

@@ -41,12 +41,12 @@ export const Default: Story = {
         </TabsList>
         <TabsContent value="account">
           <p class="text-base text-muted-foreground">
-            Make changes to your account here.
+            Update your account.
           </p>
         </TabsContent>
         <TabsContent value="password">
           <p class="text-base text-muted-foreground">
-            Change your password here.
+            Change your password.
           </p>
         </TabsContent>
       </Tabs>
@@ -57,7 +57,7 @@ export const Default: Story = {
     const account = canvas.getByRole("tab", { name: "Account" });
     await expect(account).toHaveAttribute("aria-selected", "true");
     await expect(
-      canvas.getByText("Make changes to your account here."),
+      canvas.getByText("Update your account."),
     ).toBeVisible();
   },
 };

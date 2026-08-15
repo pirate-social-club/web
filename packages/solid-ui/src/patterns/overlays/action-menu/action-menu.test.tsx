@@ -86,3 +86,25 @@ describe("ActionMenu", () => {
     await expectNoA11yViolations();
   });
 });
+
+describe("ActionMenu trigger and item icons", () => {
+  it("renders item icons and a custom trigger with an accessible name", async () => {
+    const user = userEvent.setup();
+    const container = render(() => (
+      <ActionMenu
+        items={[{ key: "download", label: "Download", icon: <svg data-testid="item-icon" /> }]}
+        label="Post options"
+        triggerClass="size-9 rounded-full"
+        triggerContent={<svg data-testid="trigger-icon" />}
+      />
+    ));
+
+    const trigger = within(container).getByRole("button", { name: "Post options" });
+    expect(within(trigger).getByTestId("trigger-icon")).toBeInTheDocument();
+
+    await user.click(trigger);
+    await screen.findByRole("menu");
+    expect(screen.getByTestId("item-icon")).toBeInTheDocument();
+    await expectNoA11yViolations();
+  });
+});

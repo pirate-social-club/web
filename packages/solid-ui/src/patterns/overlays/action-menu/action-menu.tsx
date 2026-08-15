@@ -1,3 +1,4 @@
+import type { JSX } from "@solidjs/web";
 import { createSignal, For, Show } from "solid-js";
 
 import { buttonVariants } from "@/components/actions/button/button";
@@ -16,6 +17,8 @@ import { cn } from "@/lib/cn";
 export interface ActionMenuItem {
   key: string;
   label: string;
+  /** Optional leading icon rendered before the label. */
+  icon?: JSX.Element;
   destructive?: boolean;
   disabled?: boolean;
   separatorBefore?: boolean;
@@ -32,6 +35,11 @@ export interface ActionMenuProps {
   groups?: ActionMenuGroup[];
   label?: string;
   triggerVariant?: "default" | "outline" | "secondary" | "ghost" | "destructive";
+  /** Fully overrides the trigger content and styling (e.g. pill or icon-only
+      triggers). `label` still provides the accessible name. */
+  triggerContent?: JSX.Element;
+  triggerClass?: string;
+  contentClass?: string;
   placement?: "bottom-start" | "bottom-end" | "top-start" | "top-end";
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
@@ -58,6 +66,9 @@ function ActionMenuItems(props: { items: ActionMenuItem[]; onAction?: (key: stri
                   item.destructive && "text-destructive-text focus:text-destructive-text",
                 )}
               >
+                <Show when={item.icon}>
+                  {(icon) => <span aria-hidden="true" class="inline-flex shrink-0 [&_svg]:size-4">{icon()}</span>}
+                </Show>
                 {item.label}
               </DropdownMenuItem>
             }
@@ -95,14 +106,15 @@ export function ActionMenu(props: ActionMenuProps) {
       placement={props.placement ?? "bottom-end"}
     >
       <DropdownMenuTrigger
-        class={buttonVariants({
+        aria-label={props.triggerContent !== undefined ? (props.label ?? "Open menu") : undefined}
+        class={props.triggerClass ?? buttonVariants({
           variant: props.triggerVariant ?? "outline",
           size: "default",
         })}
       >
-        {props.label ?? "Open menu"}
+        {props.triggerContent ?? props.label ?? "Open menu"}
       </DropdownMenuTrigger>
-      <DropdownMenuContent>
+      <DropdownMenuContent class={props.contentClass}>
         <Show
           when={props.groups && props.groups.length > 0}
           fallback={

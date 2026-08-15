@@ -66,6 +66,26 @@ export {
   type PageContainerProps,
 } from "@pirate/web-solid-ui";
 
+// Primitives and patterns used by the post-card feature (B7a).
+export {
+  ActionMenu,
+  AvatarBadge,
+  CommentPill,
+  FormattedText,
+  MediaControlButton,
+  mediaControlButtonVariants,
+  Scrubber,
+  Skeleton,
+  VotePill,
+  type ActionMenuItem,
+  type AvatarBadgeProps,
+  type CommentPillProps,
+  type FormattedTextProps,
+  type MediaControlButtonProps,
+  type ScrubberProps,
+  type VotePillProps,
+} from "@pirate/web-solid-ui";
+
 // Icons used by the shell features and their stories.
 export {
   IconBell,
@@ -77,4 +97,36 @@ export {
   IconPlus,
   IconTrendUp,
   IconWallet,
+} from "@pirate/web-solid-ui";
+
+// Icons used by the post-card feature (B7a).
+export {
+  IconArrowSquareOut,
+  IconArrowsClockwise,
+  IconBroadcast,
+  IconCalendar,
+  IconCalendarBlank,
+  IconCheck,
+  IconCheckCircle,
+  IconClock,
+  IconCopy,
+  IconCrown,
+  IconDotsThree,
+  IconDownloadSimple,
+  IconGlobe,
+  IconInfo,
+  IconLink,
+  IconLock,
+  IconMapPin,
+  IconMusicNote,
+  IconPause,
+  IconPlay,
+  IconRobot,
+  IconShareFat,
+  IconShareNetwork,
+  IconShield,
+  IconUsers,
+  IconVideoCamera,
+  IconVinylRecord,
+  IconWarningCircle,
 } from "@pirate/web-solid-ui";

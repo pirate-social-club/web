@@ -37,9 +37,54 @@ export const ImageUploadingActivity: Story = {
   render: () => progressStory(imageProgress),
 };
 
+export const TextPublishingActivity: Story = {
+  name: "Activity / Text publishing",
+  render: () => progressStory({
+    phase: "publishing_post",
+    label: "Publishing",
+    currentIndex: 2,
+    totalSteps: 2,
+    display: "activity",
+  }, "text"),
+};
+
+export const SongPendingBundleActivity: Story = {
+  name: "Activity / Song pre-uploaded bundle",
+  render: () => progressStory({
+    phase: "checking_registration",
+    label: "Checking registration",
+    currentIndex: 3,
+    totalSteps: 3,
+    display: "activity",
+  }, "song"),
+};
+
+export const SongPipelineCounter: Story = {
+  name: "Pipeline / Song analyzing",
+  render: () => progressStory({
+    phase: "processing_media",
+    label: "Analyzing song",
+    currentIndex: 5,
+    totalSteps: 8,
+    display: "pipeline",
+  }, "song"),
+};
+
 export const VideoProcessingPipeline: Story = {
   name: "Pipeline / Video processing",
   render: () => progressStory(videoProgress, "video"),
+};
+
+export const VideoUploadingWithPercent: Story = {
+  name: "Pipeline / Video uploading",
+  render: () => progressStory({
+    phase: "uploading_media",
+    label: "Uploading video",
+    detail: "63%",
+    currentIndex: 2,
+    totalSteps: 6,
+    display: "pipeline",
+  }, "video"),
 };
 
 export const DonePublished: Story = {

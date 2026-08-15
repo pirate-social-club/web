@@ -68,3 +68,10 @@ export const ResumableFailure: Story = {
   name: "Failure — resumable publication",
   render: () => <FileComposerFlow initialStep="publish" initialStatus="Publication can be retried" />,
 };
+
+export const Published: Story = {
+  name: "Terminal — published navigation",
+  render: () => <FileComposerFlow initialStep="publish" initialStatus="Published — navigating to the post" />,
+};
+
+export const StoryRetry: Story = Retrying;

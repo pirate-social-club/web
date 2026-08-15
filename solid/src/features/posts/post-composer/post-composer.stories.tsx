@@ -146,6 +146,111 @@ export const LiveStream: Story = {
   ),
 };
 
+export const LiveScheduledEvent: Story = {
+  name: "Live / Scheduled event",
+  render: () => (
+    <ComposerFrame>
+      <PostComposer
+        {...baseComposer}
+        mode="live"
+        composerStep="write"
+        titleValue="Friday night set"
+        live={{
+          roomKind: "solo",
+          accessMode: "free",
+          visibility: "public",
+          scheduleForLater: true,
+          scheduleAt: "2026-08-22T20:00",
+          setlistItems: [],
+          setlistStatus: "draft",
+          performerAllocations: [{ userId: "", role: "host", sharePct: 100 }],
+        }}
+      />
+    </ComposerFrame>
+  ),
+};
+
+export const LiveDuet: Story = {
+  name: "Live / Duet",
+  render: () => (
+    <ComposerFrame>
+      <PostComposer
+        {...baseComposer}
+        mode="live"
+        titleValue="Late set with a guest"
+        live={{
+          roomKind: "duet",
+          accessMode: "free",
+          visibility: "public",
+          guestUserId: "usr_guest",
+          setlistItems: [],
+          setlistStatus: "draft",
+          performerAllocations: [
+            { userId: "", role: "host", sharePct: 70 },
+            { userId: "usr_guest", role: "guest", sharePct: 30 },
+          ],
+        }}
+      />
+    </ComposerFrame>
+  ),
+};
+
+export const LivePaidDuetRoyaltySplit: Story = {
+  name: "Live / Paid duet and royalty split",
+  render: () => (
+    <ComposerFrame>
+      <PostComposer
+        {...baseComposer}
+        mode="live"
+        titleValue="Ticketed duet session"
+        live={{
+          roomKind: "duet",
+          accessMode: "paid",
+          visibility: "public",
+          guestUserId: "usr_guest",
+          setlistItems: [],
+          setlistStatus: "draft",
+          performerAllocations: [
+            { userId: "", role: "host", sharePct: 60 },
+            { userId: "usr_guest", role: "guest", sharePct: 40 },
+          ],
+        }}
+        monetization={{ visible: true, priceUsd: "12.00" }}
+        royaltySplit={{
+          allocations: [
+            { id: "creator", recipientKind: "creator", sharePct: 60 },
+            { id: "guest", recipientKind: "collaborator", sharePct: 40 },
+          ],
+        }}
+      />
+    </ComposerFrame>
+  ),
+};
+
+export const LivePaidPublishPreview: Story = {
+  name: "Live / Paid publish preview",
+  render: () => (
+    <ComposerFrame>
+      <PostComposer
+        {...baseComposer}
+        mode="live"
+        composerStep="publish"
+        titleValue="Friday night ticketed set"
+        live={{
+          roomKind: "solo",
+          accessMode: "paid",
+          visibility: "public",
+          setlistItems: [],
+          setlistStatus: "ready",
+          performerAllocations: [{ userId: "", role: "host", sharePct: 100 }],
+        }}
+        monetization={{ visible: true, priceUsd: "8.00" }}
+        submit={{ canPost: true, label: "Go live", onSubmit: () => undefined }}
+      />
+    </ComposerFrame>
+  ),
+};
+
 export const FileDownload: Story = {
   name: "File / Downloadable asset",
   render: () => (
@@ -161,3 +266,9 @@ export const FileDownload: Story = {
     </ComposerFrame>
   ),
 };
+
+// Keep the original React export names available while retaining the clearer
+// state labels above in the rendered catalog.
+export const AudiencePublic: Story = PublicAudience;
+export const AudiencePublicDisabled: Story = MembersOnly;
+export const LinkPasteUrl: Story = LinkPaste;

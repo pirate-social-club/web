@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "storybook-solidjs-vite";
+import type { PostComposerProps } from "./types";
 
 import { PostComposer } from "./post-composer";
 import { baseComposer } from "./story-fixtures";
@@ -105,4 +106,130 @@ export const PublishProgress: Story = {
       />
     </ComposerFrame>
   ),
+};
+
+function songVariant(overrides: Partial<PostComposerProps>) {
+  return (
+    <ComposerFrame>
+      <PostComposer {...baseComposer} mode="song" song={song} {...overrides} />
+    </ComposerFrame>
+  );
+}
+
+export const DetailsWithGeniusAnnotations: Story = {
+  name: "Details / Genius annotations",
+  render: () => songVariant({ composerStep: "details", song: { ...song, geniusAnnotationsUrl: "https://genius.com/34172986" } }),
+};
+
+export const LicenseNonCommercial: Story = {
+  name: "License / Non-commercial remixing",
+  render: () => songVariant({ composerStep: "settings", license: { presetId: "non-commercial" } }),
+};
+
+export const LicenseCommercialUse: Story = {
+  name: "License / Commercial use",
+  render: () => songVariant({ composerStep: "settings", license: { presetId: "commercial-use" }, monetization: { visible: true, priceUsd: "4.99" } }),
+};
+
+export const LicenseCommercialRemix: Story = {
+  name: "License / Commercial remix",
+  render: () => songVariant({ composerStep: "settings", license: { presetId: "commercial-remix", commercialRevSharePct: 10 } }),
+};
+
+const remixSource = { id: "asset-sunset", title: "Sunset Driver", subtitle: "lena-wave.pirate" };
+
+function remixState(sourceTermsAccepted: boolean) {
+  return {
+    visible: true,
+    required: true,
+    trigger: "remix" as const,
+    searchResults: [remixSource],
+    references: [remixSource],
+    sourceTermsAccepted,
+    licenseSummary: { sourceLicense: "Commercial remix", upstreamRoyaltyPct: 10, newRemixTerms: "Commercial remix, 10%" },
+  };
+}
+
+export const RightsRemix: Story = {
+  name: "Rights / Remix source",
+  render: () => songVariant({ composerStep: "details", songMode: "remix", derivativeStep: remixState(false) }),
+};
+
+export const RemixSourceTermsBlocked: Story = {
+  name: "Rights / Source terms blocked",
+  render: () => songVariant({ composerStep: "settings", songMode: "remix", derivativeStep: remixState(false) }),
+};
+
+export const RemixSourceTermsAccepted: Story = {
+  name: "Rights / Source terms accepted",
+  render: () => songVariant({ composerStep: "settings", songMode: "remix", derivativeStep: remixState(true) }),
+};
+
+export const RemixSwitchedBackToOriginal: Story = {
+  name: "Rights / Switched back to original",
+  render: () => songVariant({ composerStep: "details", songMode: "original" }),
+};
+
+export const AnalysisMatch: Story = {
+  name: "Analysis / Similarity match",
+  render: () => songVariant({ composerStep: "details", submitError: "Your upload is too similar to an existing song." }),
+};
+
+function submittingSong(progress: PostComposerProps["submit"]) {
+  return songVariant({ composerStep: "publish", submit: { ...progress, canPost: true, loading: true } });
+}
+
+export const SubmittingUploadingAudio: Story = {
+  name: "Submitting / Uploading audio",
+  render: () => submittingSong({ progress: { phase: "uploading_media", label: "Uploading audio", detail: "42%", currentIndex: 1, totalSteps: 5, display: "pipeline" } }),
+};
+
+export const SubmittingAnalyzingRights: Story = {
+  name: "Submitting / Analyzing rights",
+  render: () => submittingSong({ progress: { phase: "checking_rights", label: "Checking rights", currentIndex: 4, totalSteps: 5, display: "pipeline" } }),
+};
+
+export const SubmittingGeneratingPreview: Story = {
+  name: "Submitting / Generating preview",
+  render: () => submittingSong({ progress: { phase: "processing_media", label: "Preparing preview", currentIndex: 3, totalSteps: 5, display: "pipeline" } }),
+};
+
+export const SubmittingCreatingListing: Story = {
+  name: "Submitting / Creating listing",
+  render: () => submittingSong({ progress: { phase: "creating_listing", label: "Creating listing", currentIndex: 5, totalSteps: 6, display: "pipeline" } }),
+};
+
+export const RetryableFailure: Story = {
+  name: "Submitting / Retryable failure",
+  render: () => songVariant({ composerStep: "publish", submit: { canPost: true, error: "The audio service is unavailable. Try again.", label: "Retry post" } }),
+};
+
+export const PostPublished: Story = {
+  name: "Submitting / Post published",
+  render: () => songVariant({ composerStep: "publish", submit: { canPost: true, progress: { phase: "done", label: "Post published", currentIndex: 5, totalSteps: 5, display: "activity" } } }),
+};
+
+export const PaidUnlock: Story = {
+  name: "Access / Paid unlock",
+  render: () => songVariant({ composerStep: "settings", monetization: { visible: true, priceUsd: "4.99" }, license: { presetId: "commercial-use" } }),
+};
+
+export const RoyaltySplitMultiRecipient: Story = {
+  name: "Royalties / Multiple recipients",
+  render: () => songVariant({ composerStep: "settings", royaltySplit: { allocations: [{ id: "creator", recipientKind: "creator", sharePct: 70 }, { id: "collaborator", recipientKind: "collaborator", sharePct: 30 }] } }),
+};
+
+export const PaidUnlockWithVinyl: Story = {
+  name: "Access / Paid unlock with vinyl",
+  render: () => songVariant({ composerStep: "settings", monetization: { visible: true, priceUsd: "9.99", vinylReleaseUrl: "https://elasticstage.com/release" } }),
+};
+
+export const PaidUnlockRegionalPricing: Story = {
+  name: "Access / Regional pricing",
+  render: () => songVariant({ composerStep: "settings", monetization: { visible: true, priceUsd: "4.99", regionalPricingAvailable: true, regionalPricingEnabled: true }, regionalPricingPreview: { defaultTierKey: "high", tiers: [{ tierKey: "high", displayName: "High income", adjustmentType: "multiplier", adjustmentValue: 1, countryCodes: ["US", "GB"] }, { tierKey: "standard", displayName: "Standard", adjustmentType: "multiplier", adjustmentValue: 0.65, countryCodes: ["BR", "GE"] }] } }),
+};
+
+export const WithCharityContribution: Story = {
+  name: "Charity / Contribution",
+  render: () => songVariant({ composerStep: "settings", monetization: { visible: true, priceUsd: "4.99" }, charityPartner: { partnerId: "partner-1", displayName: "Community Arts Fund" }, charityContribution: { percentagePct: 5, userConfigured: true } }),
 };

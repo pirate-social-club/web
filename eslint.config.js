@@ -3,7 +3,7 @@ import typescriptParser from "@typescript-eslint/parser";
 
 export default [
   {
-    ignores: ["src/vendor/**"],
+    ignores: ["src/vendor/**", "solid/**", "packages/solid-ui/**"],
   },
   {
     files: ["src/**/*.{ts,tsx}", "packages/**/*.{ts,tsx}"],

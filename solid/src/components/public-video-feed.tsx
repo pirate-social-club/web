@@ -25,6 +25,10 @@ function videoForItem(item: PublicVideoFeedItem) {
 
 type FeedPosition = { activeId: string | null; scrollTop: number };
 
+function currentFeed(element: HTMLDivElement | undefined): HTMLDivElement | undefined {
+  return element;
+}
+
 function readPosition(): FeedPosition {
   if (typeof window === "undefined") return { activeId: null, scrollTop: 0 };
   try {
@@ -55,7 +59,7 @@ export default function PublicVideoFeed() {
   const [activeId, setActiveId] = createSignal<string | null>(firstPage.data?.items[0]?.post.post.id ?? null);
   const [reducedMotion, setReducedMotion] = createSignal(false);
   const [isLoadingMore, setIsLoadingMore] = createSignal(false);
-  let feed!: HTMLDivElement;
+  let feed: HTMLDivElement | undefined;
   const cards = new Map<string, HTMLElement>();
   const videos = new Map<string, HTMLVideoElement>();
 
@@ -144,13 +148,13 @@ export default function PublicVideoFeed() {
     }, { threshold: [0.5, 0.75, 1] });
     for (const card of cards.values()) observer.observe(card);
     const stored = readPosition();
-    if (stored.scrollTop > 0) requestAnimationFrame(() => { feed.scrollTop = stored.scrollTop; });
-    const save = () => writePosition({ activeId: activeId(), scrollTop: feed.scrollTop });
-    feed.addEventListener("scroll", save, { passive: true });
+    if (stored.scrollTop > 0) requestAnimationFrame(() => { const element = currentFeed(feed); if (element) element.scrollTop = stored.scrollTop; });
+    const save = () => writePosition({ activeId: activeId(), scrollTop: currentFeed(feed)?.scrollTop ?? 0 });
+    currentFeed(feed)?.addEventListener("scroll", save, { passive: true });
     onCleanup(() => {
       observer.disconnect();
       media.removeEventListener("change", syncMotion);
-      feed.removeEventListener("scroll", save);
+      currentFeed(feed)?.removeEventListener("scroll", save);
       save();
     });
   });
@@ -205,7 +209,7 @@ export default function PublicVideoFeed() {
                 aria-label={`${video.title} video`}
                 aria-describedby={`video-caption-${id}`}
               >
-                <track kind="captions" label="Video description" srcLang="en" />
+                <track kind="captions" label="Video description" srclang="en" />
               </video>
               <div class="public-video-card__scrim">
                 <h2>{video.title}</h2>

@@ -58,7 +58,7 @@
     "types:tests": "tsgo --noEmit -p tsconfig.tests.json",
     "types:safe": "bun run locales:generate && node ./scripts/run-types-safely.mjs",
     "solid:clean-checkout": "bun install --cwd solid --frozen-lockfile && bun run --cwd solid check-solid-runtime && bun run --cwd solid typecheck && bun test --cwd solid ../packages/route-contracts/src/parity.test.ts",
-    "solid-ui:ci": "bun install --cwd solid --frozen-lockfile && bun run --cwd solid solid-ui:ci",
+    "solid-ui:ci": "bun install --cwd solid --frozen-lockfile && bun install --cwd packages/solid-ui --frozen-lockfile && bun run --cwd packages/solid-ui ci",
     "solid-routes:ci": "bun install --cwd solid --frozen-lockfile && bun run --cwd solid solid-routes:ci"
   },
   "dependencies": {

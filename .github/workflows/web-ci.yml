@@ -144,7 +144,7 @@ jobs:
         working-directory: api/services/efp-shared
         run: bun install --frozen-lockfile
 
-      - name: Run Solid UI lane stub gate
+      - name: Run Solid UI catalog gate
         run: bun run solid-ui:ci
 
   solid-routes:

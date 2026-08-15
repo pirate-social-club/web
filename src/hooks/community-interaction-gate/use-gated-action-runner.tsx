@@ -319,6 +319,7 @@ export function useGatedActionRunner({
     action,
     buildBlockedModalState,
     communityId,
+    enforceGate,
     gateData,
     onAllowed,
     postId,
@@ -410,6 +411,7 @@ export function useGatedActionRunner({
     const state = resolveCommunityInteractionState({
       action,
       eligibility: gate.eligibility,
+      enforceGate,
       hasSession,
       requireMembership,
     });

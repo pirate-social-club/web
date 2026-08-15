@@ -34,6 +34,15 @@ on:
         required: false
         default: false
         type: boolean
+      hns_probe_override:
+        description: Emergency-only override for a failing post-deploy HNS routing probe
+        required: false
+        default: false
+        type: boolean
+      hns_probe_override_reason:
+        description: Required incident or ticket reference and rationale when overriding the HNS probe
+        required: false
+        type: string
 
 # NO workflow-level concurrency. Serializing the whole workflow per ref made every
 # merge queue behind the previous release end-to-end; with a ~20min release and a
@@ -53,7 +62,7 @@ on:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   # This is the release authority for the API flag with the same name. Keep it
-  # false until migration 1157 is fleet-attested and the first writer consumes
+  # false until migration 1158 is fleet-attested and the first writer consumes
   # this exact flag; do not introduce an independent runtime toggle.
   GENERIC_DIGITAL_GOODS_ENABLED: ${{ vars.GENERIC_DIGITAL_GOODS_ENABLED || 'false' }}
 
@@ -659,6 +668,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
         run: |
+          set +e
           schema_feature_args=()
           case "$GENERIC_DIGITAL_GOODS_ENABLED" in
             true) schema_feature_args+=(--features generic_digital_goods) ;;
@@ -668,16 +678,30 @@ jobs:
               exit 1
               ;;
           esac
-          bun core/scripts/community/verify-community-schema-requirements.ts \
-            "${schema_feature_args[@]}" \
-            --requirements api/services/api/community-schema-requirements.json \
-            --wrangler-config api/services/community-d1-shard/wrangler.jsonc \
-            --migrations-dir core/db/community-template/migrations \
-            --drift-policy core/db/known-community-migration-drifts.json \
-            --canonical-baseline api/services/api/docs/attestations/community-schema/staging-canonical-baseline.json \
-            --manifest "$GITHUB_WORKSPACE/schema-gate-staging.json" \
-            --publish-attestations \
-            --concurrency 1
+          attempt=1
+          while true; do
+            log_path="$GITHUB_WORKSPACE/schema-gate-attempt-${attempt}.log"
+            bun core/scripts/community/verify-community-schema-requirements.ts \
+              "${schema_feature_args[@]}" \
+              --requirements api/services/api/community-schema-requirements.json \
+              --wrangler-config api/services/community-d1-shard/wrangler.jsonc \
+              --migrations-dir core/db/community-template/migrations \
+              --drift-policy core/db/known-community-migration-drifts.json \
+              --canonical-baseline api/services/api/docs/attestations/community-schema/staging-canonical-baseline.json \
+              --manifest "$GITHUB_WORKSPACE/schema-gate-staging.json" \
+              --publish-attestations \
+              --concurrency 1 2>&1 | tee "$log_path"
+            status=${PIPESTATUS[0]}
+            if [ "$status" -eq 0 ]; then
+              break
+            fi
+            if [ "$attempt" -ge 2 ] || ! grep -Eiq 'code[=:][[:space:]]*(7009|7500)' "$log_path"; then
+              exit "$status"
+            fi
+            echo "::warning::Transient D1 upstream error detected; retrying the schema gate once."
+            sleep 15
+            attempt=$((attempt + 1))
+          done
       - name: Export authoritative staging schema-policy digest
         id: schema-policy
         shell: bash
@@ -931,6 +955,21 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
+  # The verifier host is external to the staging deployment. Run its read-only
+  # contract probe as soon as release inputs are known, rather than making it
+  # wait behind the staging promotion lane.
+  api-hns-verifier-contract:
+    name: HNS verifier contract gate
+    needs: [release-inputs]
+    if: github.event_name != 'pull_request'
+    permissions:
+      contents: read
+      id-token: write
+    uses: pirate-social-club/api/.github/workflows/hns-verifier-contract-gate.yml@main
+    with:
+      api_sha: ${{ needs.release-inputs.outputs.api_sha }}
+      core_ref: ${{ needs.release-inputs.outputs.core_sha }}
+
   # The contract definitions and runner live in the API repository. This job
   # verifies the deployed SHA before testing, so an older staging Worker can
   # never satisfy a newer API release gate.
@@ -953,6 +992,9 @@ jobs:
       web_ref: ${{ github.sha }}
     secrets:
       AUTH_UPSTREAM_JWT_SHARED_SECRET: ${{ secrets.AUTH_UPSTREAM_JWT_SHARED_SECRET }}
+      # Pass only the scoped bearer form to the reusable contract gate; the API
+      # never receives the legacy header.
+      PIRATE_ADMIN_OPERATOR_CREDENTIAL: ${{ format('opc_admin_automation.{0}', secrets.PIRATE_ADMIN_TOKEN) }}
 
   hns-forwarder-negative-probe:
     name: HNS forged-context gate
@@ -960,12 +1002,17 @@ jobs:
     permissions:
       contents: read
     uses: ./.github/workflows/hns-forwarder-negative-probe.yml
+    with:
+      # The release gate must still exercise forged-header rejection when the
+      # public registry is temporarily empty. Scheduled/manual probes remain
+      # strict and report missing registry data.
+      allow_absent_namespace: true
 
   # Guard against an older run overwriting a newer production deployment. Checked
   # as late as possible — after the blocking gate, immediately before deploying.
   production-freshness:
     name: Check release freshness
-    needs: [api-staging-contract-gate, hns-forwarder-negative-probe, release-gate, schema-gate]
+    needs: [api-hns-verifier-contract, api-staging-contract-gate, hns-forwarder-negative-probe, release-gate, schema-gate]
     if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.deploy_production))
     runs-on: blacksmith-2vcpu-ubuntu-2404
     permissions:
@@ -990,7 +1037,7 @@ jobs:
 
   production:
     name: Deploy production
-    needs: [api-staging-contract-gate, hns-forwarder-negative-probe, release-inputs, release-gate, schema-gate, production-freshness]
+    needs: [api-hns-verifier-contract, api-staging-contract-gate, hns-forwarder-negative-probe, release-inputs, release-gate, schema-gate, production-freshness]
     # Manual production deploys remain default-off and can only deploy the
     # validated current main tip after the same freshness and staging gates.
     if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.deploy_production)) && needs.production-freshness.outputs.stale == 'false'
@@ -1303,4 +1350,43 @@ jobs:
           HNS_PROBE_GATEWAY_IP: 94.103.168.161
           HNS_PROBE_ROOT: dankmeme
           HNS_PROBE_ROUTE_SLUG: dankmeme
-        run: scripts/ci/probe-sovereign-context.sh
+          HNS_PROBE_MANUAL_OVERRIDE: ${{ inputs.hns_probe_override || false }}
+          HNS_PROBE_MANUAL_OVERRIDE_REASON: ${{ inputs.hns_probe_override_reason || '' }}
+        run: |
+          if [[ "${HNS_PROBE_MANUAL_OVERRIDE:-false}" != "true" ]]; then
+            scripts/ci/probe-sovereign-context.sh
+            exit $?
+          fi
+
+          if [[ "$GITHUB_EVENT_NAME" != "workflow_dispatch" ]]; then
+            echo "::error::HNS probe override is available only through workflow_dispatch"
+            exit 1
+          fi
+          if [[ -z "${HNS_PROBE_MANUAL_OVERRIDE_REASON:-}" ]]; then
+            echo "::error::HNS probe override requires hns_probe_override_reason"
+            exit 1
+          fi
+          if [[ "${HNS_PROBE_MANUAL_OVERRIDE_REASON}" == *$'\n'* || "${HNS_PROBE_MANUAL_OVERRIDE_REASON}" == *$'\r'* ]]; then
+            echo "::error::HNS probe override reason must be a single line"
+            exit 1
+          fi
+
+          echo "::warning::HNS production routing probe override requested"
+          echo "Override reason: ${HNS_PROBE_MANUAL_OVERRIDE_REASON}"
+          {
+            echo "### HNS probe manual override"
+            echo
+            echo "The post-deploy sovereign routing probe was explicitly overridden."
+            echo
+            echo "Reason: ${HNS_PROBE_MANUAL_OVERRIDE_REASON}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          set +e
+          scripts/ci/probe-sovereign-context.sh
+          probe_status=$?
+          set -e
+          if (( probe_status == 0 )); then
+            echo "::notice::HNS probe passed under an explicit manual-override run"
+          else
+            echo "::warning::HNS probe failed with status ${probe_status}; continuing only because the override was explicit and recorded"
+          fi

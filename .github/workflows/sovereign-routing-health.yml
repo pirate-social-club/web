@@ -1,0 +1,33 @@
+name: Sovereign routing health
+
+# Fail-closed alarm. The delegation freshness gate withholds routing silently,
+# so without this nothing goes red while every sovereign origin is dark. The
+# forged-context negative probe runs every 6 hours and is a security check, not
+# an availability one — it is the wrong instrument and the wrong cadence for a
+# blackout.
+#
+# A scheduled workflow is a stopgap: GitHub defers cron under load, so treat the
+# interval as a ceiling on detection latency, not a guarantee. Route this into
+# real alerting when the path exists.
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/15 * * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    name: Sovereign roots resolve
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+      - name: Require the public namespace registry to route
+        env:
+          SOVEREIGN_ROUTING_HEALTH_API_BASE_URL: https://api.pirate.sc
+          SOVEREIGN_ROUTING_HEALTH_ROOTS: dankmeme,ellaalexandra
+        run: bun scripts/verify-sovereign-routing-health.ts

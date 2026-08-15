@@ -66,7 +66,7 @@ requirements manifest from the pinned API (`api/services/api/community-schema-re
   that flag bundle is being enabled, so e.g. flipping `REWARDS_*` cannot bypass its migration).
 - `GENERIC_DIGITAL_GOODS_ENABLED` is a strict `true`/`false` repository variable and the sole
   release authority for the API flag with the same name. When true, both staging and production
-  pass `--features generic_digital_goods`, making migration 1157 a blocking fleet requirement.
+  pass `--features generic_digital_goods`, making migration 1158 a blocking fleet requirement.
   The first generic writer must consume this exact flag; an independent runtime toggle is forbidden.
 - When a Core pin adds a new `community-template` migration, the `release-inputs` ratchet
   requires it to be classified exactly once in the pinned API manifest: unconditional,

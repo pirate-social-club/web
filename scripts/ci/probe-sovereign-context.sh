@@ -13,8 +13,9 @@ canonical_threads_html_file="$(mktemp)"
 inventory_apex_html_file="$(mktemp)"
 inventory_app_html_file="$(mktemp)"
 inventory_apex_headers_file="$(mktemp)"
+apex_redirect_headers_file="$(mktemp)"
 namespace_file="$(mktemp)"
-trap 'rm -f "$html_file" "$app_html_file" "$canonical_html_file" "$canonical_threads_html_file" "$inventory_apex_html_file" "$inventory_app_html_file" "$inventory_apex_headers_file" "$namespace_file"' EXIT
+trap 'rm -f "$html_file" "$app_html_file" "$canonical_html_file" "$canonical_threads_html_file" "$inventory_apex_html_file" "$inventory_app_html_file" "$inventory_apex_headers_file" "$apex_redirect_headers_file" "$namespace_file"' EXIT
 
 # Public PKI cannot validate a DANE-only HNS certificate. --insecure disables
 # only that mismatched trust model; --resolve still exercises the real Caddy →
@@ -44,7 +45,7 @@ request_status() {
 request_redirect_status() {
   local host="$1"
   local path="$2"
-  local headers_file="$3"
+  local headers_file="${3:-/dev/null}"
   curl "${curl_args[@]}" \
     --resolve "${host}:443:${HNS_PROBE_GATEWAY_IP}" \
     --dump-header "$headers_file" \
@@ -142,13 +143,15 @@ for (const namespace of body.namespaces ?? []) {
 NODE
 )
 
-if (( ${#namespace_rows[@]} == 0 )); then
-  echo "public namespace inventory is empty" >&2
-  exit 1
-fi
-
 inventory_has_probe_root=false
-for row in "${namespace_rows[@]}"; do
+# When the inventory is empty, the pinned imported-root assertions below are
+# still fail-closed because the gateway resolves the root through
+# /public-namespaces/:root before proxying apex or app.<root>. Keep that
+# dependency explicit if gateway routing changes in the future.
+if (( ${#namespace_rows[@]} == 0 )); then
+  echo "public namespace inventory is empty; validating the pinned imported-root routing fixture directly" >&2
+else
+  for row in "${namespace_rows[@]}"; do
   IFS=$'\t' read -r root community_id route_slug encoded_route_slug <<< "$row"
   if [[ "$root" == "$HNS_PROBE_ROOT" && "$community_id" == "$HNS_PROBE_COMMUNITY_ID" ]]; then
     inventory_has_probe_root=true
@@ -199,11 +202,12 @@ for row in "${namespace_rows[@]}"; do
     "$community_id" "$root_apex_status" "$root_apex_cache_control" "$root_apex_cdn_cache_control" \
     "${root_apex_cache_tag:-none}" "${root_apex_cf_cache_status:-none}" "${root_apex_age:-none}" \
     "${root_apex_cf_ray:-none}" "$app_status" "$app_threads_status"
-done
+  done
 
-if [[ "$inventory_has_probe_root" != true ]]; then
-  echo "pinned probe root is missing from the activated namespace inventory" >&2
-  exit 1
+  if [[ "$inventory_has_probe_root" != true ]]; then
+    echo "pinned probe root is missing from the activated namespace inventory" >&2
+    exit 1
+  fi
 fi
 
 for unknown_origin in "https://hns-probe-unknown-root" "https://app.hns-probe-unknown-root"; do
@@ -217,7 +221,7 @@ for unknown_origin in "https://hns-probe-unknown-root" "https://app.hns-probe-un
 done
 
 encoded_probe_route_slug="$(node -e 'process.stdout.write(encodeURIComponent(process.argv[1]).replace(/^%40/u, "@"))' "$HNS_PROBE_ROUTE_SLUG")"
-apex_redirect="$(request_redirect_status "$HNS_PROBE_ROOT" "/")"
+apex_redirect="$(request_redirect_status "$HNS_PROBE_ROOT" "/" "$apex_redirect_headers_file")"
 apex_status="${apex_redirect%%$'\t'*}"
 apex_location="${apex_redirect#*$'\t'}"
 expected_apex_location="https://app.${HNS_PROBE_ROOT}/c/${encoded_probe_route_slug}/threads"

@@ -614,12 +614,12 @@ async function createLiveSession(subject = liveSubject, walletAddress?: string |
 }
 
 function seedOwnerAdminHeaders(community: LiveCommunity): Record<string, string> | null {
-  const adminToken = process.env.PIRATE_ADMIN_TOKEN?.trim();
+  const operatorCredential = process.env.PIRATE_ADMIN_OPERATOR_CREDENTIAL?.trim();
   const ownerUserId = community.ownerUserId?.trim();
-  if (!adminToken || !ownerUserId) return null;
+  if (!operatorCredential || !ownerUserId) return null;
   return {
+    authorization: `Operator ${operatorCredential}`,
     "x-admin-as-user-id": ownerUserId,
-    "x-admin-token": adminToken,
   };
 }
 
@@ -1525,7 +1525,7 @@ test.describe("live staging integration", () => {
       const headers = seedOwnerAdminHeaders(community);
       if (!headers) {
         const missing = [
-          !process.env.PIRATE_ADMIN_TOKEN?.trim() ? "PIRATE_ADMIN_TOKEN" : null,
+          !process.env.PIRATE_ADMIN_OPERATOR_CREDENTIAL?.trim() ? "PIRATE_ADMIN_OPERATOR_CREDENTIAL" : null,
           !community.ownerUserId?.trim() ? "owner user id" : null,
         ].filter(Boolean).join(" and ");
         discoveryDiagnostics.push({

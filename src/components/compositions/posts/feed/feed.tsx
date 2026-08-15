@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { Type } from "@/components/primitives/type";
 import { useBoostCampaignController } from "@/app/authenticated-helpers/use-boost-campaign-controller";
 import { BoostCampaignSheet } from "@/components/compositions/rewards/reward-booster-surfaces";
+import { SongBountiesSheet } from "@/components/compositions/rewards/song-bounties-sheet";
 import { useSession } from "@/lib/api/session-store";
 
 export type FeedSort = "best" | "new" | "top";
@@ -119,10 +120,15 @@ export function VideoViewerBoostBridge({
   const controller = useBoostCampaignController(controllerInput);
 
   React.useEffect(() => {
-    onAvailabilityChange(postId, controller.canBoost, controller.openBoost);
-  }, [controller.canBoost, controller.openBoost, onAvailabilityChange, postId]);
+    onAvailabilityChange(postId, controller.canBoost, controller.openBounties);
+  }, [controller.canBoost, controller.openBounties, onAvailabilityChange, postId]);
 
-  return <BoostCampaignSheet {...controller.sheetProps} />;
+  return (
+    <>
+      <SongBountiesSheet {...controller.bountiesSheetProps} />
+      <BoostCampaignSheet {...controller.sheetProps} />
+    </>
+  );
 }
 
 export function TopTimeRangeControl({

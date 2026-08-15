@@ -68,6 +68,15 @@ import {
   ModalHeader,
   ModalTitle,
 } from "@/patterns/overlays/modal/modal";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+} from "@/patterns/navigation/sidebar";
 import { VerticalFeed } from "@/patterns/engagement/vertical-feed/vertical-feed";
 
 function renderHtml(ui: () => unknown): string {
@@ -267,6 +276,29 @@ describe("SSR smoke", () => {
         </Modal>
       )),
     ).toBe("");
+  });
+
+  it("renders Sidebar without browser APIs", () => {
+    expect(
+      renderHtml(() => (
+        <SidebarProvider>
+          <Sidebar>
+            <SidebarHeader>
+              <span>Brand</span>
+            </SidebarHeader>
+            <SidebarContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton isActive tooltip="Home">
+                    <span>Home</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarContent>
+          </Sidebar>
+        </SidebarProvider>
+      )),
+    ).toContain("Home");
   });
 
   it("renders Batch 3 form controls without browser APIs", () => {

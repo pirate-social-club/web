@@ -338,6 +338,28 @@ export {
   type StackedSectionNavProps,
   type StackedSectionNavSection,
 } from "./patterns/navigation/stacked-section-nav/stacked-section-nav";
+export {
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarInset,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+  SidebarRail,
+  SidebarSeparator,
+  SidebarTrigger,
+  useSidebar,
+  useSidebarSide,
+  type SidebarContextValue,
+  type SidebarMenuButtonProps,
+  type SidebarProps,
+  type SidebarProviderProps,
+} from "./patterns/navigation/sidebar";
 
 export {
   ActionMenu,

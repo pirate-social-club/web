@@ -4,9 +4,16 @@ import type { AssetAccessResponse } from "@pirate/api-contracts";
 
 import { getErrorMessage } from "@/lib/error-utils";
 import type { PirateConnectedEvmWallet } from "@/lib/auth/privy-wallet";
+import { resolveApiUrl } from "@/lib/api/base-url";
+import { logger } from "@/lib/logger";
+import { readStoryCdrAsset } from "@/lib/story/cdr-browser";
 import { toast } from "@/components/primitives/sonner";
 
-import { resolveGenericAssetDownload } from "./generic-asset-download";
+import {
+  downloadGenericAsset,
+  GenericAssetWalletRequiredError,
+  saveBlobToBrowser,
+} from "./generic-asset-download";
 
 export function useGenericAssetDownload(input: {
   accessToken: string | null | undefined;
@@ -17,31 +24,40 @@ export function useGenericAssetDownload(input: {
 }) {
   return React.useCallback(async (communityId: string, assetId: string, titleText: string) => {
     try {
-      const result = await resolveGenericAssetDownload({
-        accessToken: input.accessToken,
+      const result = await downloadGenericAsset({
+        accessToken: input.accessToken ?? null,
         assetId,
         communityId,
-        resolveAssetAccess: input.resolveAssetAccess,
+        fetchContent: (url, init) => fetch(url, init),
+        readStoryCdr: async (storyCdrAccess) => {
+          if (!input.connectedWallet) throw new GenericAssetWalletRequiredError();
+          return readStoryCdrAsset({
+            access: storyCdrAccess,
+            accessToken: input.accessToken ?? null,
+            wallet: input.connectedWallet,
+          });
+        },
+        reportTelemetry: (event, context) => {
+          logger.warn(`[generic-asset-download] ${event}`, context);
+        },
+        resolveAccess: input.resolveAssetAccess,
+        resolveContentUrl: resolveApiUrl,
+        saveBlob: saveBlobToBrowser,
         titleText,
-        wallet: input.connectedWallet,
       });
-      if (result.kind === "blocked") {
-        toast.info(result.message);
+      if (result.kind === "access_denied") {
+        toast.info(result.decisionReason === "purchase_required"
+          ? "Purchase required before downloading this file."
+          : "This asset is not ready for delivery yet.");
         return;
       }
-      if (result.kind === "wallet_required") {
+    } catch (error) {
+      if (error instanceof GenericAssetWalletRequiredError) {
         input.reconnectWallet?.();
         input.connectWallet?.();
-        toast.info("Connect a wallet to unlock this download.");
+        toast.info(error.message);
         return;
       }
-      const href = URL.createObjectURL(result.blob);
-      const anchor = document.createElement("a");
-      anchor.href = href;
-      anchor.download = result.filename;
-      anchor.click();
-      URL.revokeObjectURL(href);
-    } catch (error) {
       toast.error(getErrorMessage(error, "Could not download this asset."));
     }
   }, [input]);

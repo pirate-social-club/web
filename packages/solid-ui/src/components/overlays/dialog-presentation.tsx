@@ -45,7 +45,7 @@ export function DialogHeaderLayout(
   props: ParentProps<JSX.HTMLAttributes<HTMLDivElement>>,
 ) {
   const className = createMemo(() =>
-    cn("flex flex-col space-y-1.5 pe-0 text-center sm:pe-14 sm:text-start", props.class),
+    cn("flex flex-col space-y-1.5 pe-14 text-start", props.class),
   );
   const rest = omit(props, "class");
 

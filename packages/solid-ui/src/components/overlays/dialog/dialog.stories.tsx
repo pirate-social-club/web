@@ -54,7 +54,7 @@ const meta = {
         {args.footer ? (
           <StoryDialogFooter
             as={DialogFooter}
-            confirmLabel="Save changes"
+            confirmLabel="Save"
           />
         ) : null}
       </DialogContent>
@@ -90,7 +90,7 @@ export const Default: Story = {
     await expect(body.getByRole("button", { name: "Close" })).toBeVisible();
     await expect(body.getByRole("button", { name: "Cancel" })).toBeVisible();
     await expect(
-      body.getByRole("button", { name: "Save changes" }),
+      body.getByRole("button", { name: "Save" }),
     ).toBeVisible();
 
     await expect(document.activeElement).toBe(
@@ -103,7 +103,7 @@ export const Default: Story = {
     );
     await userEvent.tab();
     await expect(document.activeElement).toBe(
-      body.getByRole("button", { name: "Save changes" }),
+      body.getByRole("button", { name: "Save" }),
     );
     await userEvent.tab();
     await expect(document.activeElement).toBe(
@@ -159,7 +159,7 @@ export const Mobile: Story = {
     await userEvent.click(canvas.getByRole("button", { name: "Open dialog" }));
     await body.findByRole("dialog");
 
-    await userEvent.click(body.getByRole("button", { name: "Save changes" }));
+    await userEvent.click(body.getByRole("button", { name: "Save" }));
     await expect(body.queryByRole("dialog")).not.toBeInTheDocument();
   },
 };

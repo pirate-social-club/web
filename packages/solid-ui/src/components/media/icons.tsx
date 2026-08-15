@@ -338,3 +338,70 @@ export function IconSidebarSimple(props: IconProps) {
     </svg>
   );
 }
+
+export function IconFire(props: IconProps) {
+  return (
+    <svg
+      aria-hidden="true"
+      class={props.class}
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      viewBox="0 0 24 24"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path d="M12 22c4.4 0 7-2.8 7-6.5 0-2.6-1.4-4.6-2.7-6.3C15 7.6 13.5 5.6 13 3c-2.5 1.6-4 4-4.2 6.3-.1 1-.4 1.7-1 2.2-.5.5-1 .6-1.5.4-.4-.1-.8-.4-1.1-.9C4.7 12.4 5 14 5 15.5 5 19.2 7.6 22 12 22Z" stroke-linecap="round" stroke-linejoin="round" />
+    </svg>
+  );
+}
+
+export function IconFlag(props: IconProps) {
+  return (
+    <svg
+      aria-hidden="true"
+      class={props.class}
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      viewBox="0 0 24 24"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path d="M5 21V4" stroke-linecap="round" />
+      <path d="M5 4h12.5a.5.5 0 0 1 .4.8L15 9l2.9 4.2a.5.5 0 0 1-.4.8H5" stroke-linecap="round" stroke-linejoin="round" />
+    </svg>
+  );
+}
+
+export function IconMagnifyingGlass(props: IconProps) {
+  return (
+    <svg
+      aria-hidden="true"
+      class={props.class}
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      viewBox="0 0 24 24"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <circle cx="11" cy="11" r="7" />
+      <path d="m20 20-3.8-3.8" stroke-linecap="round" />
+    </svg>
+  );
+}
+
+export function IconTrendUp(props: IconProps) {
+  return (
+    <svg
+      aria-hidden="true"
+      class={props.class}
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      viewBox="0 0 24 24"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path d="M3 17l6-6 4 4 8-8" stroke-linecap="round" stroke-linejoin="round" />
+      <path d="M15 7h6v6" stroke-linecap="round" stroke-linejoin="round" />
+    </svg>
+  );
+}

@@ -176,6 +176,33 @@ export {
   type MediaControlButtonProps,
 } from "./components/media/media-control-button/media-control-button";
 export {
+  IconArrowDown,
+  IconArrowLeft,
+  IconArrowRight,
+  IconArrowUp,
+  IconBell,
+  IconCaretDown,
+  IconCaretLeft,
+  IconCaretRight,
+  IconChatCircle,
+  IconCheck,
+  IconCopy,
+  IconFire,
+  IconFlag,
+  IconHouse,
+  IconList,
+  IconMagnifyingGlass,
+  IconMusicNote,
+  IconPause,
+  IconPlay,
+  IconPlus,
+  IconSidebarSimple,
+  IconSquare,
+  IconTrendUp,
+  IconWallet,
+  IconX,
+} from "./components/media/icons";
+export {
   Scrubber,
   type ScrubberProps,
 } from "./components/media/scrubber/scrubber";

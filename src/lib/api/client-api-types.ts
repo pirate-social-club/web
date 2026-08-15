@@ -113,6 +113,64 @@ export type ApiCommunityMediaUploadResponse = {
   storage_object_key: string;
 };
 
+export type ApiContentBlob = {
+  id: string;
+  object: "content_blob";
+  community: string;
+  uploader_user: string;
+  status: "pending_upload" | "uploaded" | "verifying" | "ready" | "rejected" | "failed" | "cancelled";
+  validation_profile: string;
+  declared_filename: string | null;
+  declared_mime_type: string;
+  declared_size_bytes: number | null;
+  declared_content_hash: string | null;
+  detected_mime_type: string | null;
+  verified_size_bytes: number | null;
+  verified_content_hash: string | null;
+  security_scan_state: "pending" | "clean" | "suspicious" | "malicious" | "error" | "not_required";
+  rejection_code: string | null;
+  plaintext_retention_state: "active" | "purge_pending" | "purged" | "legal_hold";
+  upload_url: string | null;
+  upload_session: unknown;
+  created: number;
+};
+
+export type ApiLearningDeckCard = {
+  learning_card_id: string;
+  card_type: "basic" | "cloze";
+  prompt: string;
+  answer: string;
+  tags: string[];
+  ordinal: number;
+  retired_at?: string | null;
+};
+
+export type ApiLearningDeckDraft = {
+  deck: { learning_deck_id: string; title: string; description: string | null; status: "draft" | "published" | "archived"; [key: string]: unknown };
+  version: { learning_deck_version_id: string; version: number; status: string; [key: string]: unknown };
+  cards: ApiLearningDeckCard[];
+};
+
+export type ApiLearningDeckValidation = {
+  draft: ApiLearningDeckDraft;
+  issues: Array<{ path?: string; code?: string; message: string; [key: string]: unknown }>;
+  canonical: { schema_version: number; card_count: number; content_hash: string; json: string } | null;
+};
+
+export type ApiLearningStudySession = {
+  session_id: string;
+  status: "active" | "completed" | "expired";
+  session_revision: number;
+  item_count: number;
+  reviewed_count: number;
+  expires_at: string;
+  current_item: { item_id: string; ordinal: number; status: "current" | "revealed"; prompt: string; card_type: "basic" | "cloze"; tags: string[]; answer?: string } | null;
+  answer?: string;
+  next_item?: ApiLearningStudySession["current_item"];
+  replayed?: boolean;
+  [key: string]: unknown;
+};
+
 export type ApiProfileMediaUploadResponse = {
   kind: "avatar" | "cover";
   media_ref: string;

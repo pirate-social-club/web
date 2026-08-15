@@ -74,6 +74,7 @@ class LazyPostMediaErrorBoundary extends React.Component<
 type LinkContent = Extract<PostCardContent, { type: "link" }>;
 type CrosspostContent = Extract<PostCardContent, { type: "crosspost" }>;
 type TextContent = Extract<PostCardContent, { type: "text" }>;
+type GenericAssetContent = Extract<PostCardContent, { type: "generic_asset" }>;
 
 const TEXT_PREVIEW_CHARACTER_LIMIT = 1_200;
 const TEXT_PREVIEW_LINE_LIMIT = 18;
@@ -223,6 +224,43 @@ function LinkPreviewCard({ content }: { content: LinkContent }) {
           </button>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+function GenericAssetCard({ content }: { content: GenericAssetContent }) {
+  const isDeck = content.assetKind === "learning_deck";
+  const entitled = content.hasEntitlement === true || content.accessMode === "public";
+  const pending = content.accessState === "delivery_pending";
+  return (
+    <div className="space-y-3 rounded-lg border border-border-soft bg-muted/20 p-4 text-start">
+      <div className="flex items-start gap-3">
+        <span className="grid size-11 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">{isDeck ? "▤" : "↓"}</span>
+        <div className="min-w-0 flex-1">
+          <Type as="p" variant="body-strong" className="truncate">{content.filename ?? content.title}</Type>
+          <Type as="p" variant="caption" className="text-muted-foreground">
+            {isDeck ? "Learning deck · answers reveal after an explicit action" : "Locked downloadable file · signed delivery"}
+          </Type>
+        </div>
+      </div>
+      {pending ? <Type as="p" variant="caption" className="text-muted-foreground">Delivery is still being prepared.</Type> : null}
+      {entitled && !pending ? (
+        <Button
+          className="w-full sm:w-auto"
+          data-post-card-interactive="true"
+          disabled={isDeck ? !content.onStudy : !content.onDownload}
+          onClick={isDeck ? content.onStudy : content.onDownload}
+          variant="default"
+        >
+          {isDeck ? "Study deck" : "Download file"}
+        </Button>
+      ) : content.onBuy ? (
+        <Button className="w-full sm:w-auto" data-post-card-interactive="true" onClick={content.onBuy}>
+          {content.priceLabel ? `Unlock · ${content.priceLabel}` : "Unlock"}
+        </Button>
+      ) : (
+        <Type as="p" variant="caption" className="text-muted-foreground">Purchase required.</Type>
+      )}
     </div>
   );
 }
@@ -417,5 +455,7 @@ export function PostCardMedia({ content, className, onOpenVideoViewer, postHref,
       return <SongPostContent content={content} className={className} previewMode={previewMode} />;
     case "live_room":
       return <LiveRoomPostContent content={content} className={className} viewContext={viewContext} />;
+    case "generic_asset":
+      return <GenericAssetCard content={content} />;
   }
 }

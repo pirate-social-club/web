@@ -61,7 +61,7 @@ function SheetContent(props: ParentProps<SheetContentProps>) {
   return (
     <KDialog.Portal>
       <KDialog.Overlay class={sheetOverlayClass} />
-      <KDialog.Content class={className()} {...rest}>
+      <KDialog.Content forceMount class={className()} {...rest}>
         {props.children}
         <Show when={!props.hideCloseButton}>
           <DialogCloseButtonLayout part={KDialog.CloseButton} />

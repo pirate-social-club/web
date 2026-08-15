@@ -77,7 +77,7 @@ const buttonBuildFiles = readdirSync(resolve(kobalteRoot, "dist/button"))
 const buttonBuild = buttonBuildFiles
   .map((file) => readFileSync(resolve(kobalteRoot, "dist/button", file), "utf8"))
   .find((source) => source.includes("function ButtonRoot"));
-const nativeButtonPatch = "return <button {...others} type={mergedProps.type} disabled={mergedProps.disabled}>{mergedProps.children}</button>;";
+const nativeButtonPatch = "return <button {...others} ref={[setRef, mergedProps.ref]} type={mergedProps.type} disabled={mergedProps.disabled}>{mergedProps.children}</button>;";
 const polymorphicGuard = "if (mergedProps.as && mergedProps.as !== \"button\")";
 if (!buttonBuild || !buttonBuild.includes(nativeButtonPatch) || !buttonBuild.includes(polymorphicGuard)) {
   throw new Error("Kobalte Solid 2 hydration patch is missing or did not apply");

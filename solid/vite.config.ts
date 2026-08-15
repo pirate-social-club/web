@@ -37,6 +37,7 @@ export default defineConfig({
     dedupe: ["solid-js", "@solidjs/web"],
     alias: {
       "solid-js/web": "@solidjs/web",
+      "@": path.resolve(appRoot, "../packages/solid-ui/src"),
     },
   },
   server: {

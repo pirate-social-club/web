@@ -51,7 +51,7 @@ export default function HomeRoute() {
       </Loading>
       <section id="hydration-dialog-fixture" aria-label="Overlay hydration fixture">
         <Dialog open={dialogOpen()} onOpenChange={setDialogOpen}>
-          <DialogTrigger id="hydration-dialog-open" as={Button} type="button">
+          <DialogTrigger id="hydration-dialog-open" type="button">
             Open hydration dialog
           </DialogTrigger>
           <DialogContent>
@@ -67,7 +67,7 @@ export default function HomeRoute() {
       </section>
       <section id="hydration-form-fixture" aria-label="Form hydration fixture">
         <TextField name="display-name" value={displayName()} onChange={setDisplayName}>
-          <TextFieldLabel for="hydration-display-name">Display name</TextFieldLabel>
+          <TextFieldLabel>Display name</TextFieldLabel>
           <TextFieldInput id="hydration-display-name" />
           <TextFieldDescription id="hydration-display-name-description">
             Controlled form values stay connected after hydration.

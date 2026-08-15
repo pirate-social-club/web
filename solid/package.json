@@ -20,6 +20,8 @@
     "assert-solid-css": "node scripts/assert-solid-css.mjs",
     "assert-solid-ssr": "node scripts/assert-solid-ssr.mjs",
     "typecheck": "bun run locales:generate && node node_modules/typescript/bin/tsc --noEmit",
+    "storybook": "bun run locales:generate && storybook dev -p 6008 --disable-telemetry",
+    "build-storybook": "bun run locales:generate && storybook build",
     "solid-routes:ci": "bun run typecheck && bun test src/lib src/locales src/routes",
     "verify": "node scripts/check-solid-runtime.mjs && bun test src/lib/api/origin.test.ts && node scripts/probe.mjs && node scripts/stream-check.mjs && node scripts/hydration-check.mjs"
   },
@@ -41,12 +43,18 @@
     "@cloudflare/vite-plugin": "1.52.1",
     "@cloudflare/workers-types": "5.20260813.1",
     "@solidjs/vite-plugin": "3.0.0-next.27",
+    "@storybook/addon-a11y": "10.5.8",
+    "@storybook/addon-docs": "10.5.8",
     "@tailwindcss/vite": "4.3.3",
     "@types/node": "24.3.0",
     "playwright": "1.60.0",
+    "remark-gfm": "4.0.1",
+    "storybook": "10.5.8",
+    "storybook-solidjs-vite": "10.6.0",
     "tailwindcss": "4.3.3",
     "typescript": "5.9.3",
     "vite": "8.2.1",
+    "vite-plugin-solid": "3.0.0-next.27",
     "wrangler": "4.123.0"
   },
   "patchedDependencies": {

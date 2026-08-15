@@ -150,9 +150,7 @@ export const LongContent: Story = {
 
 export const Mobile: Story = {
   parameters: {
-    viewport: {
-      defaultViewport: "mobile1",
-    },
+    globals: { viewport: "mobile1" },
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);

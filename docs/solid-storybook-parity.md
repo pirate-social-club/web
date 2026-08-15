@@ -148,11 +148,11 @@ Notes: React `sonner.stories.tsx` maps to the Solid `overlays/toast` implementat
 | 69 | `components/compositions/posts/crosspost-composer/stories/crosspost-composer.stories.tsx` | solid/src/features/posts | B7 | pending |
 | 70 | `components/compositions/posts/feed-side-panel/stories/feed-side-panel.stories.tsx` | solid/src/features/posts | B7 | pending |
 | 71 | `components/compositions/posts/feed/stories/feed.stories.tsx` | solid/src/features/posts | B7 | pending |
-| 72 | `components/compositions/posts/post-card/stories/live/index.stories.tsx` | solid/src/features/posts | B7 | pending |
-| 73 | `components/compositions/posts/post-card/stories/post-card.stories.tsx` | solid/src/features/posts | B7 | pending |
-| 74 | `components/compositions/posts/post-card/stories/song/index.stories.tsx` | solid/src/features/posts | B7 | pending |
-| 75 | `components/compositions/posts/post-card/stories/song-player/post-card-song-player.stories.tsx` | solid/src/features/posts | B7 | pending |
-| 76 | `components/compositions/posts/post-card/stories/video/index.stories.tsx` | solid/src/features/posts | B7 | pending |
+| 72 | `components/compositions/posts/post-card/stories/live/index.stories.tsx` | solid/src/features/posts | B7 | done — solid/src/features/posts/post-card/live.stories.tsx (all 13 states; inline post-page viewer surface deferred to the live-room-viewer lane, post page renders the cover) |
+| 73 | `components/compositions/posts/post-card/stories/post-card.stories.tsx` | solid/src/features/posts | B7 | done — solid/src/features/posts/post-card/post-card.stories.tsx (all 54 exports; 12 embed variants stay consolidated in the interactive Embed / Variants story as in React; RTL story uses the direction global; picsum/pravatar imagery replaced with inline SVG fixtures; React's dead footer-commerce branch dropped, see commit notes) |
+| 74 | `components/compositions/posts/post-card/stories/song/index.stories.tsx` | solid/src/features/posts | B7 | done — solid/src/features/posts/post-card/song.stories.tsx (all 36 states) |
+| 75 | `components/compositions/posts/post-card/stories/song-player/post-card-song-player.stories.tsx` | solid/src/features/posts | B7 | done — solid/src/features/posts/post-card/song-player.stories.tsx (all 3 states; mobile stories also set the mobile viewport global) |
+| 76 | `components/compositions/posts/post-card/stories/video/index.stories.tsx` | solid/src/features/posts | B7 | done — solid/src/features/posts/post-card/video.stories.tsx (all 11 states) |
 | 77 | `components/compositions/posts/post-composer/stories/file/flow.stories.tsx` | solid/src/features/posts | B7 | pending |
 | 78 | `components/compositions/posts/post-composer/stories/post-composer.stories.tsx` | solid/src/features/posts | B7 | pending |
 | 79 | `components/compositions/posts/post-composer/stories/song/index.stories.tsx` | solid/src/features/posts | B7 | pending |

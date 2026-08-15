@@ -45,7 +45,7 @@ export function StatusCard(props: StatusCardProps) {
       <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div class="space-y-1.5">
           <Type as="p" variant="body-strong">{props.title}</Type>
-          <p class="max-w-3xl text-base leading-7 text-muted-foreground">{props.description}</p>
+          <Type as="p" variant="body" class="max-w-3xl text-muted-foreground">{props.description}</Type>
         </div>
         <Show when={props.actions}>
           <div class="flex shrink-0 flex-wrap gap-3">{props.actions}</div>

@@ -43,9 +43,9 @@ export function StackPageShell(props: StackPageShellProps) {
           </Type>
         </Show>
         <Show when={props.description}>
-          <p class="max-w-3xl text-base leading-7 text-muted-foreground">
+          <Type as="p" variant="body" class="max-w-3xl text-muted-foreground">
             {props.description}
-          </p>
+          </Type>
         </Show>
       </div>
       <Show when={props.actions}>

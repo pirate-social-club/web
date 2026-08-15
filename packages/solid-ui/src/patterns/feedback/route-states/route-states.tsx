@@ -58,9 +58,9 @@ export function PublicRouteMessageState(props: { description: string; title: str
         <Type as="h1" variant="h2">
           {props.title}
         </Type>
-        <p class="mt-3 text-base leading-7 text-muted-foreground">
+        <Type as="p" variant="body" class="mt-3 max-w-3xl text-muted-foreground">
           {props.description}
-        </p>
+        </Type>
       </div>
     </div>
   );
@@ -69,7 +69,7 @@ export function PublicRouteMessageState(props: { description: string; title: str
 export function EmptyFeedState(props: { message: string }) {
   return (
     <div class="px-1 py-4 md:px-0">
-      <p class="text-base leading-7 text-muted-foreground">{props.message}</p>
+      <Type as="p" variant="body" class="text-muted-foreground">{props.message}</Type>
     </div>
   );
 }
@@ -282,9 +282,9 @@ export function AuthRequiredRouteState(props: AuthRequiredRouteStateProps) {
                   <Type as="h2" variant="h2">
                     {props.headline ?? props.title}
                   </Type>
-                  <p class="max-w-xs text-lg leading-7 text-muted-foreground">
+                  <Type as="p" variant="body" class="max-w-xs text-muted-foreground">
                     {props.description}
-                  </p>
+                  </Type>
                   <Show when={props.onConnect}>
                     <Button
                       class="mt-1 h-12 w-full"

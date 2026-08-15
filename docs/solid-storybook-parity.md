@@ -51,7 +51,7 @@ React `src/components/primitives/<name>.stories.tsx` → `packages/solid-ui/src/
 | 36 | primitives/separator | data-display/separator/separator | covered |
 | 37 | primitives/sheet | overlays/sheet/sheet | covered |
 | 38 | primitives/skeleton | feedback/skeleton/skeleton | covered |
-| 39 | primitives/sonner | overlays/toast/sonner | covered |
+| 39 | primitives/sonner | overlays/toast/toast | covered |
 | 40 | primitives/spinner | feedback/spinner/spinner | covered |
 | 41 | primitives/switch | forms/switch/switch | covered |
 | 42 | primitives/tabs | disclosure/tabs/tabs | covered |
@@ -205,5 +205,5 @@ Notes: React `sonner.stories.tsx` maps to the Solid `overlays/toast` implementat
 | 126 | `components/compositions/wallet/wallet-hub/stories/wallet-hub.stories.tsx` | solid/src/features/wallet | B8 | pending |
 | 127 | `components/compositions/wallet/wallet-receive-sheet/stories/wallet-receive-sheet.stories.tsx` | solid/src/features/wallet | B8 | pending |
 | 128 | `components/compositions/wallet/wallet-send-sheet/stories/wallet-send-sheet.stories.tsx` | solid/src/features/wallet | B8 | pending |
-| 129 | `components/states/stories/empty-inbox-state.stories.tsx` | packages/solid-ui src/patterns/feedback (route-states / empty-inbox-state) | B5 | done — packages/solid-ui src/patterns/feedback/route-states |
-| 130 | `components/states/stories/route-states.stories.tsx` | packages/solid-ui src/patterns/feedback (route-states / empty-inbox-state) | B5 | done — packages/solid-ui src/patterns/feedback/route-states |
+| 129 | `components/states/stories/empty-inbox-state.stories.tsx` | packages/solid-ui src/patterns/feedback (route-states / empty-inbox-state) | B5 | done — consolidated into the `Patterns/Feedback/RouteStates` story (`Empty Inbox*`) |
+| 130 | `components/states/stories/route-states.stories.tsx` | packages/solid-ui src/patterns/feedback (route-states / empty-inbox-state) | B5 | done — consolidated into the `Patterns/Feedback/RouteStates` story |

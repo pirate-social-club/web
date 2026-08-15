@@ -335,7 +335,7 @@ function MobileAppHeader(
       class={cn(
         "fixed inset-x-0 top-0 z-40 pt-[env(safe-area-inset-top)]",
         mediaOverlay()
-          ? "border-b border-transparent bg-transparent text-white"
+          ? "border-b border-transparent bg-transparent media-overlay-foreground"
           : "border-b border-border-soft bg-background/95 backdrop-blur-md",
         props.class,
       )}
@@ -344,14 +344,14 @@ function MobileAppHeader(
       {mediaOverlay() ? (
         <div
           aria-hidden="true"
-          class="pointer-events-none absolute inset-x-0 top-0 h-[calc(100%+2rem)] bg-gradient-to-b from-black/75 via-black/35 to-transparent"
+          class="pointer-events-none absolute inset-x-0 top-0 h-[calc(100%+2rem)] media-overlay-scrim"
         />
       ) : null}
       <div
         class={cn(
           "relative grid h-16 grid-cols-[minmax(0,1fr)_minmax(0,auto)_minmax(0,1fr)] items-center gap-2 px-3",
           mediaOverlay() &&
-            "[&_button[data-app-header-icon]]:text-white [&_button[data-app-header-icon]]:drop-shadow-md [&_button[data-app-header-icon]:hover]:bg-black/25",
+            "[&_button[data-app-header-icon]]:drop-shadow-md",
         )}
       >
         <div class="min-w-0 justify-self-start">

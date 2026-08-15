@@ -114,3 +114,31 @@
     --font-sans: var(--font-sans);
   }
 }
+
+@layer components {
+  .notification-count-badge {
+    @apply inline-flex h-4 min-w-4 items-center justify-center rounded-full border border-background bg-primary px-1 text-primary-foreground;
+    font-family: var(--font-sans);
+    font-size: 0.625rem;
+    font-weight: 600;
+    line-height: 1;
+  }
+
+  /* Media-overlay chrome over immersive media: light foreground and a top
+     scrim. Centralized here so components stay on semantic tokens. */
+  .media-overlay-foreground {
+    color: var(--primary-foreground);
+  }
+
+  .media-overlay-scrim {
+    background: linear-gradient(to bottom, rgb(0 0 0 / 0.75) 0%, rgb(0 0 0 / 0.35) 60%, transparent 100%);
+  }
+
+  [data-appearance="media-overlay"] button[data-app-header-icon] {
+    color: var(--primary-foreground);
+  }
+
+  [data-appearance="media-overlay"] button[data-app-header-icon]:hover {
+    background: rgb(0 0 0 / 0.25);
+  }
+}

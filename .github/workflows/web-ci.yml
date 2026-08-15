@@ -87,11 +87,17 @@ jobs:
         with:
           path: web
 
+      - name: Read pinned API commit
+        id: api-pin
+        shell: bash
+        run: echo "sha=$(tr -d '[:space:]' < .github/release-refs/api.sha)" >> "$GITHUB_OUTPUT"
+
       - name: Check out API workspace dependencies
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           repository: pirate-social-club/api
           path: api
+          ref: ${{ steps.api-pin.outputs.sha }}
 
       - name: Set up Bun
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
@@ -272,11 +278,16 @@ jobs:
         with:
           path: web
 
+      - name: Read pinned Core commit
+        id: core-pin
+        shell: bash
+        run: echo "sha=$(tr -d '[:space:]' < web/.github/release-refs/core.sha)" >> "$GITHUB_OUTPUT"
+
       - name: Check out canonical promotion schema
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           repository: pirate-social-club/core
-          ref: 508477aeed2157f4f6c9dbc34c6ddf1ad189169f
+          ref: ${{ steps.core-pin.outputs.sha }}
           path: core
 
       - name: Set up Bun

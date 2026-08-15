@@ -299,6 +299,17 @@ export {
   optionCardVariants,
   type OptionCardProps,
 } from "./patterns/forms/option-card/option-card";
+export {
+  ResponsiveOptionSelect,
+  type ResponsiveOptionSelectOption,
+  type ResponsiveOptionSelectProps,
+} from "./patterns/forms/responsive-option-select/responsive-option-select";
+
+export {
+  AvatarBadge,
+  type AvatarBadgeProps,
+  type AvatarBadgeSize,
+} from "./patterns/identity/avatar-badge/avatar-badge";
 
 export {
   PirateBrandMark,

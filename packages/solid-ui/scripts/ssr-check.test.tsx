@@ -59,6 +59,8 @@ import { ActionMenu } from "@/patterns/overlays/action-menu/action-menu";
 import { ConfirmDialog } from "@/patterns/overlays/confirm-dialog/confirm-dialog";
 import { FlatTabBar, FlatTabButton } from "@/patterns/navigation/flat-tabs/flat-tabs";
 import { StackedSectionNav } from "@/patterns/navigation/stacked-section-nav/stacked-section-nav";
+import { ResponsiveOptionSelect } from "@/patterns/forms/responsive-option-select/responsive-option-select";
+import { AvatarBadge } from "@/patterns/identity/avatar-badge/avatar-badge";
 import { VerticalFeed } from "@/patterns/engagement/vertical-feed/vertical-feed";
 
 function renderHtml(ui: () => unknown): string {
@@ -215,6 +217,32 @@ describe("SSR smoke", () => {
         />
       )),
     ).toContain("Profile");
+  });
+
+  it("renders ResponsiveOptionSelect without browser APIs", () => {
+    expect(
+      renderHtml(() => (
+        <ResponsiveOptionSelect
+          ariaLabel="Sort"
+          drawerTitle="Sort"
+          options={[{ label: "Best", value: "best" }]}
+          value="best"
+        />
+      )),
+    ).toContain("Best");
+  });
+
+  it("renders AvatarBadge without browser APIs", () => {
+    expect(
+      renderHtml(() => (
+        <AvatarBadge
+          badgeCountryCode="us"
+          badgeLabel="Verified United States nationality"
+          fallback="Ada Lovelace"
+          flagUrlForCountryCode={(code) => `/flags/${code}.svg`}
+        />
+      )),
+    ).toContain("/flags/us.svg");
   });
 
   it("renders Batch 3 form controls without browser APIs", () => {

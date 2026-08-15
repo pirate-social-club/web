@@ -1,7 +1,7 @@
-import { Dynamic } from "@solidjs/web";
 import type { JSX } from "@solidjs/web";
 import {
   createContext,
+  Show,
   useContext,
   type Accessor,
   type ParentProps,
@@ -86,52 +86,70 @@ export function ModalContent(props: ParentProps<ModalContentProps>) {
     props.hideCloseButton || (isMobile() && (props.hideCloseButtonOnMobile ?? false));
 
   return (
-    <Dynamic
-      component={isMobile() ? SheetContent : DialogContent}
-      class={props.class}
-      hideCloseButton={shouldHideCloseButton()}
-      {...(isMobile() ? { side: props.mobileSide ?? "bottom" } : {})}
+    <Show
+      when={isMobile()}
+      fallback={
+        <DialogContent class={props.class} hideCloseButton={shouldHideCloseButton()}>
+          {props.children}
+        </DialogContent>
+      }
     >
-      {props.children}
-    </Dynamic>
+      <SheetContent
+        class={props.class}
+        hideCloseButton={shouldHideCloseButton()}
+        side={props.mobileSide ?? "bottom"}
+      >
+        {props.children}
+      </SheetContent>
+    </Show>
   );
 }
 
 export function ModalHeader(props: ParentProps<{ class?: string }>) {
   const isMobile = useModalIsMobile();
   return (
-    <Dynamic component={isMobile() ? SheetHeader : DialogHeader} class={props.class}>
-      {props.children}
-    </Dynamic>
+    <Show
+      when={isMobile()}
+      fallback={<DialogHeader class={props.class}>{props.children}</DialogHeader>}
+    >
+      <SheetHeader class={props.class}>{props.children}</SheetHeader>
+    </Show>
   );
 }
 
 export function ModalFooter(props: ParentProps<{ class?: string }>) {
   const isMobile = useModalIsMobile();
   return (
-    <Dynamic component={isMobile() ? SheetFooter : DialogFooter} class={props.class}>
-      {props.children}
-    </Dynamic>
+    <Show
+      when={isMobile()}
+      fallback={<DialogFooter class={props.class}>{props.children}</DialogFooter>}
+    >
+      <SheetFooter class={props.class}>{props.children}</SheetFooter>
+    </Show>
   );
 }
 
 export function ModalTitle(props: ParentProps<{ class?: string }>) {
   const isMobile = useModalIsMobile();
+  const className = () => cn(typeVariants({ variant: "h3" }), props.class);
   return (
-    <Dynamic
-      component={isMobile() ? SheetTitle : DialogTitle}
-      class={cn(typeVariants({ variant: "h3" }), props.class)}
+    <Show
+      when={isMobile()}
+      fallback={<DialogTitle class={className()}>{props.children}</DialogTitle>}
     >
-      {props.children}
-    </Dynamic>
+      <SheetTitle class={className()}>{props.children}</SheetTitle>
+    </Show>
   );
 }
 
 export function ModalDescription(props: ParentProps<{ class?: string }>) {
   const isMobile = useModalIsMobile();
   return (
-    <Dynamic component={isMobile() ? SheetDescription : DialogDescription} class={props.class}>
-      {props.children}
-    </Dynamic>
+    <Show
+      when={isMobile()}
+      fallback={<DialogDescription class={props.class}>{props.children}</DialogDescription>}
+    >
+      <SheetDescription class={props.class}>{props.children}</SheetDescription>
+    </Show>
   );
 }

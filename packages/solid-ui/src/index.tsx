@@ -349,3 +349,13 @@ export {
   ConfirmDialog,
   type ConfirmDialogProps,
 } from "./patterns/overlays/confirm-dialog/confirm-dialog";
+export {
+  Modal,
+  ModalContent,
+  ModalDescription,
+  ModalFooter,
+  ModalHeader,
+  ModalTitle,
+  type ModalContentProps,
+  type ModalProps,
+} from "./patterns/overlays/modal/modal";

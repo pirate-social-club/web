@@ -61,6 +61,13 @@ import { FlatTabBar, FlatTabButton } from "@/patterns/navigation/flat-tabs/flat-
 import { StackedSectionNav } from "@/patterns/navigation/stacked-section-nav/stacked-section-nav";
 import { ResponsiveOptionSelect } from "@/patterns/forms/responsive-option-select/responsive-option-select";
 import { AvatarBadge } from "@/patterns/identity/avatar-badge/avatar-badge";
+import {
+  Modal,
+  ModalContent,
+  ModalDescription,
+  ModalHeader,
+  ModalTitle,
+} from "@/patterns/overlays/modal/modal";
 import { VerticalFeed } from "@/patterns/engagement/vertical-feed/vertical-feed";
 
 function renderHtml(ui: () => unknown): string {
@@ -243,6 +250,21 @@ describe("SSR smoke", () => {
         />
       )),
     ).toContain("/flags/us.svg");
+  });
+
+  it("renders Modal without browser APIs", () => {
+    expect(
+      renderHtml(() => (
+        <Modal forceMobile={false} open>
+          <ModalContent>
+            <ModalHeader>
+              <ModalTitle>Unlock this content</ModalTitle>
+              <ModalDescription>Add funds to continue.</ModalDescription>
+            </ModalHeader>
+          </ModalContent>
+        </Modal>
+      )),
+    ).toContain("Unlock this content");
   });
 
   it("renders Batch 3 form controls without browser APIs", () => {

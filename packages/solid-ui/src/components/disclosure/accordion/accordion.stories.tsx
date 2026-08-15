@@ -33,7 +33,7 @@ const meta = {
     shouldFocusWrap: { control: "boolean" },
   },
   render: (args) => (
-    <div class="w-full p-4">
+    <div class="w-[calc(100vw-2rem)] max-w-full p-4">
       <Accordion
         class="w-full max-w-[480px]"
         collapsible={args.collapsible}

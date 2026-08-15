@@ -156,9 +156,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        flow:
-          - components/compositions/posts/post-composer/stories/file
-          - components/compositions/digital-goods/stories
+        include:
+          - flow: components/compositions/posts/post-composer/stories/file
+            artifact: post-composer-file
+          - flow: components/compositions/digital-goods/stories
+            artifact: digital-goods
 
     steps:
       - name: Check out Web
@@ -239,7 +241,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: generic-goods-storybook-${{ matrix.flow }}
+          name: generic-goods-storybook-${{ matrix.artifact }}
           path: |
             web/storybook-static
             web/junit.xml

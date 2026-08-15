@@ -44,7 +44,7 @@ export function buildCommunityGenericAssetPresentation(input: {
       asset?: string | null;
       title?: string | null;
     };
-    viewer_is_author: boolean;
+    viewer_is_author?: boolean;
   };
   listingsByAssetId: Record<string, ApiCommunityListing | undefined>;
   purchasesByAssetId: Record<string, unknown>;

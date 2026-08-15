@@ -483,8 +483,8 @@ export function PostPage({
   const handleDownloadGenericAsset = useGenericAssetDownload({
     accessToken: session?.accessToken,
     connectedWallet: connectedWallets[0],
-    connectWallet: authRuntime.connect,
-    reconnectWallet: authRuntime.reconnectEthereumWallet,
+    connectWallet: authRuntime.connect ?? undefined,
+    reconnectWallet: authRuntime.reconnectEthereumWallet ?? undefined,
     resolveAssetAccess: api.communities.resolveAssetAccess,
   });
 

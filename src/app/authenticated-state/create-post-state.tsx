@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import type { Asset as ApiAsset, Community as ApiCommunity, CommunityPreview as ApiCommunityPreview, UserAgent as ApiUserAgent } from "@pirate/api-contracts";
+import type { Community as ApiCommunity, CommunityPreview as ApiCommunityPreview, UserAgent as ApiUserAgent } from "@pirate/api-contracts";
 import type { CommunityPricingPolicy as ApiCommunityPricingPolicy } from "@pirate/api-contracts";
 import type { JoinEligibility as ApiJoinEligibility } from "@pirate/api-contracts";
 import type { Post as ApiCreatedPost } from "@pirate/api-contracts";
@@ -18,7 +18,6 @@ import { getLocaleMessages } from "@/locales";
 import { rememberKnownCommunity } from "@/lib/known-communities-store";
 import { logger } from "@/lib/logger";
 import { getErrorMessage } from "@/lib/error-utils";
-import { toast } from "@/components/primitives/sonner";
 import type {
   CommunityCharityPartner,
   ComposerAudienceState,

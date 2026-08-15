@@ -629,7 +629,7 @@ default slot and a named capacity exception holding the third:
 
 | Worktree | Branch | State |
 | --- | --- | --- |
-| `.worktrees/web/solid-perimeter` | `solid/perimeter` | clean — P1 skeleton committed locally; clean-checkout gate pending |
+| `.worktrees/web/solid-perimeter` | `solid/perimeter` | clean — P1 skeleton committed locally; clean-checkout, runtime, UI, routes, parity, and production-build gates green |
 | `.worktrees/web/generic-digital-goods` | `feat/generic-digital-goods-flag-20260814` | 20 modified, 3 untracked — do not disturb |
 | `.worktrees/web/ci-cross-repo-pins` | `chore/ci-cross-repo-pins` | clean — named exception for CI pin correction, owner workspace coordinator, expiry 2026-08-22 |
 

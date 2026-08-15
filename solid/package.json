@@ -18,6 +18,7 @@
     "hydration-check": "node scripts/hydration-check.mjs",
     "check-solid-runtime": "node scripts/check-solid-runtime.mjs",
     "assert-solid-css": "node scripts/assert-solid-css.mjs",
+    "assert-solid-ssr": "node scripts/assert-solid-ssr.mjs",
     "typecheck": "bun run locales:generate && node node_modules/typescript/bin/tsc --noEmit",
     "solid-routes:ci": "bun run typecheck && bun test src/lib src/locales src/routes",
     "verify": "node scripts/check-solid-runtime.mjs && bun test src/lib/api/origin.test.ts && node scripts/probe.mjs && node scripts/stream-check.mjs && node scripts/hydration-check.mjs"

@@ -24,14 +24,14 @@ type ToolbarAction =
   | "bulletList"
   | "orderedList";
 
-const toolbar: Array<{ action: ToolbarAction; label: JSX.Element; title: string }> = [
-  { action: "bold", label: "B", title: "Bold" },
-  { action: "italic", label: "I", title: "Italic" },
-  { action: "strike", label: "S", title: "Strikethrough" },
-  { action: "quote", label: <IconQuote class="size-5" />, title: "Blockquote" },
-  { action: "link", label: <IconLinkSimple class="size-5" />, title: "Link" },
-  { action: "bulletList", label: <IconListBullets class="size-5" />, title: "Bulleted list" },
-  { action: "orderedList", label: <IconListNumbers class="size-5" />, title: "Numbered list" },
+const toolbar: Array<{ action: ToolbarAction; label: () => JSX.Element; title: string }> = [
+  { action: "bold", label: () => "B", title: "Bold" },
+  { action: "italic", label: () => "I", title: "Italic" },
+  { action: "strike", label: () => "S", title: "Strikethrough" },
+  { action: "quote", label: () => <IconQuote class="size-5" />, title: "Blockquote" },
+  { action: "link", label: () => <IconLinkSimple class="size-5" />, title: "Link" },
+  { action: "bulletList", label: () => <IconListBullets class="size-5" />, title: "Bulleted list" },
+  { action: "orderedList", label: () => <IconListNumbers class="size-5" />, title: "Numbered list" },
 ];
 
 const toolbarButtonClass =
@@ -185,7 +185,7 @@ export function FormattedTextarea(props: FormattedTextareaProps) {
                 disabled={props.disabled}
                 onClick={() => handleToolbarAction(item.action)}
               >
-                {item.label}
+                {item.label()}
               </TooltipTrigger>
               <TooltipContent>{item.title}</TooltipContent>
             </Tooltip>

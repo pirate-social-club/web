@@ -77,6 +77,9 @@ import {
   SidebarMenuItem,
   SidebarProvider,
 } from "@/patterns/navigation/sidebar";
+import { AppHeader } from "@/patterns/navigation/app-header/app-header";
+import { MobileFooterNav } from "@/patterns/navigation/mobile-footer-nav/mobile-footer-nav";
+import { MobilePageHeader } from "@/patterns/navigation/mobile-page-header/mobile-page-header";
 import { VerticalFeed } from "@/patterns/engagement/vertical-feed/vertical-feed";
 
 function renderHtml(ui: () => unknown): string {
@@ -299,6 +302,24 @@ describe("SSR smoke", () => {
         </SidebarProvider>
       )),
     ).toContain("Home");
+  });
+
+  it("renders AppHeader without browser APIs", () => {
+    expect(
+      renderHtml(() => <AppHeader forceMobile={false} />),
+    ).toContain("PIRATE");
+  });
+
+  it("renders MobileFooterNav without browser APIs", () => {
+    expect(
+      renderHtml(() => <MobileFooterNav activeItem="inbox" forceMobile />),
+    ).toContain("Inbox");
+  });
+
+  it("renders MobilePageHeader without browser APIs", () => {
+    expect(
+      renderHtml(() => <MobilePageHeader title="Notifications" />),
+    ).toContain("Notifications");
   });
 
   it("renders Batch 3 form controls without browser APIs", () => {

@@ -360,6 +360,23 @@ export {
   type SidebarProps,
   type SidebarProviderProps,
 } from "./patterns/navigation/sidebar";
+export {
+  AppHeader,
+  shouldShowDesktopConnectAction,
+  shouldShowMobileConnectAction,
+  type AppHeaderLabels,
+  type AppHeaderProps,
+} from "./patterns/navigation/app-header/app-header";
+export {
+  MobileFooterNav,
+  type FooterNavItemId,
+  type MobileFooterNavLabels,
+  type MobileFooterNavProps,
+} from "./patterns/navigation/mobile-footer-nav/mobile-footer-nav";
+export {
+  MobilePageHeader,
+  type MobilePageHeaderProps,
+} from "./patterns/navigation/mobile-page-header/mobile-page-header";
 
 export {
   ActionMenu,

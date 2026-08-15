@@ -63,7 +63,7 @@ function DemoSidebar(props: { side?: "left" | "right" }) {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton class="h-12 rounded-xl px-4" size="lg" tooltip="Pirate">
-              <PirateBrandMark class="size-10 shrink-0" decorative={false} />
+              <PirateBrandMark class="size-10 shrink-0" />
               <Type as="div" variant="h4" class="grid flex-1 text-start leading-tight">
                 <span class="truncate font-semibold">Pirate</span>
               </Type>

@@ -4,7 +4,6 @@
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "preserveSymlinks": true,
-    "baseUrl": ".",
     "paths": {
       "@pirate/web-solid-ui": ["../packages/solid-ui/src/index.tsx"],
       "@pirate/web-platform": ["../packages/web-platform/src/index.ts"],

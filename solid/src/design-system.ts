@@ -89,6 +89,7 @@ export {
 // Icons used by the shell features and their stories.
 export {
   IconBell,
+  IconCaretDown,
   IconChatCircle,
   IconFire,
   IconFlag,
@@ -126,7 +127,51 @@ export {
   IconShareNetwork,
   IconShield,
   IconUsers,
+  IconX,
   IconVideoCamera,
   IconVinylRecord,
   IconWarningCircle,
+} from "@pirate/web-solid-ui";
+
+// Primitives and patterns used by the post-composer feature (B7b).
+export {
+  CardContent,
+  CardFooter,
+  Checkbox,
+  Chip,
+  Combobox,
+  CommunityAvatar,
+  DialogFooter,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  FormFieldLabel,
+  FormNote,
+  FormSectionHeading,
+  Label,
+  PillButton,
+  RadioIndicator,
+  Select,
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+  Switch,
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  Textarea,
+} from "@pirate/web-solid-ui";
+
+// Icons used by the post-composer feature (B7b).
+export {
+  IconFileText,
+  IconImage,
+  IconMaskHappy,
+  IconMicrophone,
+  IconTrash,
+  IconUploadSimple,
+  IconUsersThree,
 } from "@pirate/web-solid-ui";

@@ -619,3 +619,69 @@ export function IconWarningCircle(props: IconProps) {
     </svg>
   );
 }
+
+export function IconFileText(props: IconProps) {
+  return (
+    <svg aria-hidden="true" class={props.class} fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+      <path d="M6 3h8l4 4v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z" stroke-linejoin="round" />
+      <path d="M14 3v4h4M9 12h6M9 16h6" stroke-linecap="round" stroke-linejoin="round" />
+    </svg>
+  );
+}
+
+export function IconImage(props: IconProps) {
+  return (
+    <svg aria-hidden="true" class={props.class} fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+      <rect height="16" rx="2" width="18" x="3" y="4" />
+      <circle cx="9" cy="9.5" r="1.8" />
+      <path d="m5 19 5-5 3 3 3.5-3.5L21 18" stroke-linecap="round" stroke-linejoin="round" />
+    </svg>
+  );
+}
+
+export function IconMaskHappy(props: IconProps) {
+  return (
+    <svg aria-hidden="true" class={props.class} fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+      <path d="M4 5.5C4 4.7 4.7 4 5.5 4h13c.8 0 1.5.7 1.5 1.5v6c0 4.4-3.6 8.5-8 8.5s-8-4.1-8-8.5v-6Z" stroke-linejoin="round" />
+      <path d="M8.5 10.2c.5-.6 1.4-.6 1.9 0M13.6 10.2c.5-.6 1.4-.6 1.9 0" stroke-linecap="round" />
+      <path d="M8.6 13.4c.8 1.4 2 2.1 3.4 2.1s2.6-.7 3.4-2.1" stroke-linecap="round" stroke-linejoin="round" />
+    </svg>
+  );
+}
+
+export function IconMicrophone(props: IconProps) {
+  return (
+    <svg aria-hidden="true" class={props.class} fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+      <rect height="11" rx="3" width="6" x="9" y="3" />
+      <path d="M6 11a6 6 0 0 0 12 0M12 17v4" stroke-linecap="round" />
+    </svg>
+  );
+}
+
+export function IconTrash(props: IconProps) {
+  return (
+    <svg aria-hidden="true" class={props.class} fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+      <path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M6.5 7l1 13h9l1-13" stroke-linecap="round" stroke-linejoin="round" />
+      <path d="M10 11v6M14 11v6" stroke-linecap="round" />
+    </svg>
+  );
+}
+
+export function IconUploadSimple(props: IconProps) {
+  return (
+    <svg aria-hidden="true" class={props.class} fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+      <path d="M12 16V4m0 0 4.5 4.5M12 4 7.5 8.5" stroke-linecap="round" stroke-linejoin="round" />
+      <path d="M4 17v2a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-2" stroke-linecap="round" stroke-linejoin="round" />
+    </svg>
+  );
+}
+
+export function IconUsersThree(props: IconProps) {
+  return (
+    <svg aria-hidden="true" class={props.class} fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="12" cy="8.5" r="3" />
+      <path d="M6.5 19a5.5 5.5 0 0 1 11 0" stroke-linecap="round" />
+      <path d="M4.8 9.8a2.2 2.2 0 1 1 2.4 3.6M2.5 16.5a4 4 0 0 1 3.5-2.2M19.2 9.8a2.2 2.2 0 1 0-2.4 3.6M21.5 16.5a4 4 0 0 0-3.5-2.2" stroke-linecap="round" />
+    </svg>
+  );
+}

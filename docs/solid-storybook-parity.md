@@ -153,13 +153,13 @@ Notes: React `sonner.stories.tsx` maps to the Solid `overlays/toast` implementat
 | 74 | `components/compositions/posts/post-card/stories/song/index.stories.tsx` | solid/src/features/posts | B7 | done — solid/src/features/posts/post-card/song.stories.tsx (all 36 states) |
 | 75 | `components/compositions/posts/post-card/stories/song-player/post-card-song-player.stories.tsx` | solid/src/features/posts | B7 | done — solid/src/features/posts/post-card/song-player.stories.tsx (all 3 states; mobile stories also set the mobile viewport global) |
 | 76 | `components/compositions/posts/post-card/stories/video/index.stories.tsx` | solid/src/features/posts | B7 | done — solid/src/features/posts/post-card/video.stories.tsx (all 11 states) |
-| 77 | `components/compositions/posts/post-composer/stories/file/flow.stories.tsx` | solid/src/features/posts | B7 | pending |
-| 78 | `components/compositions/posts/post-composer/stories/post-composer.stories.tsx` | solid/src/features/posts | B7 | pending |
-| 79 | `components/compositions/posts/post-composer/stories/song/index.stories.tsx` | solid/src/features/posts | B7 | pending |
-| 80 | `components/compositions/posts/post-composer/stories/submit-progress/flow.stories.tsx` | solid/src/features/posts | B7 | pending |
-| 81 | `components/compositions/posts/post-composer/stories/submit-progress/index.stories.tsx` | solid/src/features/posts | B7 | pending |
-| 82 | `components/compositions/posts/post-composer/stories/text/index.stories.tsx` | solid/src/features/posts | B7 | pending |
-| 83 | `components/compositions/posts/post-composer/stories/video/index.stories.tsx` | solid/src/features/posts | B7 | pending |
+| 77 | `components/compositions/posts/post-composer/stories/file/flow.stories.tsx` | solid/src/features/posts/post-composer/file.stories.tsx | B7 | done |
+| 78 | `components/compositions/posts/post-composer/stories/post-composer.stories.tsx` | solid/src/features/posts/post-composer/post-composer.stories.tsx | B7 | done |
+| 79 | `components/compositions/posts/post-composer/stories/song/index.stories.tsx` | solid/src/features/posts/post-composer/song.stories.tsx | B7 | done |
+| 80 | `components/compositions/posts/post-composer/stories/submit-progress/flow.stories.tsx` | solid/src/features/posts/post-composer/submit-progress-flow.stories.tsx | B7 | done |
+| 81 | `components/compositions/posts/post-composer/stories/submit-progress/index.stories.tsx` | solid/src/features/posts/post-composer/submit-progress.stories.tsx | B7 | done |
+| 82 | `components/compositions/posts/post-composer/stories/text/index.stories.tsx` | solid/src/features/posts/post-composer/text.stories.tsx | B7 | done |
+| 83 | `components/compositions/posts/post-composer/stories/video/index.stories.tsx` | solid/src/features/posts/post-composer/video.stories.tsx | B7 | done |
 | 84 | `components/compositions/posts/post-thread/stories/mobile-flows.stories.tsx` | solid/src/features/posts | B7 | pending |
 | 85 | `components/compositions/posts/post-thread/stories/post-thread.stories.tsx` | solid/src/features/posts | B7 | pending |
 | 86 | `components/compositions/posts/video-feed/stories/video-feed.stories.tsx` | solid/src/features/posts | B7 | pending |

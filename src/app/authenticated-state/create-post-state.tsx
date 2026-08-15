@@ -11,7 +11,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { navigate } from "@/app/router";
 import { useApi } from "@/lib/api";
 import { resolveApiBaseUrl } from "@/lib/api/base-url";
-import { buildAgentActionProof } from "@/lib/agents/browser-agent-action-proof";
 import { findStoredOwnedAgentKey } from "@/lib/agents/agent-key-store";
 import { useSession } from "@/lib/api/session-store";
 import { useUiLocale } from "@/lib/ui-locale";
@@ -37,7 +36,7 @@ import { parseUsdInput } from "@/lib/formatting/currency";
 import { getFreedomBrowserDetectionSnapshot, prefersNativeRadicleLinks } from "@/lib/resource-links";
 import { resolveComposerSubmitState } from "@/app/authenticated-helpers/asset-submit";
 import { buildBasePostRequest, buildCreatePostEventRequest, resolveCreatePostIdentity } from "@/app/authenticated-helpers/create-post-submit/base";
-import { buildStoryRegistrationCreationWarning } from "@/app/authenticated-helpers/story-registration-warning";
+import { useAgentAuthoredBodySigner, useStoryRegistrationCreationWarning } from "@/app/authenticated-helpers/create-post-side-effects";
 import { buildStoryLicenseReuseNotice, rememberStoryLicenseReuseNotice } from "@/app/authenticated-helpers/story-license-reuse-notice";
 import { submitImagePost } from "@/app/authenticated-helpers/create-post-submit/image";
 import { submitLinkPost } from "@/app/authenticated-helpers/create-post-submit/link";
@@ -754,48 +753,8 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
   const paidAssetPriceUsd = paidCommerceMode ? parseUsdInput(monetizationState.priceUsd ?? monetizationState.priceLabel) : null;
   const paidAssetPriceInvalid = paidCommerceMode && paidAssetPriceUsd == null;
   const submitState = resolveComposerSubmitState({ canSubmit, composerMode, derivativeStep, license, monetizationState, paidSongPriceInvalid: paidAssetPriceInvalid, songMode, submitError });
-  const warnIfStoryRegistrationIncomplete = React.useCallback(async (
-    post: ApiCreatedPost | null,
-    postType: "song" | "video",
-  ): Promise<ApiAsset | null> => {
-    if (!post?.asset) return null;
-    try {
-      const asset = await api.communities.getAsset(communityId, post.asset);
-      const warning = buildStoryRegistrationCreationWarning(asset, postType);
-      if (warning) {
-        toast.warning(warning.title, { description: warning.description });
-      }
-      return asset;
-    } catch (error) {
-      logger.warn("[create-post] could not load created asset Story registration status", {
-        assetId: post.asset,
-        communityId,
-        error,
-        postId: post.id,
-      });
-      return null;
-    }
-  }, [api.communities, communityId]);
-
-  const signAgentAuthoredBody = React.useCallback(async <T extends Record<string, unknown>>(path: string, body: T) => {
-    if (!availableAgent) {
-      throw new Error("No local agent key is available for this post.");
-    }
-
-    const proof = await buildAgentActionProof({
-      method: "POST",
-      url: path,
-      body,
-      privateKeyPem: availableAgent.privateKeyPem,
-    });
-
-    return {
-      ...body,
-      authorship_mode: "user_agent" as const,
-      agent_id: availableAgent.agentId,
-      agent_action_proof: proof,
-    };
-  }, [availableAgent]);
+  const warnIfStoryRegistrationIncomplete = useStoryRegistrationCreationWarning({ communityId, getAsset: api.communities.getAsset });
+  const signAgentAuthoredBody = useAgentAuthoredBodySigner(availableAgent);
   const submitSongPost = useSongSubmit({ communityId, signAgentAuthoredBody });
   const hasCommunityPostingRole = viewerHasCommunityPostingRole(session?.user.id, community, communityOwnerUserId);
   const postAltchaRequired = requiresPostAltchaProof({ eligibility, gateMatchMode: community?.gate_match_mode, hasCommunityPostingRole, requirements: community?.membership_gate_summaries ?? [] });

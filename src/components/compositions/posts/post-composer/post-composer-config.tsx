@@ -36,6 +36,10 @@ export const attachmentActions: Array<{
 export const defaultTabs: ComposerTab[] = ["text", "image", "video", "link", "song", "live", "file"];
 export const anonymousEligibleTabs: ComposerTab[] = ["text", "image", "video", "link", "song", "live", "file"];
 
+export function buildComposerTabLabels(copy: { tabs: Record<"text" | "image" | "video" | "link" | "song" | "live", string> }): Record<ComposerTab, string> {
+  return { ...copy.tabs, file: "File" };
+}
+
 export const noneLanguageValue = "__none__";
 
 export const songGenreOptions = [

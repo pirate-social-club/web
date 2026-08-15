@@ -22,12 +22,12 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { buildAnonymousLabel } from "@/lib/anonymous-label";
 import { isPowSatisfiableGate } from "@/lib/identity-gates";
 import { useApi } from "@/lib/api";
-import { resolveApiBaseUrl, resolveApiUrl } from "@/lib/api/base-url";
 import { buildCommunityPath } from "@/lib/community-routing";
 import { getFreedomBrowserDetectionSnapshot } from "@/lib/resource-links";
 import { useUiLocale } from "@/lib/ui-locale";
 
 import { buildCommunityPreviewSidebar } from "@/app/authenticated-helpers/community-sidebar-helpers";
+import { buildPostLiveRoomLaunch } from "@/app/authenticated-helpers/post-live-room-launch";
 import { loadProfilesByUserId } from "@/app/authenticated-data/community-data";
 import { NotFoundPage } from "./misc-routes";
 import { buildLiveRoomParticipants } from "@/app/authenticated-helpers/post-live-room-participants";
@@ -42,6 +42,8 @@ import { useSongCommerceState, useSongPlayback } from "@/app/authenticated-helpe
 import { loadLiveRoomReplayPlayback } from "@/app/authenticated-helpers/live-room-replay-playback";
 import { takeStoryLicenseReuseNotice, type StoryLicenseReuseNotice } from "@/app/authenticated-helpers/story-license-reuse-notice";
 import { usePost } from "@/app/authenticated-state/post-state";
+import { buildGenericAssetPresentation } from "@/app/authenticated-helpers/generic-asset-presentation";
+import { useGenericAssetDownload } from "@/app/authenticated-helpers/use-generic-asset-download";
 import { useSelfVerification } from "@/lib/verification/use-self-verification";
 import { usePiratePrivyRuntime, usePiratePrivyWallets } from "@/components/auth/privy-provider";
 import { isCanonicalAuthOrigin, buildCanonicalAuthUrl } from "@/lib/auth-origin";
@@ -54,7 +56,6 @@ import { logger } from "@/lib/logger";
 import { normalizeUserId, sameUserId } from "@/app/authenticated-helpers/user-id";
 import { useBoostCampaignController } from "@/app/authenticated-helpers/use-boost-campaign-controller";
 import { useActiveSongRewardOffer } from "@/app/authenticated-helpers/use-active-song-reward-offer";
-import { readStoryCdrAsset } from "@/lib/story/cdr-browser";
 function closeMobileThread(fallbackPath: string) {
   if (typeof window !== "undefined" && window.history.length > 1) {
     window.history.back();
@@ -87,40 +88,6 @@ function viewerCanModerateCommunity(
     if (!sameUserId(viewerUserId, roleHolder.user)) return false;
     return roleHolder.role === "owner" || roleHolder.role === "admin" || roleHolder.role === "moderator";
   }));
-}
-
-function buildLiveRoomLaunch(input: {
-  communityId?: string | null;
-  liveRoomId?: string | null;
-  postId?: string | null;
-  seat?: "host" | "guest" | null;
-}): { href: string; liveRoomId: string; shareUrl: string | null } | null {
-  const liveRoomId = input.liveRoomId?.trim();
-  const communityId = input.communityId?.trim();
-  const postId = input.postId?.trim();
-  if (!liveRoomId || !communityId) return null;
-  const apiBase = resolveApiBaseUrl(typeof window === "undefined" ? null : window.location.hostname);
-  const webBase = typeof window === "undefined" ? null : window.location.origin;
-  const sharePath = postId ? `/p/${encodeURIComponent(postId)}` : null;
-  const shareUrl = sharePath && typeof window !== "undefined"
-    ? new URL(sharePath, window.location.origin).toString()
-    : sharePath;
-  const hrefParams = [
-    `roomId=${encodeURIComponent(liveRoomId)}`,
-    `communityId=${encodeURIComponent(communityId)}`,
-    `apiBase=${encodeURIComponent(apiBase)}`,
-  ];
-  if (webBase) {
-    hrefParams.push(`webBase=${encodeURIComponent(webBase)}`);
-  }
-  if (input.seat) {
-    hrefParams.push(`seat=${encodeURIComponent(input.seat)}`);
-  }
-  return {
-    href: `freedom://live-room?${hrefParams.join("&")}`,
-    liveRoomId,
-    shareUrl,
-  };
 }
 
 function MobileThreadShell({
@@ -513,54 +480,13 @@ export function PostPage({
     });
   }, [buySong, locale]);
 
-  const handleDownloadGenericAsset = React.useCallback(async (nextCommunityId: string, assetId: string, titleText: string) => {
-    try {
-      const access = await api.communities.resolveAssetAccess(nextCommunityId, assetId);
-      if (!access.access_granted) {
-        toast.info(access.decision_reason === "purchase_required" ? "Purchase required before downloading this file." : "This asset is not ready for delivery yet.");
-        return;
-      }
-      let blob: Blob;
-      if (access.delivery_kind === "story_cdr_ref" && access.story_cdr_access) {
-        const wallet = connectedWallets[0];
-        if (!wallet) {
-          authRuntime.reconnectEthereumWallet?.();
-          authRuntime.connect?.();
-          toast.info("Connect a wallet to unlock this download.");
-          return;
-        }
-        blob = await readStoryCdrAsset({
-          access: access.story_cdr_access,
-          accessToken: session?.accessToken ?? null,
-          wallet,
-        });
-      } else if (access.delivery_kind === "primary_content_ref" && access.delivery_ref) {
-        const response = await fetch(resolveApiUrl(access.delivery_ref), {
-          headers: session?.accessToken ? { Authorization: `Bearer ${session.accessToken}` } : undefined,
-        });
-        if (!response.ok) throw new Error("Could not download this asset.");
-        blob = await response.blob();
-      } else {
-        throw new Error("Could not download this asset.");
-      }
-      const expectedHash = access.payload?.content_hash?.trim().toLowerCase();
-      if (expectedHash) {
-        const bytes = await blob.arrayBuffer();
-        const digest = await globalThis.crypto.subtle.digest("SHA-256", bytes);
-        const actualHash = `0x${Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("")}`;
-        if (actualHash !== expectedHash) throw new Error("Downloaded asset integrity check failed.");
-        blob = new Blob([bytes], { type: blob.type || access.payload?.mime_type || "application/octet-stream" });
-      }
-      const href = URL.createObjectURL(blob);
-      const anchor = document.createElement("a");
-      anchor.href = href;
-      anchor.download = access.payload?.display_filename?.trim() || titleText;
-      anchor.click();
-      URL.revokeObjectURL(href);
-    } catch (error) {
-      toast.error(getErrorMessage(error, "Could not download this asset."));
-    }
-  }, [api.communities, authRuntime, connectedWallets, session?.accessToken]);
+  const handleDownloadGenericAsset = useGenericAssetDownload({
+    accessToken: session?.accessToken,
+    connectedWallet: connectedWallets[0],
+    connectWallet: authRuntime.connect,
+    reconnectWallet: authRuntime.reconnectEthereumWallet,
+    resolveAssetAccess: api.communities.resolveAssetAccess,
+  });
 
   const handleBuyLiveTicket = React.useCallback(async (
     listing: ApiCommunityListing,
@@ -924,7 +850,7 @@ export function PostPage({
   const diagnosticGuestInviteStatus = liveRoomAccess?.access.guest_invite_status ?? null;
   const diagnosticViewerIsLiveRoomHost = sameUserId(session?.user?.id, diagnosticLiveRoom?.host_user);
   const diagnosticViewerIsLiveRoomGuest = sameUserId(session?.user?.id, diagnosticLiveRoom?.guest_user);
-  const diagnosticLiveRoomLaunch = buildLiveRoomLaunch({
+  const diagnosticLiveRoomLaunch = buildPostLiveRoomLaunch({
     communityId: community?.id,
     liveRoomId: activeLiveRoomId,
     postId,
@@ -1064,21 +990,15 @@ export function PostPage({
     : undefined;
   const genericAssetOptions = post.post.post_type === "file" && community && threadAssetId
     ? {
-      genericAsset: {
-        accessState: threadPurchase || post.viewer_is_author ? "available" as const : threadListing ? "purchase_required" as const : "unknown" as const,
+      genericAsset: buildGenericAssetPresentation({
         hasEntitlement: Boolean(threadPurchase || post.viewer_is_author),
-        listingMode: threadListing ? "listed" as const : "not_listed" as const,
-        listingStatus: threadListing?.status === "active"
-          ? "active" as const
-          : threadListing?.status === "paused"
-            ? "paused" as const
-            : undefined,
-        onBuy: threadListing ? () => void handleBuySong(threadListing, post.post.title ?? "digital good", community.id, "file") : undefined,
-        onDownload: post.post.post_type === "file" ? () => void handleDownloadGenericAsset(community.id, threadAssetId, post.post.title ?? "download") : undefined,
-        priceLabel: threadListing?.price_cents === 100
-          ? "1 WIP"
-          : threadListing ? `${threadListing.price_cents}¢ WIP` : undefined,
-      },
+        listedAccessState: "purchase_required",
+        listing: threadListing,
+        onBuy: threadListing
+          ? () => void handleBuySong(threadListing, post.post.title ?? "digital good", community.id, "file")
+          : undefined,
+        onDownload: () => void handleDownloadGenericAsset(community.id, threadAssetId, post.post.title ?? "download"),
+      }),
     }
     : undefined;
   const liveRoom = liveRoomAccess?.room ?? null;
@@ -1092,7 +1012,7 @@ export function PostPage({
     || Boolean(threadLiveRoomId && sameUserId(session?.user?.id, post.post.author_user));
   const viewerIsLiveRoomGuest = sameUserId(session?.user?.id, liveRoom?.guest_user);
   const liveRoomGuestInviteStatus = liveRoomAccess?.access.guest_invite_status ?? null;
-  const liveRoomLaunch = buildLiveRoomLaunch({
+  const liveRoomLaunch = buildPostLiveRoomLaunch({
     communityId: community?.id,
     liveRoomId: post.post.anchor_live_room,
     postId,

@@ -38,7 +38,6 @@ import {
 import { createCommunityBlockedModalStateFactory, getRequirementGroups } from "@/hooks/use-community-interaction-gate.helpers";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useUiLocale } from "@/lib/ui-locale";
-
 import { loadProfilesByUserId, useCommunityPageData } from "@/app/authenticated-data/community-data";
 import { buildLiveRoomFreedomHref } from "@/app/authenticated-helpers/live-room-launch";
 import {
@@ -51,6 +50,7 @@ import {
   buildCommunityModerationPath,
 } from "@/app/authenticated-helpers/moderation-helpers";
 import { buildLiveRoomParticipants } from "@/app/authenticated-helpers/post-live-room-participants";
+import { buildCommunityGenericAssetPresentation } from "@/app/authenticated-helpers/generic-asset-presentation";
 import { toCommunityFeedItem } from "@/app/authenticated-helpers/post-presentation";
 import { processingPostPollDelayMs, shouldContinueProcessingPostPolling } from "@/app/authenticated-helpers/processing-post-polling";
 import { useCommunityMembershipActions } from "@/hooks/use-community-membership-actions";
@@ -844,33 +844,7 @@ export function CommunityPage({
         seat: liveRoomSeat,
       })
       : undefined;
-    const genericListing = post.post.post_type === "file"
-      ? (assetId ? listingsByAssetId[assetId] : undefined)
-      : undefined;
-    const genericListingStatus = genericListing?.status === "active"
-      ? "active" as const
-      : genericListing?.status === "paused"
-        ? "paused" as const
-        : undefined;
-    const genericAssetOptions = post.post.post_type === "file"
-      ? {
-          accessState: genericListing
-            ? (purchasesByAssetId[assetId ?? ""] || post.viewer_is_author) ? "available" as const : "unknown" as const
-            : "purchase_required" as const,
-          hasEntitlement: Boolean((assetId && purchasesByAssetId[assetId]) || post.viewer_is_author),
-          listingMode: genericListing ? "listed" as const : "not_listed" as const,
-          listingStatus: genericListingStatus,
-          onBuy: genericListing
-            ? () => void handleBuySong(
-                genericListing,
-                post.post.title ?? "Downloadable file",
-                "file",
-              )
-            : undefined,
-          onDownload: () => navigate(`/p/${encodeURIComponent(post.post.id)}`),
-          priceLabel: genericListing?.price_cents === 100 ? "1 WIP" : genericListing?.price_cents != null ? `${genericListing.price_cents}¢ WIP` : undefined,
-        }
-      : undefined;
+    const genericAssetOptions = buildCommunityGenericAssetPresentation({ listingsByAssetId, onBuy: (listing, title) => void handleBuySong(listing, title, "file"), onDownload: (postId) => navigate(`/p/${encodeURIComponent(postId)}`), post, purchasesByAssetId });
     const handleVerifyAge = () => {
       void startAgeSelfVerification({
         requestedCapabilities: ["age_over_18"],

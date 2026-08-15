@@ -25,7 +25,6 @@ import type {
   AssetRoyaltySplitState,
   SongComposerState,
   VideoComposerState,
-  DownloadFileComposerState,
 } from "./post-composer.types";
 import {
   defaultAssetLicenseState,
@@ -39,8 +38,9 @@ import {
   defaultSongState,
   defaultTabs,
   defaultVideoState,
-  defaultDownloadFileState,
+  buildComposerTabLabels,
 } from "./post-composer-config";
+import { useDownloadFileComposerState } from "./use-download-file-composer-state";
 import {
   deriveLiveStateForRoomKindChange,
   shouldClearSelectedQualifiers,
@@ -94,7 +94,6 @@ export function usePostComposerController(props: PostComposerProps) {
   const identity = draft?.identity ?? props.identity;
   const live = draft?.live ?? props.live;
   const event = draft?.event ?? props.event;
-  const file = draft?.file ?? props.file;
   const onTitleValueChange = actions?.onTitleValueChange ?? props.onTitleValueChange;
   const onTextBodyValueChange = actions?.onTextBodyValueChange ?? props.onTextBodyValueChange;
   const onCaptionValueChange = actions?.onCaptionValueChange ?? props.onCaptionValueChange;
@@ -118,7 +117,6 @@ export function usePostComposerController(props: PostComposerProps) {
   const onSelectedQualifierIdsChange = actions?.onSelectedQualifierIdsChange ?? props.onSelectedQualifierIdsChange;
   const onLiveChange = actions?.onLiveChange ?? props.onLiveChange;
   const onEventChange = actions?.onEventChange ?? props.onEventChange;
-  const onFileChange = actions?.onFileChange ?? props.onFileChange;
   const onSubmit = submit?.onSubmit ?? props.onSubmit;
   const baseSubmitDisabled = submit?.disabled ?? props.submitDisabled ?? false;
   const baseContinueDisabled = submit?.canContinue === undefined
@@ -207,7 +205,6 @@ export function usePostComposerController(props: PostComposerProps) {
   const [derivativePickerKey, setDerivativePickerKey] = React.useState(0);
   const [liveState, setLiveState] = React.useState<LiveComposerState>(() => defaultLiveComposerState(live));
   const [eventState, setEventState] = React.useState<ComposerEventState>(() => defaultEventState(event));
-  const [uncontrolledFileState, setUncontrolledFileState] = React.useState<DownloadFileComposerState>(() => defaultDownloadFileState(file));
   const [prevRoomKind, setPrevRoomKind] = React.useState<LiveRoomKind>(liveState.roomKind);
   const titleValue = onTitleValueChange ? providedTitleValue : uncontrolledTitleValue;
   const textBodyValue = onTextBodyValueChange ? providedTextBodyValue : uncontrolledTextBodyValue;
@@ -226,7 +223,6 @@ export function usePostComposerController(props: PostComposerProps) {
   const charityContributionState = charityContribution ?? uncontrolledCharityContribution;
   const audienceState = audience ?? uncontrolledAudienceState;
   const ageGatePolicyState = ageGatePolicy ?? uncontrolledAgeGatePolicy;
-  const fileState = file ?? uncontrolledFileState;
   const derivativeState = derivativeStep ?? uncontrolledDerivativeState;
   const songStateRef = React.useRef(songState);
   const derivativeStateRef = React.useRef(derivativeState);
@@ -479,10 +475,7 @@ export function usePostComposerController(props: PostComposerProps) {
     onEventChange?.(next);
   }, [onEventChange]);
 
-  const setFileStateWithCallback = React.useCallback((next: DownloadFileComposerState) => {
-    if (file === undefined) setUncontrolledFileState(next);
-    onFileChange?.(next);
-  }, [file, onFileChange]);
+  const generic = useDownloadFileComposerState({ file: draft?.file ?? props.file, onChange: actions?.onFileChange ?? props.onFileChange });
 
   React.useEffect(() => {
     const nextLiveState = deriveLiveStateForRoomKindChange({
@@ -594,15 +587,7 @@ export function usePostComposerController(props: PostComposerProps) {
   const assetLicenseCopy = activeTab === "song" || activeTab === "video"
     ? copy.assetLicense[activeTab]
     : null;
-  const tabLabels: Record<ComposerTab, string> = {
-    text: copy.tabs.text,
-    image: copy.tabs.image,
-    video: copy.tabs.video,
-    link: copy.tabs.link,
-    song: copy.tabs.song,
-    live: copy.tabs.live,
-    file: "File",
-  };
+  const tabLabels = buildComposerTabLabels(copy);
 
   return {
     audience: {
@@ -692,10 +677,7 @@ export function usePostComposerController(props: PostComposerProps) {
       state: eventState,
       update: setEventStateWithCallback,
     },
-    generic: {
-      file: fileState,
-      setFile: setFileStateWithCallback,
-    },
+    generic,
     song: {
       state: songState,
       update: updateSongState,

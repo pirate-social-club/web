@@ -1,0 +1,16 @@
+{
+  "home": {
+    "title": "Home · Pirate Web",
+    "description": "Pirate Web video feed",
+    "heading": "Pirate Web Solid shell"
+  },
+  "profile": {
+    "title": "@{handle} · Pirate Web",
+    "heading": "Profile: @{handle}"
+  },
+  "notFound": {
+    "title": "Not found",
+    "description": "The requested route does not exist.",
+    "returnHome": "Return home"
+  }
+}

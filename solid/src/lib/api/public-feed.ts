@@ -1,5 +1,6 @@
 import { getRequestEvent } from "@solidjs/web";
 import { createApiClient } from "./client";
+import { resolveLocaleLanguageTag, type UiLocaleCode } from "../ui-locale-core";
 
 export interface PublicVideoMedia {
   mime_type?: string | null;
@@ -37,8 +38,8 @@ export interface PublicVideoFeedPage {
   next_cursor: string | null;
 }
 
-export const publicVideoFeedKey = (cursor: string | null = null) =>
-  ["feed", "public-videos", "en", "best", cursor] as const;
+export const publicVideoFeedKey = (locale: UiLocaleCode = "en", cursor: string | null = null) =>
+  ["feed", "public-videos", resolveLocaleLanguageTag(locale), "best", cursor] as const;
 
 /**
  * The API's keyset cursor is backed by PG NUMERIC and may arrive as a number
@@ -112,8 +113,11 @@ export function normalizePublicVideoFeed(input: unknown): PublicVideoFeedPage {
   return { items, next_cursor: normalizeKeysetCursor(payload.next_cursor) };
 }
 
-export async function fetchPublicVideoFeed(cursor: string | null = null): Promise<PublicVideoFeedPage> {
-  const query = new URLSearchParams({ locale: "en", sort: "best" });
+export async function fetchPublicVideoFeed(
+  cursor: string | null = null,
+  locale: UiLocaleCode = "en",
+): Promise<PublicVideoFeedPage> {
+  const query = new URLSearchParams({ locale: resolveLocaleLanguageTag(locale), sort: "best" });
   if (cursor) query.set("cursor", cursor);
   const response = await createApiClient({ request: requestForFeed(), fetchImpl: fetchWithTimeout() }).getJson<unknown>(
     `/feed/home/videos/public?${query.toString()}`,
@@ -121,11 +125,11 @@ export async function fetchPublicVideoFeed(cursor: string | null = null): Promis
   return normalizePublicVideoFeed(response);
 }
 
-export function createPublicVideoFeedQuery(cursor: string | null = null) {
+export function createPublicVideoFeedQuery(cursor: string | null = null, locale: UiLocaleCode = "en") {
   const initialData = cursor === null ? getRequestEvent()?.locals?.publicVideoFeed as PublicVideoFeedPage | undefined : undefined;
   return {
-    queryKey: publicVideoFeedKey(cursor),
-    queryFn: () => fetchPublicVideoFeed(cursor),
+    queryKey: publicVideoFeedKey(locale, cursor),
+    queryFn: () => fetchPublicVideoFeed(cursor, locale),
     staleTime: 5 * 60_000,
     initialData,
     retry: false,

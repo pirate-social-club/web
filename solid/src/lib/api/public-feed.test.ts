@@ -1,5 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import { normalizeAuthorUser, normalizeKeysetCursor, normalizePublicVideoFeed } from "./public-feed";
+import {
+  normalizeAuthorUser,
+  normalizeKeysetCursor,
+  normalizePublicVideoFeed,
+  publicVideoFeedKey,
+} from "./public-feed";
 
 describe("public video feed normalization", () => {
   test("preserves numeric cursor precision as a string", () => {
@@ -20,5 +25,15 @@ describe("public video feed normalization", () => {
     expect(page.next_cursor).toBe("7");
     expect(page.items[0]?.post.post.author_user).toBe("usr_1");
     expect(page.items[0]?.post.post.media_refs?.[0]?.storage_ref).toContain("a.mp4");
+  });
+
+  test("separates cached pages by UI locale and cursor", () => {
+    expect(publicVideoFeedKey("zh", "next_1")).toEqual([
+      "feed",
+      "public-videos",
+      "zh-CN",
+      "best",
+      "next_1",
+    ]);
   });
 });

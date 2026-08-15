@@ -12,6 +12,11 @@ import {
 import type { HostContext } from "./lib/host-context";
 import { createApiClient } from "./lib/api/client";
 import { normalizePublicVideoFeed } from "./lib/api/public-feed";
+import {
+  resolveLocaleDirection,
+  resolveLocaleLanguageTag,
+  resolveRequestUiLocale,
+} from "./lib/ui-locale-core";
 
 function makeNonce(): string {
   const bytes = new Uint8Array(18);
@@ -46,10 +51,13 @@ async function seamMiddleware(request: Request, next: () => Promise<Response>) {
   const hostContext = makeHostContext(request);
   const surface = hostContext.surface;
   const url = new URL(request.url);
+  const uiLocale = resolveRequestUiLocale(url, request.headers.get("accept-language"));
   const hostname = hostName(request.headers.get("host") ?? url.hostname);
   event.locals.cspNonce = nonce;
   event.locals.hostContext = hostContext;
   event.locals.seamHost = surface;
+  event.locals.uiLocale = uiLocale;
+  event.locals.uiDirection = resolveLocaleDirection(uiLocale);
   // The preview Worker has no local API Worker. Keep the resolver's local
   // contract intact, but route the read-only M1 smoke request to production.
   if (isLocalHost(hostname)) event.locals.apiOrigin = "https://api.pirate.sc";
@@ -62,7 +70,7 @@ async function seamMiddleware(request: Request, next: () => Promise<Response>) {
         request,
         fetchImpl: (input, init) => fetch(input, { ...init, signal: controller.signal }),
       }).getJson<unknown>(
-        "/feed/home/videos/public?locale=en&sort=best",
+        `/feed/home/videos/public?locale=${encodeURIComponent(resolveLocaleLanguageTag(uiLocale))}&sort=best`,
       );
       clearTimeout(timeout);
       event.locals.publicVideoFeed = normalizePublicVideoFeed(feed);
@@ -75,7 +83,7 @@ async function seamMiddleware(request: Request, next: () => Promise<Response>) {
 
   if (url.pathname === "/seam/api" && url.searchParams.get("feed") === "1") {
     const feed = await createApiClient({ request }).getJson<unknown>(
-      "/feed/home/videos/public?locale=en&sort=best",
+      `/feed/home/videos/public?locale=${encodeURIComponent(resolveLocaleLanguageTag(uiLocale))}&sort=best`,
     );
     const items = Array.isArray(feed)
       ? feed.length

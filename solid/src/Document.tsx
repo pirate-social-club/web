@@ -4,6 +4,8 @@ export default function Document(props: { children: JSX.Element; clientEntry?: s
   const event = getRequestEvent();
   const nonce = event?.locals?.cspNonce;
   const hostContext = event?.locals?.hostContext;
+  const uiLocale = event?.locals?.uiLocale ?? "en";
+  const uiDirection = event?.locals?.uiDirection ?? "ltr";
   const clientNonce = typeof document === "undefined"
     ? nonce
     : (document.querySelector("script[nonce]") as HTMLScriptElement | null)?.nonce ?? undefined;
@@ -12,7 +14,9 @@ export default function Document(props: { children: JSX.Element; clientEntry?: s
     : [...document.scripts].find(script => script.dataset.solidEntry)?.src);
   return (
     <html
-      lang="en"
+      lang={uiLocale === "zh" ? "zh-CN" : uiLocale === "pseudo" ? "en-XA" : uiLocale}
+      dir={uiDirection}
+      data-ui-locale={uiLocale}
       data-host-surface={hostContext?.surface}
       data-community-slug={hostContext?.communitySlug ?? undefined}
       data-imported-root={hostContext?.importedRoot ? "1" : undefined}

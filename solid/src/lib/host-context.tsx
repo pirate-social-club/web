@@ -1,6 +1,8 @@
 import { getRequestEvent } from "@solidjs/web";
 import { createContext, useContext, type ParentProps } from "solid-js";
 import type { HostSurface } from "@pirate/web-platform";
+import type { UiDirection, UiLocaleCode } from "./ui-locale-core";
+import type { PublicVideoFeedPage } from "./api/public-feed";
 
 export type { HostSurface } from "@pirate/web-platform";
 
@@ -27,6 +29,9 @@ declare module "@solidjs/web" {
     seamHost?: HostSurface;
     apiOrigin?: string;
     apiFeedResult?: { ok: boolean; itemCount: number };
+    publicVideoFeed?: PublicVideoFeedPage;
+    uiLocale?: UiLocaleCode;
+    uiDirection?: UiDirection;
   }
 }
 

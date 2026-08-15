@@ -18,6 +18,8 @@ import {
 } from "../../design-system";
 import { createApiVersionQuery } from "../../lib/api/home-query";
 import { useHostContext } from "../../lib/host-context";
+import { useUiLocale } from "../../lib/ui-locale";
+import { getLocaleMessages } from "../../locales";
 
 export default function HomeRoute() {
   const [count, setCount] = createSignal(0);
@@ -29,15 +31,17 @@ export default function HomeRoute() {
   const [displayName, setDisplayName] = createSignal("");
   const apiVersion = useQuery(() => createApiVersionQuery());
   const host = useHostContext();
+  const { locale } = useUiLocale();
+  const copy = () => getLocaleMessages(locale(), "routes").home;
 
   return (
     <main data-route-path="/">
-      <Title>Home · Pirate Web</Title>
-      <Meta name="description" content="Pirate Web video feed" />
-      <Meta property="og:title" content="Pirate Web" />
+      <Title>{copy().title}</Title>
+      <Meta name="description" content={copy().description} />
+      <Meta property="og:title" content={copy().title} />
       <Meta property="og:type" content="website" />
       <Link rel="canonical" href="/" />
-      <h1>Pirate Web Solid shell</h1>
+      <h1>{copy().heading}</h1>
       <p id="seam-host">host-surface: {host.surface}</p>
       <p id="host-community-slug">host-community-slug: {host.communitySlug ?? "none"}</p>
       <p id="route-manifest">filesystem-routing routes: {pageRoutes.length}</p>

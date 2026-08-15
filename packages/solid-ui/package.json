@@ -1,0 +1,13 @@
+{
+  "name": "@pirate/web-solid-ui",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.tsx",
+    "./styles/tokens.css": "./src/styles/tokens.css"
+  },
+  "peerDependencies": {
+    "@solidjs/web": "2.0.0-rc.0",
+    "solid-js": "2.0.0-rc.0"
+  }
+}

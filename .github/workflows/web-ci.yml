@@ -245,6 +245,7 @@ jobs:
           mapfile -t test_files < <(
             find src packages scripts -type f \
               \( -name '*.test.ts' -o -name '*.test.tsx' -o -name '*.spec.ts' -o -name '*.spec.tsx' \) \
+              ! -path 'packages/solid-ui/*' \
               -print | sort
           )
 

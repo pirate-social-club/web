@@ -1,7 +1,7 @@
 # Solid cutover plan
 
 Date: 2026-08-14
-Status: proposed — interim lane ownership assigned; production sign-offs pending
+Status: proposed — single-operator lane ownership recorded; production sign-offs pending
 
 This is the source of truth for the React-to-Solid migration. A presentation
 copy exists as an HTML artifact; where the two differ, this file wins.
@@ -528,17 +528,16 @@ Estimates in this document are proposals for confirmation, not commitments.
 
 | Role | Name | Date |
 | --- | --- | --- |
-| Web Platform DRI | Workspace coordinator (interim; pending user naming) | 2026-08-15 |
-| Design System DRI | Workspace coordinator (interim; pending user naming) | 2026-08-15 |
+| Lane ownership (all three lanes) | Workspace owner (`technohippie <piratesocialclub@proton.me>`) | 2026-08-15 |
 | Cloudflare config owner | | |
 | Version-rollback runbook owner | | |
 | React team — freeze policy acceptance | | |
 
-**Interim lane assignment (2026-08-15).** The workspace coordinator in this
-session is also the interim owner for Lane R, pending the user's naming of
-human owners for Web Platform, Design System, and Lane R. This assignment
-authorizes P1 skeleton work only; Cloudflare, rollback, React-freeze, and
-production-exposure sign-offs remain open.
+**Lane ownership (2026-08-15).** This is a single-operator workspace. The
+workspace owner is the accountable human for all three lanes — Web Platform,
+Design System, and Lane R. No separate per-lane DRIs exist. Agent sessions
+execute under that ownership; they are not owners. Recorded at the owner's
+direction after the owner declined per-lane role assignment.
 
 Schedule: step 2 start/end, steps 3–4 start/end, engineers allocated.
 
@@ -561,9 +560,9 @@ that when lanes do start, they start with disjoint paths.
 
 | Lane | Owner role | Owns |
 | --- | --- | --- |
-| **P** — perimeter and bootstrap | Web Platform DRI | absorption into `solid/`, all shared configuration, `web-platform`, `route-contracts` schema, server perimeter, Cloudflare config, CI |
-| **U** — Solid UI | Design System DRI | `packages/solid-ui/**` and nothing else |
-| **R** — routes and application | unnamed | `solid/src/{app,layouts,routes,features}/**`, route e2e, Slice 0 endpoints |
+| **P** — perimeter and bootstrap | Workspace owner (single operator) | absorption into `solid/`, all shared configuration, `web-platform`, `route-contracts` schema, server perimeter, Cloudflare config, CI |
+| **U** — Solid UI | Workspace owner (single operator) | `packages/solid-ui/**` and nothing else |
+| **R** — routes and application | Workspace owner (single operator) | `solid/src/{app,layouts,routes,features}/**`, route e2e, Slice 0 endpoints |
 
 Lane P is the integration owner. It reviews every change to shared
 configuration and is the only lane that may modify it.
@@ -734,9 +733,9 @@ are resolved by adding them to the table, not by precedent.
 
 ### Still unfilled
 
-Human names for the three lane DRIs remain pending. The interim assignment
-above is the current coordination record and is not a substitute for the
-production-exposure sign-offs.
+Cloudflare configuration ownership, rollback-runbook ownership, and React
+freeze-policy acceptance remain unfilled. They gate production exposure and are
+not closed by the single-operator lane ownership record.
 
 ## Provenance
 

@@ -21,7 +21,11 @@ const tsgoBin = path.join(
   "tsgo.js",
 );
 const tscBin = path.join(rootDir, "node_modules", "typescript", "bin", "tsc");
-const typecheckBin = fs.existsSync(tsgoBin) ? tsgoBin : tscBin;
+const platformPackage = `native-preview-${process.platform}-${process.arch}`;
+const hasPlatformBinary = fs.existsSync(
+  path.join(rootDir, "node_modules", "@typescript", platformPackage),
+);
+const typecheckBin = fs.existsSync(tsgoBin) && hasPlatformBinary ? tsgoBin : tscBin;
 
 fs.mkdirSync(path.dirname(buildInfoPath), { recursive: true });
 

@@ -11,4 +11,9 @@ describe("Solid route contract schema", () => {
   test("resolves the P1 bootstrap route", () => {
     expect(routeContractFor("/")?.surface).toBe("app");
   });
+
+  test("tracks the Slice 0 routes as migrating", () => {
+    expect(routeContractFor("/privacy")?.migration).toBe("migrating");
+    expect(routeContractFor("/robots.txt")?.migration).toBe("migrating");
+  });
 });

@@ -2,7 +2,7 @@
 
 ## Repository Boundary
 
-`/home/t42/Documents/pirate-workspace` is a workspace directory, not this Git repo. This repo root is `/home/t42/Documents/pirate-workspace/web`.
+`/run/media/x42/codedrive/Code/pirate-workspace` is a workspace directory, not this Git repo. This repo root is `/run/media/x42/codedrive/Code/pirate-workspace/web`.
 
 Run web git commands from this directory. The sibling `api/` and `core/` directories are separate Git repositories and must be committed independently.
 
@@ -11,13 +11,13 @@ Run web git commands from this directory. The sibling `api/` and `core/` directo
 Use the cheap gate first:
 
 ```bash
-rtk bun run types:safe
-rtk bun run ui:audit
+bun run types:safe
+bun run ui:audit
 ```
 
-Use `rtk bun run types:safe` instead of `rtk bun run types` for routine local verification. It uses the TypeScript 7 native preview compiler (`tsgo`) with incremental build info, bounded memory, and lower process priority so it is less likely to stall the machine. Use `rtk bun run types` only when exact uncapped CI parity is required.
+Use `bun run types:safe` instead of `bun run types` for routine local verification. It uses the TypeScript 7 native preview compiler (`tsgo`) with incremental build info, bounded memory, and lower process priority so it is less likely to stall the machine. Use `bun run types` only when exact uncapped CI parity is required.
 
-Do not use bare `rtk bun test` as the repository-wide gate. It collects Playwright specs and runs unit files in one shared process, while `.github/workflows/web-ci.yml` deliberately limits discovery to `src/` and `packages/` and isolates each test file across four shards. Run focused files locally with `rtk bun test path/to/file.test.ts`; rely on `web-ci` for the full unit/component suite.
+Do not use bare `bun test` as the repository-wide gate. It collects Playwright specs and runs unit files in one shared process, while `.github/workflows/web-ci.yml` deliberately limits discovery to `src/` and `packages/` and isolates each test file across four shards. Run focused files locally with `bun test path/to/file.test.ts`; rely on `web-ci` for the full unit/component suite.
 
 Storybook is safe to run locally after the watcher exclusions in
 `.storybook/main.ts`. Those exclusions must stay in `viteFinal`: Storybook's
@@ -28,10 +28,10 @@ under `.tmp/` and `worktrees/` and retain 3–5 GB RSS.
 Use focused discovery for routine component work:
 
 ```bash
-rtk env STORYBOOK_ONLY=components/primitives bun run storybook
+env STORYBOOK_ONLY=components/primitives bun run storybook
 ```
 
-The path is relative to `src/`. Use `rtk bun run storybook` when the full local
+The path is relative to `src/`. Use `bun run storybook` when the full local
 catalog is genuinely useful. Keep one foreground instance on port 6006, never
 detach or auto-restart it, and stop it when verification is complete. Before
 starting, verify port 6006 is free and avoid overlapping Storybook with builds,
@@ -41,7 +41,7 @@ For a shareable static catalog or CI-parity build, push the intended ref and
 run the optional remote artifact workflow:
 
 ```bash
-rtk gh workflow run storybook-artifact.yml --ref <pushed-ref> -f storybook_only=components/primitives
+gh workflow run storybook-artifact.yml --ref <pushed-ref> -f storybook_only=components/primitives
 ```
 
 Monitor the run to completion and download its `storybook-static-<run-id>`
@@ -50,16 +50,22 @@ path relative to `src/` (for example `components/compositions/wallet`). This
 remote workflow is a fallback, not a prerequisite for local Storybook use.
 
 Supplement story verification with focused component tests,
-`rtk bun run types:safe`, and `rtk bun run ui:audit`. Avoid `rtk bun run build`
+`bun run types:safe`, and `bun run ui:audit`. Avoid `bun run build`
 unless a full production build is explicitly required.
 
 Value-import `@web3icons/react` icons via per-icon subpaths (`@web3icons/react/icons/tokens/TokenBTC`), never the package root barrel — the barrel alone produced a ~31 MB prebundle (~38 MB source map) during Storybook startup. Root type-only imports are safe because Vite erases them before dependency scanning.
 
+## Branch Workflow
+
+Feature work lands on a branch and merges via pull request; do not commit
+directly to `main`. Production releases go through the release branch and the
+`release.yml` workflow (see Deployment).
+
 ## Deployment
 
-Production web deploys must go through the Blacksmith GitHub Actions release workflow in `.github/workflows/release.yml`. Do not run `rtk bun run build:prod`, `rtk bun run deploy:main`, `rtk bun run deploy:public`, `wrangler deploy`, or `scripts/deploy-production.sh` locally for production unless the user explicitly asks for that exact local deploy/build command after being told the CI workflow is the normal path.
+Production web deploys must go through the Blacksmith GitHub Actions release workflow in `.github/workflows/release.yml`. Do not run `bun run build:prod`, `bun run deploy:main`, `bun run deploy:public`, `wrangler deploy`, or `scripts/deploy-production.sh` locally for production unless the user explicitly asks for that exact local deploy/build command after being told the CI workflow is the normal path.
 
-For production-ready changes, commit and push to the release branch, then use or instruct the user to use the `release.yml` workflow. Local verification should stay to focused tests, `rtk bun run types:safe`, and other cheap checks unless the user explicitly requests a local production build.
+For production-ready changes, commit and push to the release branch, then use or instruct the user to use the `release.yml` workflow. Local verification should stay to focused tests, `bun run types:safe`, and other cheap checks unless the user explicitly requests a local production build.
 
 The release workflow first checks the pinned API/Core pair and the live community
 schema fleet, then deploys staging. The Web release gate and API-owned staging
@@ -86,7 +92,7 @@ re-running the workflow. In particular:
 - Use `agent-browser` only when visual/browser verification is needed and code inspection or unit tests are insufficient.
 - Keep at most one `agent-browser` session active for this repo. Do not open multiple tabs/sessions or run `agent-browser` commands in parallel.
 - Serialize all open/wait/snapshot/screenshot/click actions. Take one snapshot or screenshot after the page is loaded, then inspect code locally before deciding whether another browser action is necessary.
-- Before starting a permitted dev server or browser session, check existing processes with `rtk ps -ef` or `rtk pgrep -af "storybook|vite|wrangler|next|6006|5173|8787"`.
+- Before starting a permitted dev server or browser session, check existing processes with `ps -ef` or `pgrep -af "storybook|vite|wrangler|next|6006|5173|8787"`.
 - Local Storybook is permitted under the Storybook rules above. Use only one browser session, and close both the session and Storybook when verification is complete.
 - If another desired dev server is already running, use the existing URL. Do not start a second instance or switch ports merely because the default port is occupied unless the user explicitly asks for a separate server.
 - Do not run browser automation while any permitted build, full typecheck, or other heavy command is running unless the user explicitly asks for that tradeoff.
@@ -130,7 +136,7 @@ re-running the workflow. In particular:
 - Form/control: default, disabled, error, and mobile where layout can change.
 - Composition/flow: default, loading, error or empty, and mobile.
 - RTL stories are required only when text direction can change layout.
-- Every exported primitive must have a same-name `.stories.tsx`; `rtk bun run ui:audit` enforces this.
+- Every exported primitive must have a same-name `.stories.tsx`; `bun run ui:audit` enforces this.
 
 ## Code Quality
 

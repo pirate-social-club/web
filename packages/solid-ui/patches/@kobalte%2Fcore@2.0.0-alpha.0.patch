@@ -278,3 +278,17 @@ index 6386365bd6e1ef3d76be952cd214f54dfa53e937..1b3565a0ac78bfe5b674026156be0959
  	const { DomCollectionProvider } = createDomCollection({
  		items,
  		onItemsChange: setItems
+
+diff --git a/dist/alert-dialog/DqopKvhq.jsx b/dist/alert-dialog/DqopKvhq.jsx
+--- a/dist/alert-dialog/DqopKvhq.jsx
++++ b/dist/alert-dialog/DqopKvhq.jsx
+@@ -23 +23 @@
+-const AlertDialog = Object.assign(DialogRoot, {
++const AlertDialog = Object.assign((props) => <DialogRoot {...props} />, {
+
+diff --git a/dist/alert-dialog/B8GtJUah.js b/dist/alert-dialog/B8GtJUah.js
+--- a/dist/alert-dialog/B8GtJUah.js
++++ b/dist/alert-dialog/B8GtJUah.js
+@@ -24 +24 @@
+-const AlertDialog = Object.assign(DialogRoot, {
++const AlertDialog = Object.assign((props) => createComponent(DialogRoot, props), {

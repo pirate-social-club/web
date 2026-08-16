@@ -104,11 +104,18 @@ async function assertResolvedApiVersion(page, name) {
 async function assertResolvedPublicFeed(page, name) {
   const feed = page.locator("#public-video-feed");
   await feed.waitFor({ state: "attached" });
-  if (await feed.getAttribute("data-feed-status") !== "ready") {
-    throw new Error(`${name} public video feed did not resolve`);
-  }
-  if (await page.locator("[data-feed-item-id]").count() < 1) {
-    throw new Error(`${name} public video feed returned no video cards`);
+  try {
+    await page.waitForFunction(() =>
+      document.querySelector("#public-video-feed")?.getAttribute("data-feed-status") === "ready"
+      && document.querySelectorAll("[data-feed-item-id]").length > 0,
+    undefined, { timeout: 5_000 });
+  } catch (error) {
+    const state = await page.evaluate(() => ({
+      status: document.querySelector("#public-video-feed")?.getAttribute("data-feed-status"),
+      itemCount: document.querySelectorAll("[data-feed-item-id]").length,
+      streamResult: document.querySelector("#stream-result")?.textContent,
+    }));
+    throw new Error(`${name} public video feed did not resolve: ${JSON.stringify(state)}; ${error.message}`);
   }
 }
 

@@ -20,6 +20,15 @@ const solidPrimitiveRoots = [
   path.join(projectRoot, "packages", "solid-ui", "src", "components"),
   path.join(projectRoot, "packages", "solid-ui", "src", "patterns"),
 ];
+const typographyRoots = [
+  path.join(projectRoot, "solid", "src"),
+  path.join(projectRoot, "packages", "solid-ui", "src"),
+];
+const typographyPrimitivePaths = new Set([
+  path.join(projectRoot, "packages", "solid-ui", "src", "components", "data-display", "type", "type.tsx"),
+].map((filePath) => path.normalize(filePath)));
+const typographyBaselinePath = path.join(projectRoot, "scripts", "ui-audit-typography-baseline.json");
+const updateTypographyBaseline = process.argv.includes("--update-typography-baseline");
 const uiSourceDirs = [
   srcDir,
   path.join(projectRoot, "solid"),
@@ -45,6 +54,7 @@ const staleRegexMarkers = [
   { label: "TUI", pattern: /\bTUI\b/u },
   { label: "tui", pattern: /\btui\b/u },
 ];
+const typographyUtilityPattern = /(?:[a-z0-9-]+:)*(?:text-(?:\[[^\]]+\]|xs|sm|base|lg|xl|2xl|3xl|4xl|5xl|6xl|7xl|8xl|9xl)|font-(?:\[[^\]]+\]|thin|extralight|light|normal|medium|semibold|bold|extrabold|black|sans|serif|mono)|leading-(?:\[[^\]]+\]|none|tight|snug|normal|relaxed|loose|[0-9]+)|tracking-(?:\[[^\]]+\]|tighter|tight|normal|wide|wider|widest))/gu;
 
 function walk(dir, options = {}) {
   const entries = fs.readdirSync(dir, { withFileTypes: true });
@@ -250,6 +260,64 @@ function checkNoSmallText() {
   };
 }
 
+function collectTypographyViolationCounts() {
+  const counts = {};
+
+  for (const filePath of walkRoots(typographyRoots, { skipIgnoredDirs: true })) {
+    if (!filePath.endsWith(".tsx") || typographyPrimitivePaths.has(path.normalize(filePath))) continue;
+
+    const count = fs
+      .readFileSync(filePath, "utf8")
+      .split("\n")
+      .reduce((total, line) => total + (line.match(typographyUtilityPattern)?.length ?? 0), 0);
+
+    if (count > 0) counts[relative(filePath)] = count;
+  }
+
+  return Object.fromEntries(Object.entries(counts).sort(([left], [right]) => left.localeCompare(right)));
+}
+
+function checkTypographyRatchet() {
+  const current = collectTypographyViolationCounts();
+
+  if (updateTypographyBaseline) {
+    fs.writeFileSync(
+      typographyBaselinePath,
+      `${JSON.stringify({ version: 1, files: current }, null, 2)}\n`,
+    );
+    return {
+      label: "typography/no-raw-utility-increase",
+      passed: true,
+      details: [`updated ${relative(typographyBaselinePath)}`],
+    };
+  }
+
+  if (!fs.existsSync(typographyBaselinePath)) {
+    return {
+      label: "typography/no-raw-utility-increase",
+      passed: false,
+      details: [`missing ${relative(typographyBaselinePath)}; run bun run ui:audit:typography-baseline`],
+    };
+  }
+
+  const baseline = JSON.parse(fs.readFileSync(typographyBaselinePath, "utf8"));
+  const baselineFiles = baseline.files ?? {};
+  const offenders = [];
+
+  for (const [filePath, count] of Object.entries(current)) {
+    const previous = Number(baselineFiles[filePath] ?? 0);
+    if (count > previous) {
+      offenders.push(`${filePath}: ${previous} -> ${count} (+${count - previous})`);
+    }
+  }
+
+  return {
+    label: "typography/no-raw-utility-increase",
+    passed: offenders.length === 0,
+    details: offenders,
+  };
+}
+
 function checkNoHardcodedColors() {
   const offenders = [];
   const bannedPatterns = [
@@ -442,6 +510,7 @@ const checks = [
   checkPrimitiveStoryCoverage(),
   checkNoDuplicateStoryBodies(),
   checkNoStoryNondeterminism(),
+  checkTypographyRatchet(),
   checkNoSmallText(),
   checkNoHardcodedColors(),
   checkNoArbitrarySpacing(),

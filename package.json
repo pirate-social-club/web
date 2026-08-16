@@ -51,6 +51,7 @@
     "deps:audit": "knip --dependencies --no-progress",
     "agents:openclaw:challenge": "node ./scripts/build-openclaw-challenge.mjs",
     "ui:audit": "node ./scripts/ui-audit.mjs",
+    "ui:audit:typography-baseline": "node ./scripts/ui-audit.mjs --update-typography-baseline",
     "size:ratchet": "node ./scripts/check-frontend-size-ratchet.mjs",
     "validate": "bun run locales:generate && bun run types && bun run boundary:audit && bun run test && bun run ui:audit",
     "types": "bun run locales:generate && tsgo --noEmit -p tsconfig.app.json",

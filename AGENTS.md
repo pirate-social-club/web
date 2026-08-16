@@ -141,6 +141,7 @@ re-running the workflow. In particular:
   each exported story must render a distinct state or interaction.
 - Every exported primitive must have a same-name `.stories.tsx`; `bun run ui:audit` enforces this for React primitives and Solid design-system entry modules.
 - Solid stories must be deterministic and offline; `bun run ui:audit` rejects timers, random values, current-time reads, and `fetch` calls.
+- `bun run ui:audit` ratchets raw typography utilities in the Solid roots by file; refresh the committed baseline only after an intentional burn-down with `bun run ui:audit:typography-baseline`.
 - Keep button labels to one word, or two when the verb needs an object; allow
   three only when naming a destination (for example, `Add to calendar`). Never
   put a sentence in a button.

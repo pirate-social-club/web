@@ -30,6 +30,12 @@ async function readApiVersionAttempts(page) {
   return page.evaluate(() => [...(window.__solidHydrationApiAttempts ?? [])]);
 }
 
+async function logApiVersionPhase(page, phase) {
+  const attempts = await readApiVersionAttempts(page);
+  console.log(JSON.stringify({ apiVersionPhase: phase, attempts }));
+  return attempts;
+}
+
 try {
   const page = await browser.newPage();
   const violations = [];
@@ -126,7 +132,7 @@ try {
   }
   await displayName.fill("Gate test");
   if (await displayName.inputValue() !== "Gate test") throw new Error("TextField controlled value did not update");
-  const apiVersionAttemptsAfterHydration = await readApiVersionAttempts(page);
+  const apiVersionAttemptsAfterHydration = await logApiVersionPhase(page, "initial hydration");
   if (apiVersionAttemptsAfterHydration.length) {
     throw new Error(`Hydrated API query attempted ${apiVersionAttemptsAfterHydration.length} time(s): ${apiVersionAttemptsAfterHydration.join(", ")}`);
   }
@@ -164,6 +170,7 @@ try {
     ogTitle: "Threads · demo",
     ogType: null,
   });
+  await logApiVersionPhase(page, "client navigation");
 
   await page.reload({ waitUntil: "networkidle" });
   await page.locator('[data-route-path="/c/:slug/threads"]').waitFor({ state: "attached" });
@@ -175,6 +182,7 @@ try {
     ogTitle: "Threads · demo",
     ogType: null,
   });
+  await logApiVersionPhase(page, "refresh");
 
   await page.goBack({ waitUntil: "networkidle" });
   await page.waitForURL(url => url.pathname === "/");
@@ -186,6 +194,7 @@ try {
     ogTitle: "Home · Pirate Web",
     ogType: "website",
   });
+  await logApiVersionPhase(page, "back navigation");
 
   await page.locator('a[href="/seam/host"]').first().click();
   await page.waitForURL(url => url.pathname === "/seam/host");
@@ -201,6 +210,7 @@ try {
   await page.goBack({ waitUntil: "networkidle" });
   await page.waitForURL(url => url.pathname === "/");
   await page.locator('[data-route-path="/"]').waitFor({ state: "attached" });
+  await logApiVersionPhase(page, "remount");
   const homeLinks = await page.locator('a[href="/p/demo-post"], a[href="/u/demo-user"]').all();
   if (homeLinks.length !== 2) throw new Error("Home route did not expose both overlap navigation links");
   await page.evaluate(() => {
@@ -235,7 +245,7 @@ try {
   await page.locator(overlap.marker).waitFor({ state: "attached" });
   await assertHead(page, "competing navigation final head cleanliness", overlap);
 
-  const apiVersionAttemptsAfterNavigation = await readApiVersionAttempts(page);
+  const apiVersionAttemptsAfterNavigation = await logApiVersionPhase(page, "competing navigation");
   if (apiVersionAttemptsAfterNavigation.length) {
     throw new Error(`API query attempted during navigation/refresh ${apiVersionAttemptsAfterNavigation.length} time(s): ${apiVersionAttemptsAfterNavigation.join(", ")}`);
   }

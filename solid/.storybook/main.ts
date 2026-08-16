@@ -2,6 +2,9 @@ import remarkGfm from "remark-gfm";
 import type { StorybookConfig } from "storybook-solidjs-vite";
 
 const config: StorybookConfig = {
+  // This app catalog intentionally stays separate from the package catalog at
+  // packages/solid-ui/.storybook (port 6007); both packages own their own
+  // Storybook environment and are published independently.
   stories: ["../src/**/*.stories.@(ts|tsx)"],
   addons: [
     {

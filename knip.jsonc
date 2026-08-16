@@ -1,8 +1,6 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema-jsonc.json",
   "ignore": [
-    "solid/**",
-    "packages/solid-ui/**",
     "packages/web-platform/**",
     "packages/route-contracts/**",
     "src/lib/auth/privy-react-auth.ssr.tsx",
@@ -73,6 +71,40 @@
     "packages/karaoke-runtime": {
       "entry": ["scripts/**/*.ts"],
       "project": ["src/**/*.ts", "tests/**/*.ts", "scripts/**/*.ts"]
+    },
+    "solid": {
+      "entry": [
+        "vite.config.ts",
+        ".storybook/vite.config.ts",
+        "src/entry-client.tsx",
+        "src/entry-server.tsx",
+        "src/middleware.ts",
+        "src/design-system.ts",
+        "src/routes/**/*.{ts,tsx}",
+        "src/**/*.stories.{ts,tsx}",
+        "src/**/*.test.{ts,tsx}",
+        "scripts/**/*.{mjs,ts}"
+      ],
+      "project": [
+        ".storybook/**/*.{ts,tsx}",
+        "scripts/**/*.{mjs,ts}",
+        "src/**/*.{ts,tsx,js,jsx}"
+      ],
+      "ignoreDependencies": ["cloudflare"],
+      "vite": false
+    },
+    "packages/solid-ui": {
+      "entry": [
+        "src/**/*.stories.{ts,tsx}",
+        "src/**/*.test.{ts,tsx}",
+        "scripts/**/*.{mjs,ts,tsx}"
+      ],
+      "project": [
+        ".storybook/**/*.{ts,tsx}",
+        "scripts/**/*.{mjs,ts,tsx}",
+        "src/**/*.{ts,tsx,js,jsx}"
+      ],
+      "vite": false
     }
   }
 }

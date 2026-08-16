@@ -10,6 +10,11 @@ const workspaceRoot = path.resolve(projectRoot, "..");
 const primitivesDir = path.join(projectRoot, "src", "components", "primitives");
 const compositionsDir = path.join(projectRoot, "src", "components", "compositions");
 const srcDir = path.join(projectRoot, "src");
+const uiSourceDirs = [
+  srcDir,
+  path.join(projectRoot, "solid"),
+  path.join(projectRoot, "packages", "solid-ui"),
+];
 const scannedExtensions = new Set([".json", ".md", ".ts", ".tsx", ".yml", ".yaml"]);
 const ignoredDirs = new Set([".git", "node_modules", ".wrangler", "dist", "storybook-static"]);
 const staleMarkers = [
@@ -45,6 +50,10 @@ function walk(dir, options = {}) {
   }
 
   return files;
+}
+
+function walkRoots(dirs, options = {}) {
+  return dirs.flatMap((dir) => walk(dir, options));
 }
 
 function relative(filePath) {
@@ -84,7 +93,7 @@ function checkPrimitiveStoryCoverage() {
 function checkNoSmallText() {
   const offenders = [];
 
-  for (const filePath of walk(srcDir)) {
+  for (const filePath of walkRoots(uiSourceDirs, { skipIgnoredDirs: true })) {
     if (!filePath.endsWith(".tsx")) continue;
 
     const lines = fs.readFileSync(filePath, "utf8").split("\n");
@@ -115,7 +124,7 @@ function checkNoHardcodedColors() {
     /\b(?:bg|text|border|ring|from|via|to)-(?:amber|blue|brown|cyan|emerald|fuchsia|gray|green|indigo|lime|neutral|orange|pink|purple|red|rose|sky|slate|stone|teal|violet|yellow|zinc)-\d{2,3}\b/,
   ];
 
-  for (const filePath of walk(srcDir)) {
+  for (const filePath of walkRoots(uiSourceDirs, { skipIgnoredDirs: true })) {
     if (!filePath.endsWith(".tsx") && !filePath.endsWith(".ts")) continue;
 
     const lines = fs.readFileSync(filePath, "utf8").split("\n");
@@ -168,7 +177,7 @@ function checkNoArbitrarySpacing() {
     /\bw-\[1px\]/,
   ];
 
-  for (const filePath of walk(srcDir)) {
+  for (const filePath of walkRoots(uiSourceDirs, { skipIgnoredDirs: true })) {
     if (!filePath.endsWith(".tsx") && !filePath.endsWith(".ts")) continue;
 
     const lines = fs.readFileSync(filePath, "utf8").split("\n");

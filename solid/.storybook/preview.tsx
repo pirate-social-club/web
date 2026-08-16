@@ -174,6 +174,11 @@ const preview: Preview = {
       ],
     },
     layout: "centered",
+    options: {
+      storySort: {
+        order: ["App", ["Foundations", "Posts", "Shell"]],
+      },
+    },
   },
 };
 

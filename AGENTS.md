@@ -136,6 +136,9 @@ re-running the workflow. In particular:
 - Form/control: default, disabled, error, and mobile where layout can change.
 - Composition/flow: default, loading, error or empty, and mobile.
 - RTL stories are required only when text direction can change layout.
+- Migration batches are counted by distinct rendered states, not export-name
+  parity. Do not satisfy coverage by aliasing one `Story` object to another;
+  each exported story must render a distinct state or interaction.
 - Every exported primitive must have a same-name `.stories.tsx`; `bun run ui:audit` enforces this.
 
 ## Code Quality

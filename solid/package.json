@@ -26,18 +26,14 @@
     "verify": "node scripts/check-solid-runtime.mjs && bun test src/lib/api/origin.test.ts && node scripts/probe.mjs && node scripts/stream-check.mjs && node scripts/hydration-check.mjs"
   },
   "dependencies": {
-    "@kobalte/core": "2.0.0-alpha.0",
     "@solidjs/meta": "1.0.0-next.2",
     "@solidjs/router": "2.0.0-next.16",
     "@solidjs/web": "2.0.0-rc.0",
     "@tanstack/solid-query": "6.0.0-rc.0",
-    "class-variance-authority": "0.7.1",
     "filesystem-routing": "0.2.1",
-    "@pirate/route-contracts": "file:../packages/route-contracts",
     "@pirate/web-platform": "file:../packages/web-platform",
     "@pirate/web-solid-ui": "file:../packages/solid-ui",
-    "solid-js": "2.0.0-rc.0",
-    "tailwind-merge": "3.6.0"
+    "solid-js": "2.0.0-rc.0"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.52.1",
@@ -47,6 +43,7 @@
     "@storybook/addon-docs": "10.5.8",
     "@tailwindcss/vite": "4.3.3",
     "@types/node": "24.3.0",
+    "jsdom": "30.0.1",
     "playwright": "1.60.0",
     "remark-gfm": "4.0.1",
     "storybook": "10.5.8",
@@ -56,8 +53,5 @@
     "vite": "8.2.1",
     "vite-plugin-solid": "3.0.0-next.27",
     "wrangler": "4.123.0"
-  },
-  "patchedDependencies": {
-    "@kobalte/core@2.0.0-alpha.0": "patches/@kobalte%2Fcore@2.0.0-alpha.0.patch"
   }
 }

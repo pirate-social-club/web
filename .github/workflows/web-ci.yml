@@ -66,8 +66,11 @@ jobs:
       - name: Audit dependency declarations
         run: bun run deps:audit
 
-      - name: Lint React hooks
+      - name: Lint web sources
         run: bun run lint:hooks
+
+      - name: Audit UI rules
+        run: bun run ui:audit
 
   solid-clean-checkout:
     name: solid-clean-checkout

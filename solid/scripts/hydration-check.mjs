@@ -219,6 +219,11 @@ try {
   if (await page.locator("[data-feed-item-id] video[controls]").count() !== await feedItems.count()) {
     throw new Error("Every public feed card must expose reachable native video controls");
   }
+  await page.waitForFunction(
+    () => document.querySelectorAll('[data-feed-active="true"]').length === 1,
+    undefined,
+    { timeout: 5_000 },
+  );
   if (await page.locator('[data-feed-active="true"]').count() !== 1) throw new Error("Feed must have exactly one active item");
 
   const button = page.locator("#hydration-button");

@@ -90,7 +90,7 @@ Notes: React `sonner.stories.tsx` maps to the Solid `overlays/toast` implementat
 | 11 | `components/compositions/app/content-rail-shell/stories/content-rail-shell.stories.tsx` | solid/src/features/shell | B6 | done — solid/src/features/shell/content-rail-shell.stories.tsx |
 | 12 | `components/compositions/app/mobile-route-shell/stories/mobile-route-shell.stories.tsx` | solid/src/features/shell | B6 | done — solid/src/features/shell/mobile-route-shell.stories.tsx |
 | 13 | `components/compositions/app/page-shell/stories/page-shell.stories.tsx` | solid/src/features/shell | B6 | done — solid/src/features/shell/page-shell.stories.tsx |
-| 14 | `components/compositions/bookings/add-to-calendar/add-to-calendar.stories.tsx` | solid/src/features/bookings | B9 | pending |
+| 14 | `components/compositions/bookings/add-to-calendar/add-to-calendar.stories.tsx` | solid/src/features/bookings/add-to-calendar | B9 | done — solid/src/features/bookings/add-to-calendar/add-to-calendar.stories.tsx; HourLong consolidated because it renders the same button |
 | 15 | `components/compositions/bookings/availability-calendar/availability-calendar.stories.tsx` | solid/src/features/bookings | B9 | pending |
 | 16 | `components/compositions/bookings/booking-cancellation-dialog/booking-cancellation-dialog.stories.tsx` | solid/src/features/bookings | B9 | pending |
 | 17 | `components/compositions/bookings/booking-checkout/booking-checkout.stories.tsx` | solid/src/features/bookings | B9 | pending |
@@ -104,7 +104,7 @@ Notes: React `sonner.stories.tsx` maps to the Solid `overlays/toast` implementat
 | 25 | `components/compositions/bookings/host-booking-page/host-booking-page.stories.tsx` | solid/src/features/bookings | B9 | pending |
 | 26 | `components/compositions/bookings/profile-bookings-section/stories/profile-bookings-section.stories.tsx` | solid/src/features/bookings | B9 | pending |
 | 27 | `components/compositions/bookings/profile-book-panel/stories/profile-book-panel.stories.tsx` | solid/src/features/bookings | B9 | pending |
-| 28 | `components/compositions/bookings/slot-picker/slot-picker.stories.tsx` | solid/src/features/bookings | B9 | pending |
+| 28 | `components/compositions/bookings/slot-picker/slot-picker.stories.tsx` | solid/src/features/bookings/slot-picker | B9 | done — solid/src/features/bookings/slot-picker/slot-picker.stories.tsx; viewport-only Mobile replay omitted |
 | 29 | `components/compositions/chat/stories/chat-route-views.stories.tsx` | solid/src/features/chat | B12 | pending |
 | 30 | `components/compositions/community/action-callout-panel/stories/action-callout-panel.stories.tsx` | solid/src/features/community | B10 | pending |
 | 31 | `components/compositions/community/agent-policy/stories/agent-policy.stories.tsx` | solid/src/features/community | B10 | pending |

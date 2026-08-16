@@ -2,7 +2,7 @@ import { getRequestEvent } from "@solidjs/web";
 import { createApiClient } from "./client";
 import { resolveLocaleLanguageTag, type UiLocaleCode } from "../ui-locale-core";
 
-export interface PublicVideoMedia {
+interface PublicVideoMedia {
   mime_type?: string | null;
   poster_ref?: string | null;
   poster_width?: number | null;
@@ -10,7 +10,7 @@ export interface PublicVideoMedia {
   storage_ref?: string | null;
 }
 
-export interface PublicVideoPost {
+interface PublicVideoPost {
   id: string;
   title?: string | null;
   caption?: string | null;
@@ -113,7 +113,7 @@ export function normalizePublicVideoFeed(input: unknown): PublicVideoFeedPage {
   return { items, next_cursor: normalizeKeysetCursor(payload.next_cursor) };
 }
 
-export async function fetchPublicVideoFeed(
+async function fetchPublicVideoFeed(
   cursor: string | null = null,
   locale: UiLocaleCode = "en",
 ): Promise<PublicVideoFeedPage> {

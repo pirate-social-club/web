@@ -11,8 +11,8 @@ import {
   mediaControlButtonVariants,
   Type,
 } from "../../../design-system";
-import { cn } from "../../../lib/cn";
-import { StoryRegistrationBadge } from "./story-registration";
+import { cn } from "../../../design-system";
+import { StoryRegistrationBadge } from "./ip-registration";
 import { postCardType } from "./styles";
 import {
   deriveVideoAttribution,
@@ -23,7 +23,7 @@ import {
 } from "./video-model";
 import type { UpstreamAttribution, VideoContentSpec } from "./types";
 
-export interface VideoPostContentLabels {
+interface VideoPostContentLabels {
   playVideo?: string;
   videoThumbnail?: string;
   ageGateVerify?: string;

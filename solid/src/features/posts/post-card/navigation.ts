@@ -2,7 +2,7 @@
 // guards and the pointer-drag suppression are pure and directly testable.
 
 /** Elements inside the card that own their own activation. */
-export const POST_CARD_INTERACTIVE_SELECTOR =
+const POST_CARD_INTERACTIVE_SELECTOR =
   "a,button,input,select,textarea,summary,[role='button'],[role='menu'],[role='menuitem'],[data-post-card-interactive='true']";
 
 export interface CardActivationEventLike {
@@ -55,7 +55,7 @@ export interface PointerPosition {
   y: number;
 }
 
-export const CARD_DRAG_THRESHOLD_PX = 6;
+const CARD_DRAG_THRESHOLD_PX = 6;
 
 /**
  * Tracks the primary pointer so a press that moves past a small threshold is

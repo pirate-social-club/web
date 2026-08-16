@@ -81,7 +81,7 @@ function routeUsesMobileCreateAction(route: ShellRoute): boolean {
     || route.kind === "popular";
 }
 
-export function resolveCreatePostPath(route: ShellRoute): string | null {
+function resolveCreatePostPath(route: ShellRoute): string | null {
   if (route.kind === "community") {
     const routeSegment = route.path.replace(/^\/c\//u, "").replace(/\/+$/u, "");
     return `/c/${routeSegment}/submit`;
@@ -92,7 +92,7 @@ export function resolveCreatePostPath(route: ShellRoute): string | null {
   return "/submit";
 }
 
-export function resolveMobileBackPath(route: ShellRoute): string | null {
+function resolveMobileBackPath(route: ShellRoute): string | null {
   if (route.kind === "community") return "/";
   if (route.kind === "community-moderation" && route.communityId) {
     return `/c/${route.communityId}/moderation`;
@@ -104,7 +104,7 @@ export function resolveMobileBackPath(route: ShellRoute): string | null {
   return null;
 }
 
-export function activeMobileNav(route: ShellRoute): FooterNavItemId {
+function activeMobileNav(route: ShellRoute): FooterNavItemId {
   if (route.kind === "inbox") return "inbox";
   if (
     route.kind === "chat" ||
@@ -125,7 +125,7 @@ export function activeMobileNav(route: ShellRoute): FooterNavItemId {
  * The media overlay drops the centre title so nothing sits on top of the
  * video that isn't a control. Every other route keeps its title.
  */
-export function resolveMobileHeaderTitle(options: {
+function resolveMobileHeaderTitle(options: {
   mediaOverlay?: boolean;
   route: ShellRoute;
   titles?: ShellHeaderTitles;

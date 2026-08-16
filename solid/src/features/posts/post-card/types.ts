@@ -28,7 +28,7 @@ type SongMode = "original" | "remix";
 type RightsBasis = "none" | "original" | "derivative" | "attribution_only" | "licensed_performance";
 type AnalysisState = "pending" | "allow" | "allow_with_required_reference" | "review_required" | "blocked";
 type ContentSafetyState = "pending" | "safe" | "sensitive" | "adult";
-export type AgeGatePolicy = "none" | "18_plus";
+type AgeGatePolicy = "none" | "18_plus";
 
 // From specs/domain/marketplace.md
 type ListingMode = "not_listed" | "listed";
@@ -54,7 +54,7 @@ export interface StemSpec {
   onDownload?: () => void;
 }
 
-export interface GenericAssetContentSpec {
+interface GenericAssetContentSpec {
   type: "generic_asset";
   assetId: string;
   assetKind: "download_file";
@@ -73,7 +73,7 @@ export interface GenericAssetContentSpec {
   onDownload?: () => void;
 }
 
-export interface SongStorageProof {
+interface SongStorageProof {
   cid: string;
   gatewayUrl: string;
   encrypted?: boolean;

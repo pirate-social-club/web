@@ -12,7 +12,7 @@ import {
   Input,
   Type,
 } from "../../../design-system";
-import { cn } from "../../../lib/cn";
+import { cn } from "../../../design-system";
 import { defaultCharityContributionPct } from "./defaults";
 import type {
   AssetRoyaltySplitState,

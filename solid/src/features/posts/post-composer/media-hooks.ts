@@ -10,7 +10,7 @@ import { extractVideoPosterFrameDataUrl } from "./video-poster";
 const portraitAspectRatioMaxWidthClass = "mx-auto w-full max-w-[22rem]";
 const defaultAspectRatioMaxWidthClass = "w-full";
 
-export function normalizeMediaAspectRatio(width: number, height: number): number | undefined {
+function normalizeMediaAspectRatio(width: number, height: number): number | undefined {
   if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
     return undefined;
   }
@@ -125,7 +125,7 @@ export function createVideoPosterUrl(file: Accessor<File | null | undefined>): A
 
 // Selected-frame poster for the publish preview. Keeps the last valid frame
 // when a new frame cannot be extracted (same as React).
-export function createVideoPosterFrameUrl(
+function createVideoPosterFrameUrl(
   file: Accessor<File | null | undefined>,
   frameSeconds: Accessor<string | undefined>,
 ): Accessor<string | undefined> {
@@ -189,7 +189,7 @@ export function createKeyboardBottomOffset(): Accessor<number> {
   return offset;
 }
 
-export interface LocalAudioPreview {
+interface LocalAudioPreview {
   durationMs: Accessor<number | undefined>;
   onPause: () => void;
   onPlay: () => Promise<void>;
@@ -200,7 +200,7 @@ export interface LocalAudioPreview {
 
 // Local <audio> preview playback for the song publish preview, ported from the
 // React useLocalAudioPreview.
-export function createLocalAudioPreview(src: Accessor<string | undefined>): LocalAudioPreview {
+function createLocalAudioPreview(src: Accessor<string | undefined>): LocalAudioPreview {
   const audio = typeof Audio === "undefined" ? null : new Audio();
   const [state, setState] = createSignal<PlaybackState>("idle");
   const [progressMs, setProgressMs] = createSignal(0);
@@ -305,7 +305,7 @@ export function createLocalAudioPreview(src: Accessor<string | undefined>): Loca
   return { durationMs, onPause, onPlay, onSeek, progressMs, state };
 }
 
-export function downloadLocalPreviewFile(url: string, filename: string | undefined) {
+function downloadLocalPreviewFile(url: string, filename: string | undefined) {
   if (typeof document === "undefined") return;
 
   const anchor = document.createElement("a");

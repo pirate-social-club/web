@@ -1,10 +1,11 @@
 import { Show, untrack } from "solid-js";
 
+import { Type } from "@/components/data-display/type/type";
 import { cn } from "@/lib/cn";
 
 import { MediaActions } from "./media-actions";
 import type { HapticKind, MediaPostData } from "./types";
-import { useVideoPlayback } from "./video-playback";
+import { createVideoPlayback } from "./video-playback";
 import { VideoPlayer } from "./video-player";
 
 export interface MediaPostProps extends MediaPostData {
@@ -40,7 +41,7 @@ const VIEW_THRESHOLD_SECONDS = 3;
 export function MediaPost(props: MediaPostProps) {
   // Pass autoplay as a getter so scroll-driven changes stay reactive.
   // forceAutoplay is a construction-time option; read it untracked.
-  const playback = useVideoPlayback({
+  const playback = createVideoPlayback({
     autoplay: () => props.autoplay ?? true,
     forceAutoplay: untrack(() => props.forceAutoplay),
   });
@@ -126,41 +127,45 @@ export function MediaPost(props: MediaPostProps) {
           <Show
             when={props.onAuthorClick}
             fallback={
-              <span class="text-lg font-semibold text-white drop-shadow-lg">
+              <span class="text-lg font-semibold text-primary-foreground drop-shadow-lg">
                 @{props.authorName}
               </span>
             }
           >
             <button
               type="button"
-              class="pointer-events-auto cursor-pointer text-lg font-semibold text-white drop-shadow-lg hover:underline"
+              class="pointer-events-auto cursor-pointer text-lg font-semibold text-primary-foreground drop-shadow-lg hover:underline"
               onClick={() => props.onAuthorClick?.()}
             >
               @{props.authorName}
             </button>
           </Show>
           <Show when={props.caption}>
-            <p class="mt-1 line-clamp-2 text-sm text-white/90">{props.caption}</p>
+            <Type as="p" variant="caption" class="mt-1 line-clamp-2 text-primary-foreground/90">
+              {props.caption}
+            </Type>
           </Show>
           <Show when={hasSoundtrack()}>
             <Show
               when={props.onSoundtrackClick}
               fallback={
-                <span class="mt-1 block text-sm text-white/70">
+                <Type as="span" variant="caption" class="mt-1 block text-primary-foreground/70">
                   {props.title}
                   {props.title && props.artist ? " - " : ""}
                   {props.artist}
-                </span>
+                </Type>
               }
             >
               <button
                 type="button"
-                class="pointer-events-auto mt-1 block cursor-pointer text-sm text-white/70 hover:underline"
+                class="pointer-events-auto mt-1 block cursor-pointer hover:underline"
                 onClick={() => props.onSoundtrackClick?.()}
               >
-                {props.title}
-                {props.title && props.artist ? " - " : ""}
-                {props.artist}
+                <Type as="span" variant="caption" class="text-primary-foreground/70">
+                  {props.title}
+                  {props.title && props.artist ? " - " : ""}
+                  {props.artist}
+                </Type>
               </button>
             </Show>
           </Show>
@@ -175,43 +180,45 @@ export function MediaPost(props: MediaPostProps) {
         <Show
           when={props.onAuthorClick}
           fallback={
-            <span class="text-lg font-semibold text-white drop-shadow-lg">
+            <span class="text-lg font-semibold text-primary-foreground drop-shadow-lg">
               @{props.authorName}
             </span>
           }
         >
           <button
             type="button"
-            class="pointer-events-auto cursor-pointer text-lg font-semibold text-white drop-shadow-lg hover:underline"
+            class="pointer-events-auto cursor-pointer text-lg font-semibold text-primary-foreground drop-shadow-lg hover:underline"
             onClick={() => props.onAuthorClick?.()}
           >
             @{props.authorName}
           </button>
         </Show>
         <Show when={props.caption}>
-          <p class="mt-1 line-clamp-2 text-sm text-white/90 drop-shadow-md">
+          <Type as="p" variant="caption" class="mt-1 line-clamp-2 text-primary-foreground/90 drop-shadow-md">
             {props.caption}
-          </p>
+          </Type>
         </Show>
         <Show when={hasSoundtrack()}>
           <Show
             when={props.onSoundtrackClick}
             fallback={
-              <span class="mt-1 block text-sm text-white/70">
+              <Type as="span" variant="caption" class="mt-1 block text-primary-foreground/70">
                 {props.title}
                 {props.title && props.artist ? " - " : ""}
                 {props.artist}
-              </span>
+              </Type>
             }
           >
             <button
               type="button"
-              class="pointer-events-auto mt-1 block cursor-pointer text-sm text-white/70 hover:underline"
+              class="pointer-events-auto mt-1 block cursor-pointer hover:underline"
               onClick={() => props.onSoundtrackClick?.()}
             >
-              {props.title}
-              {props.title && props.artist ? " - " : ""}
-              {props.artist}
+              <Type as="span" variant="caption" class="text-primary-foreground/70">
+                {props.title}
+                {props.title && props.artist ? " - " : ""}
+                {props.artist}
+              </Type>
             </button>
           </Show>
         </Show>

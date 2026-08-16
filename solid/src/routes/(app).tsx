@@ -1,13 +1,13 @@
 import type { JSX } from "@solidjs/web";
 import type { RouteSectionProps } from "@solidjs/router";
-import { useHostContext } from "../lib/host-context";
+import { createHostContext } from "../lib/host-context";
 import { RenderErrorBoundary } from "../lib/render-boundary";
-import { useUiLocale } from "../lib/ui-locale";
+import { createUiLocale } from "../lib/ui-locale";
 import { getLocaleMessages } from "../locales";
 
 export default function AppShellLayout(props: RouteSectionProps): JSX.Element {
-  const host = useHostContext();
-  const { locale } = useUiLocale();
+  const host = createHostContext();
+  const { locale } = createUiLocale();
   const shell = () => getLocaleMessages(locale(), "shell");
   return (
     <RenderErrorBoundary fallback={<main><h1>{shell().error.title}</h1></main>}>

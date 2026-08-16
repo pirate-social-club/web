@@ -17,8 +17,8 @@ import {
   TextFieldLabel,
 } from "../../design-system";
 import { createApiVersionQuery } from "../../lib/api/home-query";
-import { useHostContext } from "../../lib/host-context";
-import { useUiLocale } from "../../lib/ui-locale";
+import { createHostContext } from "../../lib/host-context";
+import { createUiLocale } from "../../lib/ui-locale";
 import { getLocaleMessages } from "../../locales";
 
 export default function HomeRoute() {
@@ -30,8 +30,8 @@ export default function HomeRoute() {
   const [dialogOpen, setDialogOpen] = createSignal(false);
   const [displayName, setDisplayName] = createSignal("");
   const apiVersion = useQuery(() => createApiVersionQuery());
-  const host = useHostContext();
-  const { locale } = useUiLocale();
+  const host = createHostContext();
+  const { locale } = createUiLocale();
   const copy = () => getLocaleMessages(locale(), "routes").home;
 
   return (

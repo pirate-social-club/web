@@ -12,8 +12,8 @@
 import { Show } from "solid-js";
 
 import { Button, FormattedText, Type } from "../../../design-system";
-import { cn } from "../../../lib/cn";
-import { useUiLocale } from "../../../lib/ui-locale";
+import { cn } from "../../../design-system";
+import { createUiLocale } from "../../../lib/ui-locale";
 import { buildPostCardTitleProps } from "./content-rules";
 import { PostCardEngagementBar } from "./engagement-bar";
 import { PostCardEventBlock } from "./event-block";
@@ -55,7 +55,7 @@ function SongCaptionBeforeMedia(props: { content: PostCardProps["content"] }) {
 }
 
 export function PostCard(props: PostCardProps) {
-  const { locale } = useUiLocale();
+  const { locale } = createUiLocale();
   const viewContext = () => props.viewContext ?? "home";
   const previewMode = () => props.previewMode ?? false;
 

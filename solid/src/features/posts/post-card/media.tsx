@@ -9,7 +9,7 @@
 import { createSignal, Match, Show, Switch } from "solid-js";
 
 import { Button, FormattedText, IconGlobe, IconLock, Type } from "../../../design-system";
-import { cn } from "../../../lib/cn";
+import { cn } from "../../../design-system";
 import { CrosspostSourcePreviewCard } from "./crosspost-preview";
 import { OfficialOEmbed, OfficialYouTubeEmbed, PostEmbedPreview } from "./embed";
 import { LiveRoomPostContent } from "./live-room-content";

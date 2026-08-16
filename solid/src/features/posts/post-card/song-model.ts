@@ -274,7 +274,7 @@ function resolveEffectiveDownloadPolicy(content: SongContentSpec): DownloadPolic
   return "stream_only";
 }
 
-export function relationshipLabel(
+function relationshipLabel(
   source: UpstreamAttribution,
   labels: SongLabels = defaultSongLabels,
 ): string {
@@ -367,11 +367,11 @@ export function resolvePlaybackDurationMs(
 // Offer/action rows (extracted from the React SongOfferRows component).
 // ---------------------------------------------------------------------------
 
-export type SongCommerceRow =
+type SongCommerceRow =
   | { kind: "buy"; ariaLabel: string; label: string }
   | { kind: "unlock"; ariaLabel: string; label: string };
 
-export type SongLearningActionModel =
+type SongLearningActionModel =
   | { kind: "callback"; ariaLabel?: string; label: string }
   | { kind: "link"; ariaLabel: string; href: string; label: string }
   | { kind: "processing"; label: string; previewOnly: boolean }

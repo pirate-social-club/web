@@ -187,7 +187,7 @@ export async function extractVideoPosterFrameDataUrl(
   }
 }
 
-export async function extractVideoPosterFrameSourceDataUrl(
+async function extractVideoPosterFrameSourceDataUrl(
   src: string,
   frameSeconds: string | undefined,
   options: VideoPosterFrameOptions = {},
@@ -195,7 +195,7 @@ export async function extractVideoPosterFrameSourceDataUrl(
   return await extractVideoPosterFrameFromObjectUrl(src, frameSeconds, options);
 }
 
-export async function extractVideoPosterFrameFile(
+async function extractVideoPosterFrameFile(
   file: File,
   frameSeconds: string | undefined,
   options: VideoPosterFrameOptions = {},

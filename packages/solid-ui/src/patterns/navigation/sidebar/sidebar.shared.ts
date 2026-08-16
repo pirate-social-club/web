@@ -19,14 +19,10 @@ export interface SidebarContextValue {
 export const SidebarContext = createContext<SidebarContextValue>();
 export const SidebarSideContext = createContext<"left" | "right">("left");
 
-export function useSidebar(): SidebarContextValue {
-  const context = useContext(SidebarContext);
-  if (!context) {
-    throw new Error("useSidebar must be used within a SidebarProvider.");
-  }
-  return context;
+export function createSidebar(): SidebarContextValue {
+  return useContext(SidebarContext);
 }
 
-export function useSidebarSide(): "left" | "right" {
+export function createSidebarSide(): "left" | "right" {
   return useContext(SidebarSideContext);
 }

@@ -5,15 +5,15 @@ import { For, Show } from "solid-js";
 
 import {
   Checkbox,
+  createIsMobile,
   FormSectionHeading,
   Label,
   Tabs,
   TabsList,
   TabsTrigger,
 } from "../../../design-system";
-import { cn } from "../../../lib/cn";
+import { cn } from "../../../design-system";
 import type { ComposerCopy } from "./copy";
-import { useIsMobile } from "../../../lib/media-query";
 import {
   References,
   SearchReferencePicker,
@@ -43,7 +43,7 @@ export function PostComposerDerivativeSection(props: {
   onAdvancePicker: () => void;
   updateDerivativeState: DerivativeStateUpdater;
 }) {
-  const isMobile = useIsMobile();
+  const isMobile = createIsMobile();
   const sourceTermsAcceptedId = "derivative-source-terms-accepted";
   const searchError = () => props.derivativeState?.searchError?.trim() || null;
   const searchLoading = () => !searchError() && (

@@ -27,7 +27,7 @@ export type SongFeaturePreview = {
   study?: Extract<PostCardContent, { type: "song" }>["study"];
 };
 
-export function formatLiveStartsAtLabel(scheduleAt: string | undefined): string | undefined {
+function formatLiveStartsAtLabel(scheduleAt: string | undefined): string | undefined {
   const value = scheduleAt?.trim();
   if (!value) return undefined;
   const timestamp = Date.parse(value);
@@ -307,7 +307,7 @@ export function buildPostComposerPreviewContent({
 
 // Event attached to the preview card (skipped for live attachments, which
 // carry their own schedule). Ported from the React buildPreviewEvent.
-export function buildPreviewEvent(event: ComposerEventState): PostCardProps["event"] | undefined {
+function buildPreviewEvent(event: ComposerEventState): PostCardProps["event"] | undefined {
   if (event.enabled !== true || !event.startsAt?.trim()) {
     return undefined;
   }

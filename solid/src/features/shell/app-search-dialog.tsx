@@ -30,7 +30,7 @@ function formatCommunityRouteLabel(communityId: string, routeSlug?: string | nul
   return `c/${routeSlug || communityId}`;
 }
 
-export interface AppSearchDialogLabels {
+interface AppSearchDialogLabels {
   searchTitle?: string;
   searchDescription?: string;
   searchAriaLabel?: string;

@@ -5,7 +5,7 @@
 import { Match, Show, Switch } from "solid-js";
 
 import { IconArrowSquareOut, Type } from "../../../design-system";
-import { cn } from "../../../lib/cn";
+import { cn } from "../../../design-system";
 import { SongPostContent } from "./song-content";
 import type { CrosspostSourcePreview, SongContentSpec, VideoContentSpec } from "./types";
 import { VideoPostContent } from "./video-content";

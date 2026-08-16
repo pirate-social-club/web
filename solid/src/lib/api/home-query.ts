@@ -1,7 +1,7 @@
 import { getRequestEvent } from "@solidjs/web";
 import { createApiClient, type ApiVersionResponse } from "./client";
 
-export const apiVersionQueryKey = ["api", "version"] as const;
+const apiVersionQueryKey = ["api", "version"] as const;
 
 export function createApiVersionQuery(request?: Request) {
   const serverRequest = request ?? getRequestEvent()?.request;

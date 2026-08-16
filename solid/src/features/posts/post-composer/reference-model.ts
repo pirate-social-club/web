@@ -54,7 +54,7 @@ export function dedupeReferences(items: ComposerReference[]) {
   });
 }
 
-export function buildManualReference(item: LiveSetlistItemInput): ComposerReference | undefined {
+function buildManualReference(item: LiveSetlistItemInput): ComposerReference | undefined {
   if (!item.titleText) {
     return undefined;
   }
@@ -76,7 +76,7 @@ export function deriveDerivativeSearchResults(
 
 // From the React live tab: setlist gate targets are public asset ids parsed
 // out of track references (manual rows never qualify).
-export function publicAssetIdFromReferenceId(referenceId: string | undefined): string | null {
+function publicAssetIdFromReferenceId(referenceId: string | undefined): string | null {
   const value = referenceId?.trim();
   if (!value) return null;
   if (value.startsWith("story:asset:")) {

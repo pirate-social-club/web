@@ -1,9 +1,9 @@
-import { createEffect, createMemo, createSignal, For, onCleanup, Show } from "solid-js";
+import { createEffect, createMemo, createSignal, For, onCleanup, Show, untrack } from "solid-js";
 import { isServer } from "@solidjs/web";
 import { useQuery } from "@tanstack/solid-query";
 import { Button } from "../design-system";
 import { RequireSession } from "../lib/auth/require-session";
-import { resolveLocaleLanguageTag, useUiLocale } from "../lib/ui-locale";
+import { createUiLocale, resolveLocaleLanguageTag } from "../lib/ui-locale";
 import { getLocaleMessages, interpolateMessage } from "../locales";
 import {
   createPublicVideoFeedQuery,
@@ -53,7 +53,7 @@ function writePosition(position: FeedPosition): void {
 }
 
 export default function PublicVideoFeed() {
-  const { locale } = useUiLocale();
+  const { locale } = createUiLocale();
   const copy = () => getLocaleMessages(locale(), "feed");
   const firstPage = useQuery(() => createPublicVideoFeedQuery(null, locale()));
   const [cursor, setCursor] = createSignal<string | null>(null);
@@ -61,11 +61,11 @@ export default function PublicVideoFeed() {
     ...createPublicVideoFeedQuery(cursor(), locale()),
     enabled: Boolean(cursor()),
   }));
-  const [pages, setPages] = createSignal<PublicVideoFeedItem[]>(firstPage.data?.items ?? []);
-  const [nextCursor, setNextCursor] = createSignal<string | null>(firstPage.data?.next_cursor ?? null);
-  const [activeId, setActiveId] = createSignal<string | null>(firstPage.data?.items[0]?.post.post.id ?? null);
-  const [reducedMotion, setReducedMotion] = createSignal(false);
-  const [isLoadingMore, setIsLoadingMore] = createSignal(false);
+  const [pages, setPages] = createSignal<PublicVideoFeedItem[]>(firstPage.data?.items ?? [], { ownedWrite: true });
+  const [nextCursor, setNextCursor] = createSignal<string | null>(firstPage.data?.next_cursor ?? null, { ownedWrite: true });
+  const [activeId, setActiveId] = createSignal<string | null>(firstPage.data?.items[0]?.post.post.id ?? null, { ownedWrite: true });
+  const [reducedMotion, setReducedMotion] = createSignal(false, { ownedWrite: true });
+  const [isLoadingMore, setIsLoadingMore] = createSignal(false, { ownedWrite: true });
   let feed: HTMLDivElement | undefined;
   const cards = new Map<string, HTMLElement>();
   const videos = new Map<string, HTMLVideoElement>();
@@ -80,25 +80,33 @@ export default function PublicVideoFeed() {
     });
   }
 
-  createEffect(() => {
-    const page = firstPage.data;
-    if (!page) return;
-    appendPage(page.items);
-    setNextCursor(page.next_cursor);
-    const stored = readPosition();
-    const initial = page.items.find(item => item.post.post.id === stored.activeId)?.post.post.id
-      ?? page.items[0]?.post.post.id
-      ?? null;
-    setActiveId(initial);
-  });
+  createEffect(
+    () => firstPage.data,
+    (page) => {
+      if (!page) return;
+      untrack(() => {
+        appendPage(page.items);
+        setNextCursor(page.next_cursor);
+        const stored = readPosition();
+        const initial = page.items.find(item => item.post.post.id === stored.activeId)?.post.post.id
+          ?? page.items[0]?.post.post.id
+          ?? null;
+        setActiveId(initial);
+      });
+    },
+  );
 
-  createEffect(() => {
-    const page = nextPage.data;
-    if (!page || !cursor()) return;
-    appendPage(page.items);
-    setNextCursor(page.next_cursor);
-    setIsLoadingMore(false);
-  });
+  createEffect(
+    () => ({ page: nextPage.data, cursor: cursor() }),
+    ({ page, cursor: activeCursor }) => {
+      if (!page || !activeCursor) return;
+      untrack(() => {
+        appendPage(page.items);
+        setNextCursor(page.next_cursor);
+      });
+      setIsLoadingMore(false);
+    },
+  );
 
   function pauseAllExcept(id: string | null): void {
     for (const [videoId, video] of videos) {
@@ -109,18 +117,20 @@ export default function PublicVideoFeed() {
     }
   }
 
-  createEffect(() => {
-    const id = activeId();
-    pauseAllExcept(id);
-    const video = id ? videos.get(id) : undefined;
-    if (!video || reducedMotion()) return;
-    void video.play().then(() => {
-      video.dataset.playbackState = "playing";
-    }).catch(() => {
-      video.dataset.playbackState = "autoplay-blocked";
-    });
-    writePosition({ activeId: id, scrollTop: feed?.scrollTop ?? 0 });
-  });
+  createEffect(
+    () => ({ id: activeId(), reducedMotion: reducedMotion() }),
+    ({ id, reducedMotion: prefersReducedMotion }) => {
+      pauseAllExcept(id);
+      const video = id ? videos.get(id) : undefined;
+      if (!video || prefersReducedMotion) return;
+      void video.play().then(() => {
+        video.dataset.playbackState = "playing";
+      }).catch(() => {
+        video.dataset.playbackState = "autoplay-blocked";
+      });
+      writePosition({ activeId: id, scrollTop: feed?.scrollTop ?? 0 });
+    },
+  );
 
   function registerCard(id: string, element: HTMLElement): void {
     cards.set(id, element);
@@ -140,31 +150,34 @@ export default function PublicVideoFeed() {
     cards.get(item.post.post.id)?.scrollIntoView({ behavior: reducedMotion() ? "auto" : "smooth", block: "center" });
   }
 
-  createEffect(() => {
-    if (isServer) return;
-    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const syncMotion = () => setReducedMotion(media.matches);
-    syncMotion();
-    media.addEventListener("change", syncMotion);
-    const observer = new IntersectionObserver(entries => {
-      const candidate = entries
-        .filter(entry => entry.isIntersecting)
-        .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-      const id = candidate?.target.getAttribute("data-feed-item-id");
-      if (id && (candidate?.intersectionRatio ?? 0) >= 0.5) setActiveId(id);
-    }, { threshold: [0.5, 0.75, 1] });
-    for (const card of cards.values()) observer.observe(card);
-    const stored = readPosition();
-    if (stored.scrollTop > 0) requestAnimationFrame(() => { const element = currentFeed(feed); if (element) element.scrollTop = stored.scrollTop; });
-    const save = () => writePosition({ activeId: activeId(), scrollTop: currentFeed(feed)?.scrollTop ?? 0 });
-    currentFeed(feed)?.addEventListener("scroll", save, { passive: true });
-    onCleanup(() => {
-      observer.disconnect();
-      media.removeEventListener("change", syncMotion);
-      currentFeed(feed)?.removeEventListener("scroll", save);
-      save();
-    });
-  });
+  createEffect(
+    () => isServer,
+    (server) => {
+      if (server) return;
+      const media = window.matchMedia("(prefers-reduced-motion: reduce)");
+      const syncMotion = () => setReducedMotion(media.matches);
+      syncMotion();
+      media.addEventListener("change", syncMotion);
+      const observer = new IntersectionObserver(entries => {
+        const candidate = entries
+          .filter(entry => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+        const id = candidate?.target.getAttribute("data-feed-item-id");
+        if (id && (candidate?.intersectionRatio ?? 0) >= 0.5) setActiveId(id);
+      }, { threshold: [0.5, 0.75, 1] });
+      for (const card of cards.values()) observer.observe(card);
+      const stored = readPosition();
+      if (stored.scrollTop > 0) requestAnimationFrame(() => { const element = currentFeed(feed); if (element) element.scrollTop = stored.scrollTop; });
+      const save = () => writePosition({ activeId: activeId(), scrollTop: currentFeed(feed)?.scrollTop ?? 0 });
+      currentFeed(feed)?.addEventListener("scroll", save, { passive: true });
+      onCleanup(() => {
+        observer.disconnect();
+        media.removeEventListener("change", syncMotion);
+        currentFeed(feed)?.removeEventListener("scroll", save);
+        save();
+      });
+    },
+  );
 
   function loadMore(): void {
     const next = nextCursor();

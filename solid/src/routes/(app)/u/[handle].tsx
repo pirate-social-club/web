@@ -1,11 +1,11 @@
 import { Link, Meta, Title } from "@solidjs/meta";
 import { useParams } from "@solidjs/router";
-import { useUiLocale } from "../../../lib/ui-locale";
+import { createUiLocale } from "../../../lib/ui-locale";
 import { getLocaleMessages, interpolateMessage } from "../../../locales";
 
 export default function ProfileRoute() {
   const params = useParams();
-  const { locale } = useUiLocale();
+  const { locale } = createUiLocale();
   const copy = () => getLocaleMessages(locale(), "routes").profile;
   const handle = () => params.handle ?? "";
   const title = () => interpolateMessage(copy().title, { handle: handle() });

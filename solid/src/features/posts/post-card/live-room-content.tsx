@@ -21,7 +21,7 @@ import {
   IconUsers,
   Type,
 } from "../../../design-system";
-import { cn } from "../../../lib/cn";
+import { cn } from "../../../design-system";
 import {
   defaultLiveRoomLabels,
   deriveLiveRoomUi,

@@ -4,7 +4,7 @@
 // kind transitions all live here so the step components stay thin views.
 //
 // Differences from the React source:
-// - `useIsMobile`/`useUiLocale` became injected options (`isMobile` accessor);
+// - `createIsMobile`/`createUiLocale` became injected options (`isMobile` accessor);
 //   copy comes from ./copy (the Solid locale catalogs have no createPost
 //   namespace).
 // - Uncontrolled draft slices are signals; controlled slices read props

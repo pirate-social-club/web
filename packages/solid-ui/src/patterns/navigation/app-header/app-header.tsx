@@ -20,7 +20,7 @@ import { createClientHydrated } from "@/lib/hydration";
 import { createIsMobile } from "@/lib/media-query";
 import { cn } from "@/lib/cn";
 
-import { useSidebar } from "../sidebar/sidebar.shared";
+import { createSidebar } from "../sidebar/sidebar.shared";
 
 function formatUnreadCount(count: number): string {
   return count > 99 ? "99+" : String(count);
@@ -55,7 +55,7 @@ function CreatePostGlyph() {
 }
 
 function SidebarMenuToggleButton(props: { ariaLabel: string }) {
-  const { toggleSidebar } = useSidebar();
+  const { toggleSidebar } = createSidebar();
 
   return (
     <IconButton aria-label={props.ariaLabel} data-app-header-icon onClick={toggleSidebar} variant="ghost">

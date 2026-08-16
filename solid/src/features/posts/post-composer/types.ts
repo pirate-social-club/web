@@ -49,10 +49,10 @@ type LiveAudienceGateMode = "community_members" | "purchase_entitlement";
 
 type LiveVisibility = "public" | "unlisted";
 
-export type PostAudience = "public" | "members_only";
+type PostAudience = "public" | "members_only";
 export type AuthorAgeGatePolicy = "none" | "18_plus";
 
-export type LiveSetlistItemKind = "original" | "cover" | "remix" | "dj_playback" | "unknown";
+type LiveSetlistItemKind = "original" | "cover" | "remix" | "dj_playback" | "unknown";
 
 interface LivePerformerAllocation {
   userId: string;
@@ -65,7 +65,7 @@ type DerivativeTrigger = "remix" | "declaration" | "uses_song";
 export type IdentityMode = "public" | "anonymous";
 export type AuthorMode = "human" | "agent";
 
-export interface QualifierOption {
+interface QualifierOption {
   qualifierId: string;
   label: string;
   description?: string;
@@ -198,7 +198,7 @@ export interface AssetLicenseState {
   commercialRevSharePct?: number;
 }
 
-export interface AssetRoyaltyAllocation {
+interface AssetRoyaltyAllocation {
   id: string;
   recipientKind: "creator" | "collaborator";
   walletAddress?: string;
@@ -279,7 +279,7 @@ export interface ComposerIdentityState {
   helpText?: string;
 }
 
-export interface PostComposerDraftState {
+interface PostComposerDraftState {
   mode: ComposerTab;
   titleValue?: string;
   titleCountLabel?: string;
@@ -308,7 +308,7 @@ export interface PostComposerDraftState {
   regionalPricingPreview?: RegionalPricingPreview | null;
 }
 
-export interface PostComposerDraftActions {
+interface PostComposerDraftActions {
   onCaptionValueChange?: (value: string) => void;
   onImageUploadChange?: (file: File | null) => void;
   onTextBodyValueChange?: (value: string) => void;
@@ -363,7 +363,7 @@ export interface SubmitProgress {
   display: SubmitProgressDisplay;
 }
 
-export interface PostComposerSubmitState {
+interface PostComposerSubmitState {
   canContinue?: boolean;
   canPost?: boolean;
   disabled?: boolean;

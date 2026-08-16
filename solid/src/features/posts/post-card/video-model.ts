@@ -86,7 +86,7 @@ export function deriveVideoOffer(content: VideoContentSpec, ui: DerivedVideoUI):
   return { kind: "none" };
 }
 
-export function deriveVideoDerivativeSummary(upstreamAttributions?: UpstreamAttribution[]): string | null {
+function deriveVideoDerivativeSummary(upstreamAttributions?: UpstreamAttribution[]): string | null {
   if (!upstreamAttributions || upstreamAttributions.length === 0) {
     return null;
   }

@@ -48,7 +48,7 @@ export const communityItems = [
   { communityId: "c/builders", displayName: "c/builders" },
 ];
 
-export function progress(input: Partial<SubmitProgress> & Pick<SubmitProgress, "phase" | "label">): SubmitProgress {
+function progress(input: Partial<SubmitProgress> & Pick<SubmitProgress, "phase" | "label">): SubmitProgress {
   return {
     currentIndex: 2,
     totalSteps: 5,

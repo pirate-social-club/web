@@ -9,7 +9,7 @@ import {
   hostName,
   isLocalHost,
 } from "@pirate/web-platform";
-import type { HostContext } from "./lib/host-context";
+import type { HostContextValue } from "./lib/host-context";
 import { createApiClient } from "./lib/api/client";
 import { normalizePublicVideoFeed } from "./lib/api/public-feed";
 import {
@@ -24,7 +24,7 @@ function makeNonce(): string {
   return btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
 }
 
-function makeHostContext(request: Request): HostContext {
+function makeHostContext(request: Request): HostContextValue {
   const host = request.headers.get("host") ?? "";
   const surface = classifyHost(host);
   const trusted = request.headers.get("x-pirate-hns-trusted-forwarder") === "1";

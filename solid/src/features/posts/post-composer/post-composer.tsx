@@ -1,9 +1,8 @@
 import { Show } from "solid-js";
 import { createPostComposerController } from "./controller";
 import type { PostComposerProps } from "./types";
-import { useIsMobile } from "../../../lib/media-query";
-import { Card, Type } from "../../../design-system";
-import { cn } from "../../../lib/cn";
+import { Card, createIsMobile, Type } from "../../../design-system";
+import { cn } from "../../../design-system";
 import { ShellPill } from "./fields";
 import { PostComposerDetailsStep } from "./details-step";
 import { PostComposerPublishSettings } from "./publish-settings";
@@ -12,7 +11,7 @@ import { PostComposerDesktopFooter, PostComposerMobileSubmitBar } from "./submit
 import { PostComposerWriteStep } from "./write-step";
 
 export function PostComposer(props: PostComposerProps) {
-  const controller = createPostComposerController(props, { isMobile: useIsMobile() });
+  const controller = createPostComposerController(props, { isMobile: createIsMobile() });
   const heading = () => controller.step.isWriteStep
     ? "Create post"
     : controller.step.isDetailsStep
@@ -48,6 +47,7 @@ function ShowMobileHeader(props: { controller: ReturnType<typeof createPostCompo
   return (
     <Show when={props.controller.isMobile()}>
       <div class="flex w-full flex-wrap items-center justify-between gap-3">
+        <Type as="h1" variant="h2" class="w-full">{props.heading}</Type>
         <ShellPill
           avatarSrc={props.controller.community.avatarSrc}
           class="w-full"

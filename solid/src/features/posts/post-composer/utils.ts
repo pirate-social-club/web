@@ -48,7 +48,7 @@ export function normalizeHttpUrl(value: string) {
   return parse(`https://${trimmed}`);
 }
 
-export function composerTabHasDetailsStep(mode: ComposerTab) {
+function composerTabHasDetailsStep(mode: ComposerTab) {
   return mode === "song" || mode === "video";
 }
 
@@ -131,7 +131,7 @@ export function normalizeSecondsInput(value: string): string {
   return String(Math.min(Number.parseInt(digits, 10), 86_400));
 }
 
-export function formatPreviewPrice(value?: string) {
+function formatPreviewPrice(value?: string) {
   const normalized = value?.trim();
   if (!normalized) return "$1.00";
   return normalized.startsWith("$") ? normalized : `$${normalized}`;

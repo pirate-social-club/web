@@ -69,7 +69,7 @@ const MEANINGFUL_PROGRESS_PHASES: ReadonlySet<SubmitProgressPhase> = new Set([
 // type, so a flow that collapses to a single slow step at runtime (e.g. a song
 // post reusing a pre-uploaded bundle) is presented as activity, not a misleading
 // "1/4"-style pipeline.
-export function resolveSubmitProgressDisplay(
+function resolveSubmitProgressDisplay(
   steps: SubmitProgressStep[],
 ): SubmitProgressDisplay {
   const meaningfulCount = steps.reduce(

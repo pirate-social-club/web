@@ -8,8 +8,8 @@ import {
   IconShield,
   IconWarningCircle,
 } from "../../../design-system";
-import { cn } from "../../../lib/cn";
-import { useUiLocale } from "../../../lib/ui-locale";
+import { cn } from "../../../design-system";
+import { createUiLocale } from "../../../lib/ui-locale";
 import { PostCardActionMenu } from "./action-menu";
 import { buildNationalityBadgeLabel, nationalityMatchesQualifier } from "./nationality";
 import { postCardType } from "./styles";
@@ -22,7 +22,7 @@ import type {
   PostCardViewContext,
 } from "./types";
 
-export function deriveIdentityPresentation(
+function deriveIdentityPresentation(
   viewContext: PostCardViewContext,
   identityPresentation?: PostCardIdentityPresentation,
 ): PostCardIdentityPresentation {
@@ -30,7 +30,7 @@ export function deriveIdentityPresentation(
   return viewContext === "home" || viewContext === "profile" ? "community_primary" : "author_primary";
 }
 
-export function resolveIdentities(
+function resolveIdentities(
   byline: PostCardByline,
   identityPresentation: PostCardIdentityPresentation,
 ): {
@@ -336,7 +336,7 @@ function PostCardBylineContent(props: {
   );
 }
 
-export interface PostCardHeaderLabels {
+interface PostCardHeaderLabels {
   /** Verb phrase between the agent label and its owner (React: locale copy). */
   ownedBy?: string;
   postOptions?: string;
@@ -359,7 +359,7 @@ export interface PostCardHeaderProps {
 }
 
 export function PostCardHeader(props: PostCardHeaderProps) {
-  const { locale } = useUiLocale();
+  const { locale } = createUiLocale();
   const resolvedPresentation = () => deriveIdentityPresentation(props.viewContext, props.identityPresentation);
   const identities = () => resolveIdentities(props.byline, resolvedPresentation());
   const avatarIdentity = () => props.byline.agentAuthor

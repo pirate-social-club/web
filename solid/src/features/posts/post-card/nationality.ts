@@ -2,7 +2,7 @@
 // a curated dataset (src/lib/countries); the Solid port uses Intl.DisplayNames
 // directly, which covers the alpha-2 codes these helpers accept.
 
-export function getCountryDisplayName(
+function getCountryDisplayName(
   countryCode: string,
   locale?: string | null,
 ): string | null {

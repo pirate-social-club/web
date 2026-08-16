@@ -9,8 +9,8 @@ import {
   IconVideoCamera,
   Type,
 } from "../../../design-system";
-import { cn } from "../../../lib/cn";
-import { useUiLocale } from "../../../lib/ui-locale";
+import { cn } from "../../../design-system";
+import { createUiLocale } from "../../../lib/ui-locale";
 import { postCardReadableWidth, postCardTextWrap } from "./styles";
 import type { PostCardEvent } from "./types";
 
@@ -113,7 +113,7 @@ function formatTimezoneLabel(date: Date, locale: string, timezone: string): stri
   }
 }
 
-export function formatEventTime(event: PostCardEvent, locale: string): string {
+function formatEventTime(event: PostCardEvent, locale: string): string {
   const start = parseEventDate(event.startsAt);
   if (!start) return event.startsAt;
 
@@ -218,7 +218,7 @@ export function PostCardEventBlock(props: {
   event: PostCardEvent;
   showEventUrl?: boolean;
 }) {
-  const { locale } = useUiLocale();
+  const { locale } = createUiLocale();
   const timeLabel = () => formatEventTime(props.event, locale());
   const status = () => eventStatusLabel(props.event.status);
   const locationLabel = () => props.event.isOnline

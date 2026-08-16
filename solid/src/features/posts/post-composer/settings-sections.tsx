@@ -16,7 +16,7 @@ import {
   RadioIndicator,
   Type,
 } from "../../../design-system";
-import { cn } from "../../../lib/cn";
+import { cn } from "../../../design-system";
 import { RegionalPricingPreviewDialog } from "./regional-pricing";
 import { RoyaltySplitEditor } from "./royalty-split-editor";
 import { normalizePriceInput, normalizeRoyaltyInput, normalizeSecondsInput } from "./utils";

@@ -148,7 +148,7 @@ export function extractEmbeddedAudioArtworkBytes(bytes: Uint8Array): EmbeddedArt
   return null;
 }
 
-export async function extractEmbeddedAudioArtworkFile(file: File): Promise<File | null> {
+async function extractEmbeddedAudioArtworkFile(file: File): Promise<File | null> {
   const bytes = new Uint8Array(await file.arrayBuffer());
   const artwork = extractEmbeddedAudioArtworkBytes(bytes);
 

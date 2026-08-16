@@ -2,7 +2,7 @@ import type { JSX } from "@solidjs/web";
 
 import { MobilePageHeader } from "../../design-system";
 
-import { cn } from "../../lib/cn";
+import { cn } from "../../design-system";
 
 export interface MobileRouteShellProps {
   children?: JSX.Element;

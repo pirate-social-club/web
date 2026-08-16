@@ -26,7 +26,7 @@ import {
   SIDEBAR_WIDTH_MOBILE_VARIABLE,
   SidebarContext,
   SidebarSideContext,
-  useSidebar,
+  createSidebar,
 } from "./sidebar.shared";
 
 export interface SidebarProviderProps {
@@ -123,7 +123,7 @@ export interface SidebarProps {
 }
 
 export function Sidebar(props: SidebarProps) {
-  const { isMobile, state, openMobile, setOpenMobile } = useSidebar();
+  const { isMobile, state, openMobile, setOpenMobile } = createSidebar();
   const side = () => props.side ?? "left";
   const variant = () => props.variant ?? "sidebar";
   const collapsible = () => props.collapsible ?? "offcanvas";

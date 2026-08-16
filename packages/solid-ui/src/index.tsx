@@ -7,6 +7,14 @@
 //   the real Button and DialogTrigger deliberately dropped polymorphism.
 //   Call sites passing `as` must render the real trigger directly.
 
+export { cn } from "./lib/cn";
+export {
+  MOBILE_BREAKPOINT,
+  MOBILE_BREAKPOINT_QUERY,
+  createIsMobile,
+  createMediaQuery,
+} from "./lib/media-query";
+
 export {
   Button,
   buttonVariants,
@@ -438,8 +446,8 @@ export {
   SidebarRail,
   SidebarSeparator,
   SidebarTrigger,
-  useSidebar,
-  useSidebarSide,
+  createSidebar,
+  createSidebarSide,
   type SidebarContextValue,
   type SidebarMenuButtonProps,
   type SidebarProps,

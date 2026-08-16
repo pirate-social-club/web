@@ -1,7 +1,7 @@
 import { getRequestEvent } from "@solidjs/web";
 import { resolveApiOriginFromHostname } from "./origin";
 
-export function resolveApiOriginForRequest(request?: Request): string {
+function resolveApiOriginForRequest(request?: Request): string {
   const eventOrigin = getRequestEvent()?.locals?.apiOrigin;
   if (eventOrigin) return eventOrigin;
 

@@ -12,12 +12,12 @@ import {
 import { cn } from "@/lib/cn";
 import { cva, type VariantProps } from "@/lib/recipe";
 
-import { useSidebar, useSidebarSide } from "./sidebar.shared";
+import { createSidebar, createSidebarSide } from "./sidebar.shared";
 
 export function SidebarTrigger(
   props: ParentProps<{ class?: string; label?: string; onClick?: () => void }>,
 ) {
-  const { toggleSidebar } = useSidebar();
+  const { toggleSidebar } = createSidebar();
 
   return (
     <Button
@@ -37,7 +37,7 @@ export function SidebarTrigger(
 }
 
 export function SidebarRail(props: { class?: string; label?: string }) {
-  const { toggleSidebar } = useSidebar();
+  const { toggleSidebar } = createSidebar();
 
   return (
     <button
@@ -191,8 +191,8 @@ export interface SidebarMenuButtonProps
 }
 
 export function SidebarMenuButton(props: SidebarMenuButtonProps) {
-  const { isMobile, state } = useSidebar();
-  const side = useSidebarSide();
+  const { isMobile, state } = createSidebar();
+  const side = createSidebarSide();
 
   const className = createMemo(() =>
     cn(

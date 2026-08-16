@@ -6,8 +6,8 @@
 import { createEffect, createSignal, For, onCleanup, Show } from "solid-js";
 
 import { IconArrowSquareOut } from "../../../design-system";
-import { cn } from "../../../lib/cn";
-import { useUiLocale } from "../../../lib/ui-locale";
+import { cn } from "../../../design-system";
+import { createUiLocale } from "../../../lib/ui-locale";
 import {
   buildEmbedSparkline,
   buildSandboxedXEmbedSrcDoc,
@@ -47,7 +47,7 @@ function PredictionMarketEmbed(props: {
   content: EmbedContent;
   labels: PostEmbedLabels;
 }) {
-  const { locale } = useUiLocale();
+  const { locale } = createUiLocale();
   const labels = () => useEmbedLabels(props.labels);
   const preview = () => props.content.preview;
   const question = () => resolveEmbedText(props.content, labels());

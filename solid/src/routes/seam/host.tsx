@@ -1,7 +1,7 @@
-import { useHostContext } from "../../lib/host-context";
+import { createHostContext } from "../../lib/host-context";
 
 export default function HostSeamRoute() {
-  const host = useHostContext();
+  const host = createHostContext();
   return (
     <main data-route-path="/seam/host">
       <h1>Host seam</h1>

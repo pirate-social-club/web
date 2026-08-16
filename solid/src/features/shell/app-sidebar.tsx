@@ -26,13 +26,13 @@ import {
   SidebarRail,
   SidebarSeparator,
   Type,
-  useSidebar,
+  createSidebar,
 } from "../../design-system";
 
-import { cn } from "../../lib/cn";
+import { cn } from "../../design-system";
 import { VersionBadge } from "./version-badge";
 
-export type SidebarIconComponent = Component<{ class?: string }>;
+type SidebarIconComponent = Component<{ class?: string }>;
 
 export interface AppSidebarPrimaryItem {
   avatarFallback?: string;
@@ -47,7 +47,7 @@ export interface AppSidebarPrimaryItem {
   onSelect?: () => void;
 }
 
-export interface AppSidebarSectionItem {
+interface AppSidebarSectionItem {
   avatarSrc?: string | null;
   icon?: SidebarIconComponent;
   id: string;
@@ -88,7 +88,7 @@ function normalizeUnreadCount(count: number | undefined): number {
   return Math.max(0, Math.floor(count));
 }
 
-export function filterPrimaryItemsForLayout(
+function filterPrimaryItemsForLayout(
   items: readonly AppSidebarPrimaryItem[],
   isMobile: boolean,
 ): readonly AppSidebarPrimaryItem[] {
@@ -252,7 +252,7 @@ export interface AppSidebarProps {
   versionWebSha?: string | null;
 }
 
-export function communityBrandInitial(label: string | null | undefined): string {
+function communityBrandInitial(label: string | null | undefined): string {
   const first = Array.from(label?.trim() ?? "")[0];
   return first?.toLocaleUpperCase() ?? "C";
 }
@@ -265,7 +265,7 @@ const DEFAULT_PRIMARY_ITEMS: readonly AppSidebarPrimaryItem[] = [
 ];
 
 export function AppSidebar(props: AppSidebarProps) {
-  const { isMobile, setOpenMobile } = useSidebar();
+  const { isMobile, setOpenMobile } = createSidebar();
 
   const handleItemSelect = (onSelect?: () => void) => {
     onSelect?.();

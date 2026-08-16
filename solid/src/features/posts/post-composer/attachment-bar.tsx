@@ -14,7 +14,7 @@ import {
   IconMusicNote,
   IconVideoCamera,
 } from "../../../design-system";
-import { cn } from "../../../lib/cn";
+import { cn } from "../../../design-system";
 import type { AttachmentAction, AttachmentActionIcon } from "./defaults";
 import type { AttachmentKind } from "./types";
 
@@ -41,7 +41,7 @@ export function PostComposerMobileAttachmentBar(props: {
   activeKind: AttachmentKind | null;
   onSelect: (kind: AttachmentKind) => void;
 }) {
-  const bar = (
+  const Bar = () => (
     <div class="fixed inset-x-0 bottom-0 z-30 border-t border-border-soft bg-background/95 px-5 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl">
       <div class="flex items-center justify-between py-3">
         <For each={props.actions}>
@@ -63,9 +63,9 @@ export function PostComposerMobileAttachmentBar(props: {
     </div>
   );
 
-  if (typeof document === "undefined") return bar;
+  if (typeof document === "undefined") return <Bar />;
 
-  return <Portal>{bar}</Portal>;
+  return <Portal><Bar /></Portal>;
 }
 
 export function PostComposerDesktopAttachmentToolbar(props: {

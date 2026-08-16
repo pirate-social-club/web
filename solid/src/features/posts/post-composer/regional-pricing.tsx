@@ -17,19 +17,19 @@ import {
   IconButton,
   IconX,
 } from "../../../design-system";
-import { cn } from "../../../lib/cn";
-import { useUiLocale } from "../../../lib/ui-locale";
+import { cn } from "../../../design-system";
+import { createUiLocale } from "../../../lib/ui-locale";
 import { resolveLocaleLanguageTag } from "../../../lib/ui-locale-core";
 import type { RegionalPricingPreview, RegionalPricingTierPreview } from "./types";
 
-export function parseUsdInput(value: string | null | undefined): number | null {
+function parseUsdInput(value: string | null | undefined): number | null {
   const normalized = value?.replace(/[^0-9.]/g, "") ?? "";
   if (!normalized) return null;
   const parsed = Number.parseFloat(normalized);
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-export function formatUsdLabel(value: number | null | undefined, localeTag = "en"): string | undefined {
+function formatUsdLabel(value: number | null | undefined, localeTag = "en"): string | undefined {
   if (typeof value !== "number" || Number.isNaN(value)) {
     return undefined;
   }
@@ -79,7 +79,7 @@ function RegionalPricingPreviewBody(props: {
   priceUsd: string;
   preview: RegionalPricingPreview | null | undefined;
 }) {
-  const { locale } = useUiLocale();
+  const { locale } = createUiLocale();
   const localeTag = () => resolveLocaleLanguageTag(locale());
   const defaultTier = () => props.preview?.tiers.find((tier) => tier.tierKey === props.preview?.defaultTierKey) ?? props.preview?.tiers[0] ?? null;
   const baseLabel = () => formatUsdLabel(parseUsdInput(props.priceUsd), localeTag()) ?? "$0.00";

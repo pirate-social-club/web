@@ -14,7 +14,7 @@ import {
   Label,
   Type,
 } from "../../../design-system";
-import { cn } from "../../../lib/cn";
+import { cn } from "../../../design-system";
 import { FieldLabel } from "./fields";
 import type { ComposerEventPlace, ComposerEventState } from "./types";
 
@@ -233,6 +233,7 @@ export function PostComposerEventSection(props: {
     <section class={cn("space-y-4 border-t border-border-soft pt-4", props.class)}>
       <div class="flex items-center gap-3">
         <Checkbox
+          aria-label="Add date and place"
           checked={enabled()}
           id="post-event-enabled"
           onChange={(checked) =>
@@ -318,6 +319,7 @@ export function PostComposerEventSection(props: {
 
           <div class="flex items-center gap-3">
             <Checkbox
+              aria-label="Online event"
               checked={isOnline()}
               id="post-event-online"
               onChange={(checked) =>

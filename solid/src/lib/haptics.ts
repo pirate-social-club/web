@@ -7,7 +7,7 @@ const HAPTIC_PATTERNS = {
   success: [14, 28, 18],
 } as const;
 
-export function supportsHaptics(): boolean {
+function supportsHaptics(): boolean {
   if (typeof window === "undefined" || typeof navigator.vibrate !== "function") return false;
   if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return false;
   return window.navigator.maxTouchPoints > 0
@@ -27,7 +27,7 @@ export function triggerNavigationTapHaptic(): void {
   triggerHaptic(HAPTIC_PATTERNS.navigation);
 }
 
-export function triggerLikeToggleHaptic(nextLiked: boolean): void {
+function triggerLikeToggleHaptic(nextLiked: boolean): void {
   triggerHaptic(nextLiked ? HAPTIC_PATTERNS.light : HAPTIC_PATTERNS.navigation);
 }
 
@@ -35,6 +35,6 @@ export function triggerShareSuccessHaptic(): void {
   triggerHaptic(HAPTIC_PATTERNS.light);
 }
 
-export function triggerCommentTapHaptic(): void {
+function triggerCommentTapHaptic(): void {
   triggerHaptic(HAPTIC_PATTERNS.comment);
 }

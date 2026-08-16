@@ -19,7 +19,7 @@ import {
  * SSR-safe (no browser APIs at module scope).
  */
 
-export interface VideoPlaybackContextValue {
+interface VideoPlaybackContextValue {
   /** True once the user has interacted with any player under this provider. */
   hasUserInteracted: Accessor<boolean>;
   /** Record a user interaction (unlocks autoplay for the rest of the session). */
@@ -44,17 +44,17 @@ export function VideoPlaybackProvider(props: ParentProps) {
   });
 }
 
-export interface UseVideoPlaybackOptions {
+export interface CreateVideoPlaybackOptions {
   /**
    * Reactive autoplay input. Pass a getter so scroll-driven changes track:
-   * `useVideoPlayback({ autoplay: () => props.autoplay })`.
+   * `createVideoPlayback({ autoplay: () => props.autoplay })`.
    */
   autoplay?: Accessor<boolean>;
   /** Bypass the first-interaction gate (e.g. muted preview surfaces). */
   forceAutoplay?: boolean;
 }
 
-export interface UseVideoPlaybackReturn {
+export interface CreateVideoPlaybackReturn {
   isPlaying: Accessor<boolean>;
   isMuted: Accessor<boolean>;
   currentTime: Accessor<number>;
@@ -70,9 +70,9 @@ export interface UseVideoPlaybackReturn {
  * Playback state for one post. Standalone use (no VideoPlaybackProvider)
  * falls back to a per-hook interaction gate.
  */
-export function useVideoPlayback(
-  options: UseVideoPlaybackOptions = {},
-): UseVideoPlaybackReturn {
+export function createVideoPlayback(
+  options: CreateVideoPlaybackOptions = {},
+): CreateVideoPlaybackReturn {
   const context = useContext(VideoPlaybackContext);
   const [localInteracted, setLocalInteracted] = createSignal(false);
   const hasUserInteracted = () =>

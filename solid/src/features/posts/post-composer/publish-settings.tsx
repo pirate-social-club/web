@@ -1,7 +1,7 @@
 import { Show } from "solid-js";
 
 import { CardContent, Type } from "../../../design-system";
-import { cn } from "../../../lib/cn";
+import { cn } from "../../../design-system";
 import type { PostComposerController } from "./controller";
 
 export function PostComposerPublishSettings(props: { controller: PostComposerController }) {
@@ -23,8 +23,10 @@ export function PostComposerPublishSettings(props: { controller: PostComposerCon
       </div>
       <section class="space-y-3 rounded-[var(--radius-lg)] border border-border-soft bg-card p-4">
         <div class="flex items-center gap-3">
-          <div class="grid size-10 place-items-center rounded-full bg-muted text-sm font-semibold text-muted-foreground">
-            {identity().slice(0, 2).toUpperCase()}
+          <div class="grid size-10 place-items-center rounded-full bg-muted text-muted-foreground">
+            <Type as="span" variant="body-strong" class="text-muted-foreground">
+              {identity().slice(0, 2).toUpperCase()}
+            </Type>
           </div>
           <div class="min-w-0">
             <Type as="p" variant="body-strong" class="truncate">{identity()}</Type>

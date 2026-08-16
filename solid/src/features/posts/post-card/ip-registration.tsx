@@ -6,7 +6,7 @@ import {
   IconInfo,
   IconWarningCircle,
 } from "../../../design-system";
-import { cn } from "../../../lib/cn";
+import { cn } from "../../../design-system";
 import { postCardType } from "./styles";
 import type { StoryLicenseNotice, StoryRegistrationStatus } from "./types";
 

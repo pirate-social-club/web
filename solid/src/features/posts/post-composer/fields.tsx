@@ -8,6 +8,7 @@ import type { JSX } from "@solidjs/web";
 
 import {
   CommunityAvatar,
+  createIsMobile,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -27,8 +28,7 @@ import {
   Textarea,
   Type,
 } from "../../../design-system";
-import { cn } from "../../../lib/cn";
-import { useIsMobile } from "../../../lib/media-query";
+import { cn } from "../../../design-system";
 import type { CommunityPickerItem } from "./types";
 
 export type { CommunityPickerItem } from "./types";
@@ -43,7 +43,7 @@ export function ShellPill(props: ParentProps<{
   pickerSearchPlaceholder?: string;
   pickerTitle?: string;
 }>) {
-  const isMobile = useIsMobile();
+  const isMobile = createIsMobile();
   const [mobileOpen, setMobileOpen] = createSignal(false);
   const [query, setQuery] = createSignal("");
   const pickerSearchPlaceholder = () => props.pickerSearchPlaceholder ?? "Search communities";
@@ -54,7 +54,7 @@ export function ShellPill(props: ParentProps<{
     props.onSearchQueryChange?.(next);
   };
 
-  const triggerContent = (
+  const TriggerContent = () => (
     <>
       <Show
         when={props.avatarSrc}
@@ -90,7 +90,7 @@ export function ShellPill(props: ParentProps<{
           tabindex={-1}
           tone="default"
         >
-          {triggerContent}
+          <TriggerContent />
         </PillButton>
       }
     >
@@ -102,7 +102,7 @@ export function ShellPill(props: ParentProps<{
               aria-label={pickerTitle()}
               class={cn("h-14 max-w-full justify-start gap-3 px-3.5 text-foreground inline-flex items-center rounded-full", props.class)}
             >
-              {triggerContent}
+              <TriggerContent />
             </SheetTrigger>
             <SheetContent class="flex max-h-[75dvh] flex-col rounded-t-[var(--radius-3xl)] px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-4" side="bottom">
               <div aria-hidden="true" class="mx-auto mb-4 h-1 w-12 rounded-full bg-muted" />
@@ -158,7 +158,7 @@ export function ShellPill(props: ParentProps<{
             aria-label={pickerTitle()}
             class={cn("h-11 max-w-full justify-start gap-3 px-3.5 text-foreground inline-flex items-center rounded-full", props.class)}
           >
-            {triggerContent}
+            <TriggerContent />
           </DropdownMenuTrigger>
           <DropdownMenuContent class="max-h-96 min-w-48">
             <Show

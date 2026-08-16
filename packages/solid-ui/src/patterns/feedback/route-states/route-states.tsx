@@ -13,13 +13,13 @@ import { StackPageShell } from "@/patterns/layout/stack-page-shell/stack-page-sh
 import { StatusCard } from "@/patterns/feedback/status-card/status-card";
 
 /** App mascot artwork paths, overridable for offline surfaces. */
-export const DEFAULT_ERROR_IMAGE: IllustratedStateImage = {
+const DEFAULT_ERROR_IMAGE: IllustratedStateImage = {
   alt: "Confused pirate ghost",
   src: "/mascots/error-ghost-256.png",
   srcSet: "/mascots/error-ghost-512.webp 2x, /mascots/error-ghost-256.webp 1x",
 };
 
-export const DEFAULT_EMPTY_INBOX_IMAGE: IllustratedStateImage = {
+const DEFAULT_EMPTY_INBOX_IMAGE: IllustratedStateImage = {
   alt: "Friendly pirate ghost checking an empty mailbox",
   src: "/mascots/empty-inbox-ghost-256.png",
   srcSet: "/mascots/empty-inbox-ghost-512.webp 2x, /mascots/empty-inbox-ghost-256.webp 1x",

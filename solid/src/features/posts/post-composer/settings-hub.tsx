@@ -2,7 +2,7 @@
 // from the React post-composer-settings-hub.tsx.
 
 import { CardContent } from "../../../design-system";
-import { cn } from "../../../lib/cn";
+import { cn } from "../../../design-system";
 import type { PostComposerController } from "./controller";
 import { shouldForcePublicIdentityForTab } from "./invariants";
 import { PostComposerSettingsSections } from "./settings-sections";

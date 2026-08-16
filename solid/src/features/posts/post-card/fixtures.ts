@@ -35,13 +35,13 @@ export const ineligibleShareActionsFixture: PostCardShareAction[] = [
   { key: "native-share", label: "Share...", icon: "share", onSelect: noop },
 ];
 
-export const menuItemsFixture: PostCardMenuItem[] = [
+const menuItemsFixture: PostCardMenuItem[] = [
   { key: "save", label: "Save post" },
   { key: "hide", label: "Hide post" },
   { key: "report", label: "Report", destructive: true },
 ];
 
-export const baseBylineFixture: PostCardByline = {
+const baseBylineFixture: PostCardByline = {
   community: { kind: "community", label: "c/tameimpala", href: "#", avatarSrc: fixtureImage("avatar-community", 100, 100) },
   author: { kind: "user", label: "u/kevin.tameimpala", href: "#", avatarSrc: fixtureImage("avatar-author", 100, 100) },
   timestampLabel: "9d",

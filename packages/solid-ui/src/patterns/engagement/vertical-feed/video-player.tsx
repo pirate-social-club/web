@@ -2,6 +2,7 @@ import { createEffect, createSignal, Show } from "solid-js";
 
 import { Spinner } from "@/components/feedback/spinner/spinner";
 import { IconPlay } from "@/components/media/icons";
+import { Type } from "@/components/data-display/type/type";
 import { cn } from "@/lib/cn";
 
 import type { VideoPlayerProps } from "./types";
@@ -166,7 +167,9 @@ export function VideoPlayer(props: VideoPlayerProps) {
           <div class="absolute inset-0 z-40 flex items-center justify-center bg-black/80">
             <div class="p-4 text-center text-white">
               <p class="font-semibold">Playback error</p>
-              <p class="mt-2 text-sm">{message()}</p>
+              <Type as="p" variant="caption" class="mt-2 text-primary-foreground">
+                {message()}
+              </Type>
             </div>
           </div>
         )}

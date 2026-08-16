@@ -7,8 +7,7 @@ import {
   Textarea,
   Type,
 } from "../../../design-system";
-import { cn } from "../../../lib/cn";
-import { PostComposerEventSection } from "./event-section";
+import { cn } from "../../../design-system";
 import { PostComposerGenericAssetFields } from "./generic-asset-fields";
 import {
   PostComposerDesktopAttachmentToolbar,
@@ -16,6 +15,7 @@ import {
 } from "./attachment-bar";
 import { PostComposerAttachmentCard } from "./attachment-card";
 import { attachmentActions } from "./defaults";
+import { PostComposerEventSection } from "./event-section";
 import { LiveTabContent } from "./live-tab";
 import {
   createKeyboardBottomOffset,
@@ -149,12 +149,12 @@ export function PostComposerWriteStep(props: { controller: PostComposerControlle
     if (file) handleFile(file);
   };
 
-  const inputs = (
+  const Inputs = () => (
     <>
-      <input accept="image/*" class="sr-only" ref={imageInput} type="file" onChange={(event) => input("image", event.currentTarget.files)} />
-      <input accept="video/*" class="sr-only" ref={videoInput} type="file" onChange={(event) => input("video", event.currentTarget.files)} />
-      <input accept="audio/*" class="sr-only" ref={songInput} type="file" onChange={(event) => input("song", event.currentTarget.files)} />
-      <input accept=".csv,.tsv,.txt,.json,text/csv,text/tab-separated-values,text/plain,application/json" class="sr-only" ref={fileInput} type="file" onChange={(event) => input("file", event.currentTarget.files)} />
+      <input accept="image/*" aria-label="Upload image" class="sr-only" ref={imageInput} type="file" onChange={(event) => input("image", event.currentTarget.files)} />
+      <input accept="video/*" aria-label="Upload video" class="sr-only" ref={videoInput} type="file" onChange={(event) => input("video", event.currentTarget.files)} />
+      <input accept="audio/*" aria-label="Upload audio" class="sr-only" ref={songInput} type="file" onChange={(event) => input("song", event.currentTarget.files)} />
+      <input accept=".csv,.tsv,.txt,.json,text/csv,text/tab-separated-values,text/plain,application/json" aria-label="Upload downloadable file" class="sr-only" ref={fileInput} type="file" onChange={(event) => input("file", event.currentTarget.files)} />
     </>
   );
 
@@ -181,12 +181,12 @@ export function PostComposerWriteStep(props: { controller: PostComposerControlle
         <Show when={dragging()}><div class="absolute inset-0 z-10 grid place-items-center rounded-[var(--radius-lg)] border-2 border-dashed border-primary bg-primary-subtle/80"><div class="flex flex-col items-center gap-3"><IconUploadSimple class="size-10 text-primary" /><Type as="p" variant="body-strong" class="text-primary">Drop a file to attach it</Type></div></div></Show>
         {body(false)}
         <PostComposerDesktopAttachmentToolbar actions={attachmentActions} activeKind={attachment()?.kind ?? null} onSelect={selectAttachment} />
-        {inputs}
+        <Inputs />
       </CardContent>
     }>
       <div class="space-y-7 px-0 pb-32 pt-1" style={{ "padding-bottom": `${120 + keyboardOffset()}px` }}>{body(true)}</div>
       <PostComposerMobileAttachmentBar actions={attachmentActions} activeKind={attachment()?.kind ?? null} onSelect={selectAttachment} />
-      {inputs}
+      <Inputs />
     </Show>
   );
 }

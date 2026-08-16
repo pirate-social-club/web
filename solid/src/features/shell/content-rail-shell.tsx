@@ -1,7 +1,7 @@
 import type { JSX } from "@solidjs/web";
 import { Show } from "solid-js";
 
-import { cn } from "../../lib/cn";
+import { cn } from "../../design-system";
 
 export interface ContentRailShellProps {
   children?: JSX.Element;

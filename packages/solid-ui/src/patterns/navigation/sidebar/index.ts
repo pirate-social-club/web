@@ -20,12 +20,7 @@ export {
   type SidebarMenuButtonProps,
 } from "./sidebar.primitives";
 export {
-  SIDEBAR_KEYBOARD_SHORTCUT,
-  SIDEBAR_WIDTH,
-  SIDEBAR_WIDTH_ICON,
-  SIDEBAR_WIDTH_MOBILE,
-  SIDEBAR_WIDTH_MOBILE_VARIABLE,
-  useSidebar,
-  useSidebarSide,
+  createSidebar,
+  createSidebarSide,
   type SidebarContextValue,
 } from "./sidebar.shared";

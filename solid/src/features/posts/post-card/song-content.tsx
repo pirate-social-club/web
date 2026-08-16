@@ -15,7 +15,7 @@ import {
   Spinner,
   Type,
 } from "../../../design-system";
-import { cn } from "../../../lib/cn";
+import { cn } from "../../../design-system";
 import {
   clampProgressMs,
   DEFAULT_PREVIEW_DURATION_MS,
@@ -28,7 +28,7 @@ import {
   type SongActionsModel,
   type SongLabels,
 } from "./song-model";
-import { StoryLicenseNoticeBadge, StoryRegistrationBadge } from "./story-registration";
+import { StoryLicenseNoticeBadge, StoryRegistrationBadge } from "./ip-registration";
 import { postCardType } from "./styles";
 import type { SongContentSpec } from "./types";
 

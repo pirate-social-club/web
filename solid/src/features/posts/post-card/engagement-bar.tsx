@@ -7,7 +7,7 @@ import {
   IconShareFat,
   VotePill,
 } from "../../../design-system";
-import { cn } from "../../../lib/cn";
+import { cn } from "../../../design-system";
 import { triggerNavigationTapHaptic, triggerShareSuccessHaptic } from "../../../lib/haptics";
 import { resolveMenuItemsWithIcons } from "./action-menu";
 import type { PostCardEngagement, PostCardShareAction } from "./types";
@@ -17,7 +17,7 @@ interface UnlockAction {
   onClick: () => void;
 }
 
-export interface PostCardEngagementBarLabels {
+interface PostCardEngagementBarLabels {
   share?: string;
 }
 

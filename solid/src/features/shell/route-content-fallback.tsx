@@ -1,6 +1,6 @@
 import { RouteLoadingState } from "../../design-system";
 
-import { cn } from "../../lib/cn";
+import { cn } from "../../design-system";
 import type { ShellRoute } from "./app-shell-header";
 
 export function RouteContentFallback(props: { route?: ShellRoute }) {

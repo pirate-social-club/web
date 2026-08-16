@@ -1,5 +1,5 @@
 import { Skeleton } from "../../../design-system";
-import { cn } from "../../../lib/cn";
+import { cn } from "../../../design-system";
 
 export interface PostCardSkeletonProps {
   showMedia?: boolean;

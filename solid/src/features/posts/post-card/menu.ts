@@ -86,7 +86,7 @@ export function canDownloadStem(
     : content.entitledStems?.includes(stem.kind) === true;
 }
 
-export function openExternalUrl(url: string) {
+function openExternalUrl(url: string) {
   if (typeof window === "undefined") return;
 
   const opened = window.open(url, "_blank", "noopener,noreferrer");

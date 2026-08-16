@@ -29,12 +29,8 @@ import { typeVariants } from "@/components/data-display/type/type";
 
 const ModalResponsiveContext = createContext<Accessor<boolean>>();
 
-function useModalIsMobile(): Accessor<boolean> {
-  const contextValue = useContext(ModalResponsiveContext);
-  if (!contextValue) {
-    throw new Error("Modal components must be rendered within <Modal>.");
-  }
-  return contextValue;
+function createModalIsMobile(): Accessor<boolean> {
+  return useContext(ModalResponsiveContext);
 }
 
 export interface ModalProps {
@@ -81,7 +77,7 @@ export interface ModalContentProps {
 }
 
 export function ModalContent(props: ParentProps<ModalContentProps>) {
-  const isMobile = useModalIsMobile();
+  const isMobile = createModalIsMobile();
   const shouldHideCloseButton = () =>
     props.hideCloseButton || (isMobile() && (props.hideCloseButtonOnMobile ?? false));
 
@@ -106,7 +102,7 @@ export function ModalContent(props: ParentProps<ModalContentProps>) {
 }
 
 export function ModalHeader(props: ParentProps<{ class?: string }>) {
-  const isMobile = useModalIsMobile();
+  const isMobile = createModalIsMobile();
   return (
     <Show
       when={isMobile()}
@@ -118,7 +114,7 @@ export function ModalHeader(props: ParentProps<{ class?: string }>) {
 }
 
 export function ModalFooter(props: ParentProps<{ class?: string }>) {
-  const isMobile = useModalIsMobile();
+  const isMobile = createModalIsMobile();
   return (
     <Show
       when={isMobile()}
@@ -130,7 +126,7 @@ export function ModalFooter(props: ParentProps<{ class?: string }>) {
 }
 
 export function ModalTitle(props: ParentProps<{ class?: string }>) {
-  const isMobile = useModalIsMobile();
+  const isMobile = createModalIsMobile();
   const className = () => cn(typeVariants({ variant: "h3" }), props.class);
   return (
     <Show
@@ -143,7 +139,7 @@ export function ModalTitle(props: ParentProps<{ class?: string }>) {
 }
 
 export function ModalDescription(props: ParentProps<{ class?: string }>) {
-  const isMobile = useModalIsMobile();
+  const isMobile = createModalIsMobile();
   return (
     <Show
       when={isMobile()}

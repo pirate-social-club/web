@@ -2,6 +2,8 @@
 // never reaches through the design-system implementation from route code.
 // Until the root-barrel split lands (UI track), this module is the single
 // app-side import site for @pirate/web-solid-ui.
+export { cn, createIsMobile } from "@pirate/web-solid-ui";
+
 export {
   Button,
   buttonVariants,
@@ -43,7 +45,8 @@ export {
   SidebarProvider,
   SidebarRail,
   SidebarSeparator,
-  useSidebar,
+  createSidebar,
+  createSidebarSide,
   type FooterNavItemId,
 } from "@pirate/web-solid-ui";
 

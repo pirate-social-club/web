@@ -55,10 +55,7 @@ async function installApiVersionInstrumentation(page) {
   });
 }
 
-try {
-  const page = await browser.newPage();
-  const violations = [];
-  await installApiVersionInstrumentation(page);
+function installBrowserDiagnostics(page, violations) {
   page.on("console", message => {
     if (message.type() === "error" && !message.location().url.endsWith("/favicon.ico")) {
       violations.push(`console: ${message.text()}`);
@@ -70,6 +67,24 @@ try {
     if (request.resourceType() === "media" && errorText === "net::ERR_ABORTED") return;
     violations.push(`request: ${request.url()} ${errorText}`);
   });
+}
+
+async function assertResolvedApiVersion(page, name) {
+  const apiVersion = page.locator("#api-version");
+  await apiVersion.waitFor({ state: "attached" });
+  if (await apiVersion.getAttribute("data-api-status") !== "success") {
+    throw new Error(`${name} API query did not resolve: ${await apiVersion.textContent()}`);
+  }
+  if (!(await apiVersion.textContent()).includes("api")) {
+    throw new Error(`${name} API data is not visible in the streamed HTML`);
+  }
+}
+
+try {
+  const page = await browser.newPage();
+  const violations = [];
+  await installApiVersionInstrumentation(page);
+  installBrowserDiagnostics(page, violations);
   const response = await page.goto(base, { waitUntil: "networkidle" });
   if (!response?.ok()) throw new Error(`SSR page returned ${response?.status()}`);
   await assertHead(page, "initial SSR/hydrated home", {
@@ -89,12 +104,7 @@ try {
   );
   if (!noncedScripts) throw new Error("SSR script missing nonce");
 
-  const apiVersion = page.locator("#api-version");
-  await apiVersion.waitFor({ state: "attached" });
-  if (await apiVersion.getAttribute("data-api-status") !== "success") {
-    throw new Error(`SSR API query did not resolve: ${await apiVersion.textContent()}`);
-  }
-  if (!(await apiVersion.textContent()).includes("api")) throw new Error("SSR API data is not visible in the streamed HTML");
+  await assertResolvedApiVersion(page, "SSR");
   await page.locator("#stream-result").waitFor({ state: "attached" });
   await assertHead(page, "deferred/Suspense reveal", {
     title: "Home · Pirate Web",
@@ -144,7 +154,9 @@ try {
   }
 
   const homeReloadPage = await browser.newPage();
+  const reloadViolations = [];
   await installApiVersionInstrumentation(homeReloadPage);
+  installBrowserDiagnostics(homeReloadPage, reloadViolations);
   const homeResponse = await homeReloadPage.goto(base, { waitUntil: "networkidle" });
   if (!homeResponse?.ok()) throw new Error(`Fresh Home page returned ${homeResponse?.status()}`);
   const homeReloadResponse = await homeReloadPage.reload({ waitUntil: "networkidle" });
@@ -159,6 +171,11 @@ try {
     throw new Error("Reloaded Home API data is not visible in the streamed HTML");
   }
   await homeReloadPage.locator("#stream-result").waitFor({ state: "attached" });
+  const reloadButton = homeReloadPage.locator("#hydration-button");
+  const reloadBefore = await reloadButton.textContent();
+  await reloadButton.click();
+  const reloadAfter = await reloadButton.textContent();
+  if (reloadBefore === reloadAfter) throw new Error(`Reloaded Home did not hydrate: ${reloadBefore}`);
   await assertHead(homeReloadPage, "reloaded Home", {
     title: "Home · Pirate Web",
     canonical: "/",
@@ -170,6 +187,7 @@ try {
   if (apiVersionAttemptsAfterReload.length) {
     throw new Error(`Reloaded Home query attempted ${apiVersionAttemptsAfterReload.length} time(s): ${apiVersionAttemptsAfterReload.join(", ")}`);
   }
+  if (reloadViolations.length) throw new Error(`Reload browser diagnostics: ${reloadViolations.join(" | ")}`);
   await homeReloadPage.close();
 
   if (await feedItems.count() > 1) {
@@ -228,6 +246,7 @@ try {
   await page.goBack({ waitUntil: "networkidle" });
   await page.waitForURL(url => url.pathname === "/");
   await page.locator('[data-route-path="/"]').waitFor({ state: "attached" });
+  await assertResolvedApiVersion(page, "Back navigation");
   await assertHead(page, "same-document back navigation to home", {
     title: "Home · Pirate Web",
     canonical: "/",
@@ -251,6 +270,7 @@ try {
   await page.goBack({ waitUntil: "networkidle" });
   await page.waitForURL(url => url.pathname === "/");
   await page.locator('[data-route-path="/"]').waitFor({ state: "attached" });
+  await assertResolvedApiVersion(page, "Home remount");
   await logApiVersionPhase(page, "remount");
   const homeLinks = await page.locator('a[href="/p/demo-post"], a[href="/u/demo-user"]').all();
   if (homeLinks.length !== 2) throw new Error("Home route did not expose both overlap navigation links");

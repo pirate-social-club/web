@@ -150,7 +150,14 @@ try {
   const homeReloadResponse = await homeReloadPage.reload({ waitUntil: "networkidle" });
   if (!homeReloadResponse?.ok()) throw new Error(`Reloaded Home page returned ${homeReloadResponse?.status()}`);
   await homeReloadPage.locator('[data-route-path="/"]').waitFor({ state: "attached" });
-  await homeReloadPage.locator("#api-version").waitFor({ state: "attached" });
+  const reloadedApiVersion = homeReloadPage.locator("#api-version");
+  await reloadedApiVersion.waitFor({ state: "attached" });
+  if (await reloadedApiVersion.getAttribute("data-api-status") !== "success") {
+    throw new Error(`Reloaded Home API query did not resolve: ${await reloadedApiVersion.textContent()}`);
+  }
+  if (!(await reloadedApiVersion.textContent()).includes("api")) {
+    throw new Error("Reloaded Home API data is not visible in the streamed HTML");
+  }
   await homeReloadPage.locator("#stream-result").waitFor({ state: "attached" });
   await assertHead(homeReloadPage, "reloaded Home", {
     title: "Home · Pirate Web",

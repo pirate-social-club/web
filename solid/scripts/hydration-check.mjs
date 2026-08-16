@@ -36,10 +36,10 @@ async function logApiVersionPhase(page, phase) {
   return attempts;
 }
 
-try {
-  const page = await browser.newPage();
-  const violations = [];
+async function installApiVersionInstrumentation(page) {
   await page.addInitScript(() => {
+    window.sessionStorage.clear();
+    window.localStorage.clear();
     const attempts = [];
     Object.defineProperty(window, "__solidHydrationApiAttempts", {
       value: attempts,
@@ -53,6 +53,12 @@ try {
       return originalFetch(input, init);
     };
   });
+}
+
+try {
+  const page = await browser.newPage();
+  const violations = [];
+  await installApiVersionInstrumentation(page);
   page.on("console", message => {
     if (message.type() === "error" && !message.location().url.endsWith("/favicon.ico")) {
       violations.push(`console: ${message.text()}`);
@@ -172,22 +178,28 @@ try {
   });
   await logApiVersionPhase(page, "client navigation");
 
-  await page.reload({ waitUntil: "networkidle" });
-  await page.locator('[data-route-path="/c/:slug/threads"]').waitFor({ state: "attached" });
-  if (await page.locator('[data-route-path="/c/:slug/threads"]').count() !== 1) throw new Error("Dynamic route did not survive refresh");
-  await assertHead(page, "threads refresh", {
+  const refreshPage = await browser.newPage();
+  await installApiVersionInstrumentation(refreshPage);
+  await refreshPage.goto(new URL("/c/demo/threads", base).toString(), { waitUntil: "networkidle" });
+  await refreshPage.reload({ waitUntil: "networkidle" });
+  await refreshPage.locator('[data-route-path="/c/:slug/threads"]').waitFor({ state: "attached" });
+  if (await refreshPage.locator('[data-route-path="/c/:slug/threads"]').count() !== 1) {
+    throw new Error("Dynamic route did not survive refresh");
+  }
+  await assertHead(refreshPage, "threads refresh", {
     title: "Threads · demo",
     canonical: "/c/demo/threads",
     description: "Threads for community demo",
     ogTitle: "Threads · demo",
     ogType: null,
   });
-  await logApiVersionPhase(page, "refresh");
+  await logApiVersionPhase(refreshPage, "refresh (threads route; no Home query)");
+  await refreshPage.close();
 
   await page.goBack({ waitUntil: "networkidle" });
   await page.waitForURL(url => url.pathname === "/");
   await page.locator('[data-route-path="/"]').waitFor({ state: "attached" });
-  await assertHead(page, "back navigation to home", {
+  await assertHead(page, "same-document back navigation to home", {
     title: "Home · Pirate Web",
     canonical: "/",
     description: "Pirate Web video feed",
@@ -247,7 +259,7 @@ try {
 
   const apiVersionAttemptsAfterNavigation = await logApiVersionPhase(page, "competing navigation");
   if (apiVersionAttemptsAfterNavigation.length) {
-    throw new Error(`API query attempted during navigation/refresh ${apiVersionAttemptsAfterNavigation.length} time(s): ${apiVersionAttemptsAfterNavigation.join(", ")}`);
+    throw new Error(`API query attempted during cache-warm navigation ${apiVersionAttemptsAfterNavigation.length} time(s): ${apiVersionAttemptsAfterNavigation.join(", ")}`);
   }
   if (violations.length) throw new Error(`Browser console errors: ${violations.join(" | ")}`);
 

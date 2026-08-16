@@ -1,4 +1,4 @@
-import { createEffect, createMemo, createSignal, For, onCleanup, Show } from "solid-js";
+import { createEffect, createMemo, createSignal, For, Show } from "solid-js";
 import { isServer } from "@solidjs/web";
 import { useQuery } from "@tanstack/solid-query";
 import { Button } from "../design-system";
@@ -166,12 +166,12 @@ export default function PublicVideoFeed() {
       if (stored.scrollTop > 0) requestAnimationFrame(() => { const element = currentFeed(feed); if (element) element.scrollTop = stored.scrollTop; });
       const save = () => writePosition({ activeId: activeId(), scrollTop: currentFeed(feed)?.scrollTop ?? 0 });
       currentFeed(feed)?.addEventListener("scroll", save, { passive: true });
-      onCleanup(() => {
+      return () => {
         observer.disconnect();
         media.removeEventListener("change", syncMotion);
         currentFeed(feed)?.removeEventListener("scroll", save);
         save();
-      });
+      };
     },
   );
 

@@ -60,7 +60,7 @@ export interface FormattedTextareaProps
  */
 export function FormattedTextarea(props: FormattedTextareaProps) {
   const className = createMemo(() =>
-    cn("min-h-32", props.class),
+    cn("min-h-32 px-3", props.class),
   );
   const containerClassName = createMemo(() =>
     cn(

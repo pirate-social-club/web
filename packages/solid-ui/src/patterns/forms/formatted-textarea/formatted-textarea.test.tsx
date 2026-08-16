@@ -36,6 +36,7 @@ describe("FormattedTextarea", () => {
     const textarea = within(container).getByRole("textbox");
     expect(textarea).toHaveValue("seed");
     expect(textarea).toHaveAttribute("placeholder", "Write a reply...");
+    expect(textarea).toHaveClass("px-3");
 
     for (const name of [
       "Bold",

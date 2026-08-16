@@ -143,22 +143,27 @@ try {
     throw new Error(`Hydrated API query attempted ${apiVersionAttemptsAfterHydration.length} time(s): ${apiVersionAttemptsAfterHydration.join(", ")}`);
   }
 
-  const homeReloadResponse = await page.reload({ waitUntil: "networkidle" });
+  const homeReloadPage = await browser.newPage();
+  await installApiVersionInstrumentation(homeReloadPage);
+  const homeResponse = await homeReloadPage.goto(base, { waitUntil: "networkidle" });
+  if (!homeResponse?.ok()) throw new Error(`Fresh Home page returned ${homeResponse?.status()}`);
+  const homeReloadResponse = await homeReloadPage.reload({ waitUntil: "networkidle" });
   if (!homeReloadResponse?.ok()) throw new Error(`Reloaded Home page returned ${homeReloadResponse?.status()}`);
-  await page.locator('[data-route-path="/"]').waitFor({ state: "attached" });
-  await page.locator("#api-version").waitFor({ state: "attached" });
-  await page.locator("#stream-result").waitFor({ state: "attached" });
-  await assertHead(page, "reloaded Home", {
+  await homeReloadPage.locator('[data-route-path="/"]').waitFor({ state: "attached" });
+  await homeReloadPage.locator("#api-version").waitFor({ state: "attached" });
+  await homeReloadPage.locator("#stream-result").waitFor({ state: "attached" });
+  await assertHead(homeReloadPage, "reloaded Home", {
     title: "Home · Pirate Web",
     canonical: "/",
     description: "Pirate Web video feed",
     ogTitle: "Home · Pirate Web",
     ogType: "website",
   });
-  const apiVersionAttemptsAfterReload = await logApiVersionPhase(page, "Home reload");
+  const apiVersionAttemptsAfterReload = await logApiVersionPhase(homeReloadPage, "Home reload");
   if (apiVersionAttemptsAfterReload.length) {
     throw new Error(`Reloaded Home query attempted ${apiVersionAttemptsAfterReload.length} time(s): ${apiVersionAttemptsAfterReload.join(", ")}`);
   }
+  await homeReloadPage.close();
 
   if (await feedItems.count() > 1) {
     await feedItems.nth(1).scrollIntoViewIfNeeded();

@@ -1,4 +1,5 @@
 import { getRequestEvent } from "@solidjs/web";
+import type { InfiniteData, QueryFunctionContext } from "@tanstack/query-core";
 import { createApiClient } from "./client";
 import { resolveLocaleLanguageTag, type UiLocaleCode } from "../ui-locale-core";
 
@@ -125,14 +126,19 @@ export async function fetchPublicVideoFeed(
   return normalizePublicVideoFeed(response);
 }
 
-export function createPublicVideoFeedQuery(cursor: string | null = null, locale: UiLocaleCode = "en") {
-  const initialData = cursor === null ? getRequestEvent()?.locals?.publicVideoFeed as PublicVideoFeedPage | undefined : undefined;
+export function createPublicVideoFeedInfiniteQuery(locale: UiLocaleCode = "en") {
+  const initialPage = getRequestEvent()?.locals?.publicVideoFeed as PublicVideoFeedPage | undefined;
   return {
-    queryKey: publicVideoFeedKey(locale, cursor),
-    queryFn: () => fetchPublicVideoFeed(cursor, locale),
+    queryKey: publicVideoFeedKey(locale, null),
+    queryFn: ({ pageParam }: QueryFunctionContext<ReturnType<typeof publicVideoFeedKey>, string | null>) =>
+      fetchPublicVideoFeed(pageParam, locale),
+    initialPageParam: null as string | null,
+    getNextPageParam: (lastPage: PublicVideoFeedPage) => lastPage.next_cursor,
     staleTime: 5 * 60_000,
-    initialData,
+    initialData: initialPage
+      ? { pages: [initialPage], pageParams: [null] } satisfies InfiniteData<PublicVideoFeedPage, string | null>
+      : undefined,
     retry: false,
-    enabled: cursor === null || Boolean(cursor),
+    throwOnError: (_error: unknown, query: { state: { data: unknown } }) => query.state.data === undefined,
   };
 }

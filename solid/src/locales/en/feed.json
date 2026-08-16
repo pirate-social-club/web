@@ -12,6 +12,7 @@
   "pause": "Pause",
   "play": "Play",
   "loadingMore": "Loading more",
+  "retry": "Retry",
   "loadMore": "Load more videos",
   "paginationError": "More videos could not be loaded."
 }

@@ -11,6 +11,6 @@ export function createApiVersionQuery(request?: Request) {
       createApiClient({ request: serverRequest }).getVersion(),
     staleTime: 60_000,
     retry: false,
-    throwOnError: false,
+    throwOnError: (_error: unknown, query: { state: { data: unknown } }) => query.state.data === undefined,
   };
 }

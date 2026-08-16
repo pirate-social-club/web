@@ -1,6 +1,6 @@
 import { Meta, Link, Title } from "@solidjs/meta";
-import { useQuery } from "@tanstack/solid-query";
-import { createSignal, Loading } from "solid-js";
+import { useQuery, useQueryClient } from "@tanstack/solid-query";
+import { createMemo, createSignal, Errored, isPending, Loading } from "solid-js";
 import { pageRoutes } from "virtual:file-routes";
 import PublicVideoFeed from "../../components/public-video-feed";
 import {
@@ -16,7 +16,9 @@ import {
   TextFieldInput,
   TextFieldLabel,
 } from "../../design-system";
-import { createApiVersionQuery } from "../../lib/api/home-query";
+import { apiVersionQueryKey, createApiVersionQuery } from "../../lib/api/home-query";
+import type { ApiVersionResponse } from "../../lib/api/client";
+import { projectQueryData } from "../../lib/async-query-projection";
 import { useHostContext } from "../../lib/host-context";
 import { useUiLocale } from "../../lib/ui-locale";
 import { getLocaleMessages } from "../../locales";
@@ -29,7 +31,6 @@ export default function HomeRoute() {
   );
   const [dialogOpen, setDialogOpen] = createSignal(false);
   const [displayName, setDisplayName] = createSignal("");
-  const apiVersion = useQuery(() => createApiVersionQuery());
   const host = useHostContext();
   const { locale } = useUiLocale();
   const copy = () => getLocaleMessages(locale(), "routes").home;
@@ -48,11 +49,7 @@ export default function HomeRoute() {
       <Button id="hydration-button" type="button" onClick={() => setCount(value => value + 1)}>
         hydration-count: {count()}
       </Button>
-      <Loading fallback={<p id="api-version-fallback">loading api status</p>}>
-        <p id="api-version" data-api-status={apiVersion.isSuccess ? "success" : "error"}>
-          API status: {apiVersion.data?.service ?? "unavailable"}
-        </p>
-      </Loading>
+      <ApiVersionStatus />
       <section id="hydration-dialog-fixture" aria-label="Overlay hydration fixture">
         <Dialog open={dialogOpen()} onOpenChange={setDialogOpen}>
           <DialogTrigger id="hydration-dialog-open" type="button">
@@ -89,5 +86,30 @@ export default function HomeRoute() {
         <a href="/u/demo-user">profile route</a>
       </nav>
     </main>
+  );
+}
+
+function ApiVersionStatus() {
+  const apiVersion = useQuery(() => createApiVersionQuery());
+  const queryClient = useQueryClient();
+  const apiData = createMemo<ApiVersionResponse>(() =>
+    projectQueryData(apiVersion.data, apiVersion.promise) as ApiVersionResponse,
+  );
+
+  return (
+    <Errored fallback={(_, reset) => (
+      <p id="api-version" data-api-status="error" role="alert">
+        API status: unavailable
+        <button type="button" onClick={() => void queryClient.resetQueries({ queryKey: apiVersionQueryKey }).then(reset)}>
+          Retry
+        </button>
+      </p>
+    )}>
+      <Loading fallback={<p id="api-version-fallback">loading api status</p>}>
+        <p id="api-version" data-api-status="success" data-api-pending={isPending(apiData) ? "true" : "false"}>
+          API status: {apiData().service}
+        </p>
+      </Loading>
+    </Errored>
   );
 }

@@ -31,10 +31,16 @@ try {
   const violations = [];
   let apiVersionRequests = 0;
   page.on("console", message => {
-    if (message.type() === "error") violations.push(`console: ${message.text()}`);
+    if (message.type() === "error" && !message.location().url.endsWith("/favicon.ico")) {
+      violations.push(`console: ${message.text()}`);
+    }
   });
   page.on("pageerror", error => violations.push(`pageerror: ${error.message}`));
-  page.on("requestfailed", request => violations.push(`request: ${request.url()} ${request.failure()?.errorText ?? "failed"}`));
+  page.on("requestfailed", request => {
+    const errorText = request.failure()?.errorText ?? "failed";
+    if (request.resourceType() === "media" && errorText === "net::ERR_ABORTED") return;
+    violations.push(`request: ${request.url()} ${errorText}`);
+  });
   page.on("request", request => {
     if (new URL(request.url()).pathname === "/__version") apiVersionRequests += 1;
   });

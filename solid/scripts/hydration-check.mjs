@@ -36,13 +36,31 @@ async function logApiVersionPhase(page, phase) {
   return attempts;
 }
 
+async function readPublicFeedAttempts(page) {
+  return page.evaluate(() => [...(window.__solidPublicFeedAttempts ?? [])]);
+}
+
+async function assertNoPublicFeedAttempts(page, phase) {
+  const attempts = await readPublicFeedAttempts(page);
+  console.log(JSON.stringify({ publicFeedPhase: phase, attempts }));
+  if (attempts.length) {
+    throw new Error(`Public feed query attempted during ${phase} ${attempts.length} time(s): ${attempts.join(", ")}`);
+  }
+  return attempts;
+}
+
 async function installApiVersionInstrumentation(page) {
   await page.addInitScript(() => {
     window.sessionStorage.clear();
     window.localStorage.clear();
     const attempts = [];
+    const publicFeedAttempts = [];
     Object.defineProperty(window, "__solidHydrationApiAttempts", {
       value: attempts,
+      configurable: true,
+    });
+    Object.defineProperty(window, "__solidPublicFeedAttempts", {
+      value: publicFeedAttempts,
       configurable: true,
     });
     const originalFetch = window.fetch.bind(window);
@@ -50,22 +68,25 @@ async function installApiVersionInstrumentation(page) {
       const rawUrl = input instanceof Request ? input.url : String(input);
       const url = new URL(rawUrl, window.location.href);
       if (url.pathname === "/__version") attempts.push(`${url.origin}${url.pathname}`);
+      if (url.pathname === "/feed/home/videos/public") {
+        publicFeedAttempts.push(`${url.origin}${url.pathname}${url.search}`);
+      }
       return originalFetch(input, init);
     };
   });
 }
 
-function installBrowserDiagnostics(page, violations) {
+function installBrowserDiagnostics(page, report) {
   page.on("console", message => {
     if (message.type() === "error" && !message.location().url.endsWith("/favicon.ico")) {
-      violations.push(`console: ${message.text()}`);
+      report(`console: ${message.text()}`);
     }
   });
-  page.on("pageerror", error => violations.push(`pageerror: ${error.message}`));
+  page.on("pageerror", error => report(`pageerror: ${error.message}`));
   page.on("requestfailed", request => {
     const errorText = request.failure()?.errorText ?? "failed";
     if (request.resourceType() === "media" && errorText === "net::ERR_ABORTED") return;
-    violations.push(`request: ${request.url()} ${errorText}`);
+    report(`request: ${request.url()} ${errorText}`);
   });
 }
 
@@ -80,13 +101,36 @@ async function assertResolvedApiVersion(page, name) {
   }
 }
 
+async function assertResolvedPublicFeed(page, name) {
+  const feed = page.locator("#public-video-feed");
+  await feed.waitFor({ state: "attached" });
+  if (await feed.getAttribute("data-feed-status") !== "ready") {
+    throw new Error(`${name} public video feed did not resolve`);
+  }
+  if (await page.locator("[data-feed-item-id]").count() < 1) {
+    throw new Error(`${name} public video feed returned no video cards`);
+  }
+}
+
+async function assertSerializedPublicFeed(response, page, name) {
+  const html = await response.text();
+  if (!html.includes("public-videos") || !html.includes("best")) {
+    throw new Error(`${name} streamed HTML is missing the public-feed query key`);
+  }
+  const itemId = await page.locator("[data-feed-item-id]").first().getAttribute("data-feed-item-id");
+  if (!itemId || !html.includes(itemId)) {
+    throw new Error(`${name} streamed HTML is missing resolved public-feed data`);
+  }
+}
+
 try {
   const page = await browser.newPage();
   const violations = [];
   await installApiVersionInstrumentation(page);
-  installBrowserDiagnostics(page, violations);
+  installBrowserDiagnostics(page, violation => violations.push(violation));
   const response = await page.goto(base, { waitUntil: "networkidle" });
   if (!response?.ok()) throw new Error(`SSR page returned ${response?.status()}`);
+  await assertSerializedPublicFeed(response, page, "initial SSR");
   await assertHead(page, "initial SSR/hydrated home", {
     title: "Home · Pirate Web",
     canonical: "/",
@@ -152,24 +196,35 @@ try {
   if (apiVersionAttemptsAfterHydration.length) {
     throw new Error(`Hydrated API query attempted ${apiVersionAttemptsAfterHydration.length} time(s): ${apiVersionAttemptsAfterHydration.join(", ")}`);
   }
+  await assertNoPublicFeedAttempts(page, "initial hydration");
 
   const homeReloadPage = await browser.newPage();
-  const reloadViolations = [];
+  const reloadDiagnostics = { fresh: [], reload: [] };
+  let reloadPhase = "fresh";
   await installApiVersionInstrumentation(homeReloadPage);
-  installBrowserDiagnostics(homeReloadPage, reloadViolations);
+  installBrowserDiagnostics(homeReloadPage, violation => reloadDiagnostics[reloadPhase].push(violation));
   const homeResponse = await homeReloadPage.goto(base, { waitUntil: "networkidle" });
   if (!homeResponse?.ok()) throw new Error(`Fresh Home page returned ${homeResponse?.status()}`);
+  await assertSerializedPublicFeed(homeResponse, homeReloadPage, "fresh Home");
+  await assertResolvedPublicFeed(homeReloadPage, "Fresh Home");
+  const freshReloadButton = homeReloadPage.locator("#hydration-button");
+  const freshReloadBefore = await freshReloadButton.textContent();
+  await freshReloadButton.click();
+  if (freshReloadBefore === await freshReloadButton.textContent()) {
+    throw new Error(`Fresh Home did not hydrate: ${freshReloadBefore}`);
+  }
+  await assertNoPublicFeedAttempts(homeReloadPage, "fresh Home");
+  if (reloadDiagnostics.fresh.length) {
+    throw new Error(`Fresh Home browser diagnostics: ${reloadDiagnostics.fresh.join(" | ")}`);
+  }
+
+  reloadPhase = "reload";
   const homeReloadResponse = await homeReloadPage.reload({ waitUntil: "networkidle" });
   if (!homeReloadResponse?.ok()) throw new Error(`Reloaded Home page returned ${homeReloadResponse?.status()}`);
+  await assertSerializedPublicFeed(homeReloadResponse, homeReloadPage, "reloaded Home");
   await homeReloadPage.locator('[data-route-path="/"]').waitFor({ state: "attached" });
-  const reloadedApiVersion = homeReloadPage.locator("#api-version");
-  await reloadedApiVersion.waitFor({ state: "attached" });
-  if (await reloadedApiVersion.getAttribute("data-api-status") !== "success") {
-    throw new Error(`Reloaded Home API query did not resolve: ${await reloadedApiVersion.textContent()}`);
-  }
-  if (!(await reloadedApiVersion.textContent()).includes("api")) {
-    throw new Error("Reloaded Home API data is not visible in the streamed HTML");
-  }
+  await assertResolvedApiVersion(homeReloadPage, "Reloaded Home");
+  await assertResolvedPublicFeed(homeReloadPage, "Reloaded Home");
   await homeReloadPage.locator("#stream-result").waitFor({ state: "attached" });
   const reloadButton = homeReloadPage.locator("#hydration-button");
   const reloadBefore = await reloadButton.textContent();
@@ -187,7 +242,8 @@ try {
   if (apiVersionAttemptsAfterReload.length) {
     throw new Error(`Reloaded Home query attempted ${apiVersionAttemptsAfterReload.length} time(s): ${apiVersionAttemptsAfterReload.join(", ")}`);
   }
-  if (reloadViolations.length) throw new Error(`Reload browser diagnostics: ${reloadViolations.join(" | ")}`);
+  await assertNoPublicFeedAttempts(homeReloadPage, "reloaded Home");
+  if (reloadDiagnostics.reload.length) throw new Error(`Reload browser diagnostics: ${reloadDiagnostics.reload.join(" | ")}`);
   await homeReloadPage.close();
 
   if (await feedItems.count() > 1) {

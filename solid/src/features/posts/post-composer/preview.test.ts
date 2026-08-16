@@ -532,4 +532,79 @@ describe("buildPostComposerPreviewContent", () => {
       previewTitle: undefined,
     });
   });
+
+  test("previews downloadable file attachments as generic asset cards", () => {
+    const onDownload = () => undefined;
+    const content = buildPostComposerPreviewContent({
+      access: "free",
+      attachment: { kind: "file", label: "export.csv" },
+      body: "A deterministic downloadable file.",
+      fileAsset: {
+        mimeType: "text/csv",
+        onDownload,
+        sizeBytes: 18,
+      },
+      price: "",
+      title: "Research export",
+    });
+
+    expect(content).toMatchObject({
+      type: "generic_asset",
+      assetKind: "download_file",
+      title: "Research export",
+      filename: "export.csv",
+      mimeType: "text/csv",
+      sizeBytes: 18,
+      accessMode: "public",
+      hasEntitlement: true,
+      onDownload,
+      priceLabel: undefined,
+      onBuy: undefined,
+    });
+  });
+
+  test("previews file attachments from the buyer perspective when paid", () => {
+    const content = buildPostComposerPreviewContent({
+      access: "paid",
+      attachment: { kind: "file", label: "dataset.json" },
+      body: "",
+      fileAsset: {
+        mimeType: "application/json",
+        onDownload: () => undefined,
+        sizeBytes: 1024,
+      },
+      price: "2.50",
+      title: "Locked dataset",
+    });
+
+    expect(content).toMatchObject({
+      type: "generic_asset",
+      accessMode: "locked",
+      listingMode: "listed",
+      listingStatus: "active",
+      priceLabel: "$2.50",
+      hasEntitlement: false,
+      onDownload: undefined,
+    });
+    expect(content.type === "generic_asset" && typeof content.onBuy === "function").toBe(true);
+  });
+
+  test("falls back to the attachment label when a file post has no title", () => {
+    const content = buildPostComposerPreviewContent({
+      access: "free",
+      attachment: { kind: "file", label: "notes.txt" },
+      body: "",
+      price: "",
+      title: "",
+    });
+
+    expect(content).toMatchObject({
+      type: "generic_asset",
+      title: "notes.txt",
+      filename: "notes.txt",
+      mimeType: null,
+      sizeBytes: null,
+      onDownload: undefined,
+    });
+  });
 });

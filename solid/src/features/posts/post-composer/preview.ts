@@ -57,6 +57,7 @@ export function buildPostComposerPreviewContent({
   attachment,
   body,
   derivativeStep,
+  fileAsset,
   linkPreview,
   price,
   vinylReleaseUrl,
@@ -78,6 +79,11 @@ export function buildPostComposerPreviewContent({
   attachment: AttachmentState;
   body: string;
   derivativeStep?: DerivativeStepState;
+  fileAsset?: {
+    mimeType?: string | null;
+    onDownload?: () => void;
+    sizeBytes?: number | null;
+  };
   linkPreview?: LinkPreviewState;
   liveCoverSrc?: string;
   liveState?: LiveComposerState;
@@ -251,6 +257,26 @@ export function buildPostComposerPreviewContent({
       playbackState: songPlayback?.state ?? "idle",
       progressMs: songPlayback?.progressMs,
       durationMs: songPlayback?.durationMs,
+    };
+  }
+
+  if (attachment.kind === "file") {
+    return {
+      type: "generic_asset",
+      assetId: "composer-preview-file",
+      assetKind: "download_file",
+      communityId: "composer-preview",
+      title: title.trim() || attachment.label || "Downloadable file",
+      filename: attachment.label ?? null,
+      mimeType: fileAsset?.mimeType ?? null,
+      sizeBytes: fileAsset?.sizeBytes ?? null,
+      accessMode,
+      listingMode: access === "paid" ? "listed" : "not_listed",
+      listingStatus: access === "paid" ? "active" : undefined,
+      priceLabel: access === "paid" ? priceLabel : undefined,
+      hasEntitlement: access === "free",
+      onBuy: access === "paid" ? () => undefined : undefined,
+      onDownload: access === "free" ? fileAsset?.onDownload : undefined,
     };
   }
 

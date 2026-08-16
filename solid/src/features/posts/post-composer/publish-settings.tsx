@@ -1,7 +1,7 @@
 // Publish step: renders the real PostCard in preview mode so the author sees
 // exactly what the feed will show (artwork, playback, lock state, pricing),
 // ported from the React post-composer-publish-settings.tsx.
-import { Show } from "solid-js";
+import { createEffect, Show } from "solid-js";
 
 import { CardContent, Type } from "../../../design-system";
 import { cn } from "../../../design-system";
@@ -54,7 +54,22 @@ export function PostComposerPublishSettings(props: { controller: PostComposerCon
   const instrumentalPreview = createObjectUrl(() => controller.song.state.instrumentalAudioUpload);
   const vocalPreview = createObjectUrl(() => controller.song.state.vocalAudioUpload);
   const liveCoverPreview = createObjectUrl(() => controller.primary.liveState.coverUpload);
+  const filePreview = createObjectUrl(() => controller.generic.file.upload);
   const songPlayback = createLocalAudioPreview(songAudioPreview);
+
+  // Propagate the detected video aspect ratio into composer state so the
+  // eventual submission carries it; the preview render alone would leave a
+  // missing or stale primaryVideoAspectRatio. Ported from the React effect.
+  createEffect(
+    () => detectedVideoAspectRatio(),
+    (detected) => {
+      if (typeof detected !== "number") return;
+      if (controller.media.videoState.primaryVideoAspectRatio === detected) return;
+      controller.media.updateVideoState((current) => current.primaryVideoAspectRatio === detected
+        ? current
+        : { ...current, primaryVideoAspectRatio: detected });
+    },
+  );
 
   const attachment = () => attachmentFor(
     controller,
@@ -111,11 +126,22 @@ export function PostComposerPublishSettings(props: { controller: PostComposerCon
     const priceLabel = monetization.priceUsd?.trim() ? `$${monetization.priceUsd.trim()}` : undefined;
     const currentAttachment = attachment();
     const downloads = songDownloads();
+    const fileUrl = filePreview();
     const content = buildPostComposerPreviewContent({
       access,
       attachment: currentAttachment,
       body: resolvePreviewBody(controller.tabs.activeTab, controller.fields),
       derivativeStep: controller.primary.derivativeState,
+      fileAsset: {
+        mimeType: controller.generic.file.upload?.type ?? null,
+        onDownload: fileUrl
+          ? () => downloadLocalPreviewFile(
+              fileUrl,
+              controller.generic.file.upload?.name ?? controller.generic.file.label ?? "download",
+            )
+          : undefined,
+        sizeBytes: controller.generic.file.upload?.size ?? null,
+      },
       linkPreview: controller.fields.linkPreview,
       liveCoverSrc: liveCoverPreview(),
       liveGuestLabel: controller.primary.liveState.guestUserId ?? undefined,

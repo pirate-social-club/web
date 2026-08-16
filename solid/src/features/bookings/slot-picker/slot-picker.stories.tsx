@@ -6,6 +6,10 @@ import { SlotPicker } from "./slot-picker";
 const meta = {
   title: "App/Bookings/SlotPicker",
   component: SlotPicker,
+  args: {
+    slots: [],
+    viewerTimezone: "Europe/Vienna",
+  },
   parameters: { layout: "centered" },
 } satisfies Meta<typeof SlotPicker>;
 

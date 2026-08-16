@@ -44,7 +44,7 @@ export function SlotPicker(props: SlotPickerProps) {
                 disabled={!slot.available}
                 onClick={() => props.onSelectSlot?.(slot)}
                 role="option"
-                aria-selected={isSelected()}
+                aria-selected={isSelected() ? "true" : "false"}
                 type="button"
               >
                 <div class="flex flex-col items-start gap-1">

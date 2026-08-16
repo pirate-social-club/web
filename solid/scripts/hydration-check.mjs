@@ -26,10 +26,27 @@ async function assertHead(page, name, expected) {
   }
 }
 
+async function readApiVersionAttempts(page) {
+  return page.evaluate(() => [...(window.__solidHydrationApiAttempts ?? [])]);
+}
+
 try {
   const page = await browser.newPage();
   const violations = [];
-  let apiVersionRequests = 0;
+  await page.addInitScript(() => {
+    const attempts = [];
+    Object.defineProperty(window, "__solidHydrationApiAttempts", {
+      value: attempts,
+      configurable: true,
+    });
+    const originalFetch = window.fetch.bind(window);
+    window.fetch = (input, init) => {
+      const rawUrl = input instanceof Request ? input.url : String(input);
+      const url = new URL(rawUrl, window.location.href);
+      if (url.pathname === "/__version") attempts.push(`${url.origin}${url.pathname}`);
+      return originalFetch(input, init);
+    };
+  });
   page.on("console", message => {
     if (message.type() === "error" && !message.location().url.endsWith("/favicon.ico")) {
       violations.push(`console: ${message.text()}`);
@@ -40,9 +57,6 @@ try {
     const errorText = request.failure()?.errorText ?? "failed";
     if (request.resourceType() === "media" && errorText === "net::ERR_ABORTED") return;
     violations.push(`request: ${request.url()} ${errorText}`);
-  });
-  page.on("request", request => {
-    if (new URL(request.url()).pathname === "/__version") apiVersionRequests += 1;
   });
   const response = await page.goto(base, { waitUntil: "networkidle" });
   if (!response?.ok()) throw new Error(`SSR page returned ${response?.status()}`);
@@ -112,7 +126,10 @@ try {
   }
   await displayName.fill("Gate test");
   if (await displayName.inputValue() !== "Gate test") throw new Error("TextField controlled value did not update");
-  if (apiVersionRequests !== 0) throw new Error(`Hydrated API query refetched ${apiVersionRequests} time(s)`);
+  const apiVersionAttemptsAfterHydration = await readApiVersionAttempts(page);
+  if (apiVersionAttemptsAfterHydration.length) {
+    throw new Error(`Hydrated API query attempted ${apiVersionAttemptsAfterHydration.length} time(s): ${apiVersionAttemptsAfterHydration.join(", ")}`);
+  }
 
   if (await feedItems.count() > 1) {
     await feedItems.nth(1).scrollIntoViewIfNeeded();
@@ -218,10 +235,13 @@ try {
   await page.locator(overlap.marker).waitFor({ state: "attached" });
   await assertHead(page, "competing navigation final head cleanliness", overlap);
 
-  if (apiVersionRequests !== 0) throw new Error(`API query refetched during navigation/refresh (${apiVersionRequests})`);
+  const apiVersionAttemptsAfterNavigation = await readApiVersionAttempts(page);
+  if (apiVersionAttemptsAfterNavigation.length) {
+    throw new Error(`API query attempted during navigation/refresh ${apiVersionAttemptsAfterNavigation.length} time(s): ${apiVersionAttemptsAfterNavigation.join(", ")}`);
+  }
   if (violations.length) throw new Error(`Browser console errors: ${violations.join(" | ")}`);
 
-  console.log(JSON.stringify({ ok: true, before, after, navigated: "/c/demo/threads", backNavigation: true, routeDisposal: true, overlapPath, deferredReveal: true, nonceLength: nonce.length, apiVersionRequests, overlay: true, form: true }));
+  console.log(JSON.stringify({ ok: true, before, after, navigated: "/c/demo/threads", backNavigation: true, routeDisposal: true, overlapPath, deferredReveal: true, nonceLength: nonce.length, apiVersionAttempts: apiVersionAttemptsAfterNavigation, overlay: true, form: true }));
 } finally {
   await browser.close();
 }

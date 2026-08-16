@@ -5,9 +5,9 @@ import { For, Show } from "solid-js";
 
 import {
   Checkbox,
+  CheckboxLabel,
   createIsMobile,
   FormSectionHeading,
-  Label,
   Tabs,
   TabsList,
   TabsTrigger,
@@ -124,10 +124,11 @@ export function PostComposerDerivativeSection(props: {
                   ? { ...current, sourceTermsAccepted: next === true }
                   : current)
               }
-            />
-            <Label class="text-muted-foreground" for={sourceTermsAcceptedId}>
-              {props.labels?.acceptTermsLabel ?? props.copy.derivative.acceptSourceTerms}
-            </Label>
+            >
+              <CheckboxLabel class="text-muted-foreground">
+                {props.labels?.acceptTermsLabel ?? props.copy.derivative.acceptSourceTerms}
+              </CheckboxLabel>
+            </Checkbox>
           </div>
         </Show>
       </section>

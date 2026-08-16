@@ -5,13 +5,13 @@ import { createSignal, For, Show } from "solid-js";
 
 import {
   Checkbox,
+  CheckboxLabel,
   Combobox,
   FormNote,
   IconCalendarBlank,
   IconMapPin,
   IconVideoCamera,
   Input,
-  Label,
   Type,
 } from "../../../design-system";
 import { cn } from "../../../design-system";
@@ -243,10 +243,9 @@ export function PostComposerEventSection(props: {
               timezone: props.event.timezone ?? defaultTimeZone(),
             })
           }
-        />
-        <Label class="font-semibold" for="post-event-enabled">
-          Add date and place
-        </Label>
+        >
+          <CheckboxLabel class="font-semibold">Add date and place</CheckboxLabel>
+        </Checkbox>
       </div>
 
       <Show when={enabled()}>
@@ -331,11 +330,12 @@ export function PostComposerEventSection(props: {
                   place: checked === true ? undefined : props.event.place,
                 })
               }
-            />
-            <Label class="flex items-center gap-2" for="post-event-online">
-              <IconVideoCamera class="size-4 text-muted-foreground" />
-              Online event
-            </Label>
+            >
+              <CheckboxLabel class="flex items-center gap-2">
+                <IconVideoCamera class="size-4 text-muted-foreground" />
+                Online event
+              </CheckboxLabel>
+            </Checkbox>
           </div>
 
           <Show when={!isOnline()}>

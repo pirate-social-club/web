@@ -142,19 +142,3 @@ export const PublicRouteDesktop: Story = {
     </PublicRoutePage>
   ),
 };
-
-export const PublicRouteMobile: Story = {
-  name: "Route / Public mobile",
-  globals: { viewport: { value: "mobile1", isRotated: false } },
-  render: () => (
-    <PublicRoutePage size="default">
-      <div class="flex flex-col gap-4 py-6">
-        <Card class="rounded-2xl border-border-soft bg-card p-5 shadow-none">
-          <Type as="p" variant="body" class="text-muted-foreground">
-            Public route content.
-          </Type>
-        </Card>
-      </div>
-    </PublicRoutePage>
-  ),
-};

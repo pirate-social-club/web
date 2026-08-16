@@ -5,7 +5,7 @@ import { cn } from "@/lib/cn";
 import { cva, type VariantProps } from "@/lib/recipe";
 
 const chipVariants = cva(
-  "inline-flex items-center justify-center gap-1.5 rounded-full text-base font-medium transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background disabled:pointer-events-none disabled:opacity-50",
+  "inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-full text-base font-medium transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background disabled:cursor-not-allowed disabled:pointer-events-none disabled:opacity-50",
   {
     variants: {
       variant: {

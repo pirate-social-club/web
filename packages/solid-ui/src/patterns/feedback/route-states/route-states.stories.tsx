@@ -66,11 +66,6 @@ export const EmptyFeed: Story = {
   render: () => <EmptyFeedState message="No posts yet. Check back later." />,
 };
 
-export const EmptyFeedMobile: Story = {
-  globals: { viewport: { value: "mobile1", isRotated: false } },
-  render: () => <EmptyFeedState message="No posts yet. Check back later." />,
-};
-
 export const AuthRequired: Story = {
   render: () => (
     <AuthRequiredRouteState
@@ -113,38 +108,7 @@ export const AuthRequiredWithIllustration: Story = {
   ),
 };
 
-export const AuthRequiredMobile: Story = {
-  globals: { viewport: { value: "mobile1", isRotated: false } },
-  render: () => (
-    <AuthRequiredRouteState
-      ctaLabel="Connect"
-      description="Get notified when someone replies, mentions you, or sends a tip."
-      headline="Your inbox is waiting"
-      illustration={<EmptyInboxState class="py-0" image={fixtureGhostImage} />}
-      onConnect={() => {}}
-      title="Inbox"
-    />
-  ),
-};
-
 export const Error: Story = {
-  render: () => (
-    <ErrorState
-      image={fixtureGhostImage}
-      action={
-        <div class="flex w-full flex-row gap-3">
-          <Button class="h-12 flex-1" size="lg">Try Again</Button>
-          <Button class="h-12 flex-1" size="lg" variant="secondary">Go Home</Button>
-        </div>
-      }
-      description="We could not load this page. It may have been removed or you may be offline."
-      title="Something went wrong?"
-    />
-  ),
-};
-
-export const ErrorMobile: Story = {
-  globals: { viewport: { value: "mobile1", isRotated: false } },
   render: () => (
     <ErrorState
       image={fixtureGhostImage}
@@ -168,11 +132,6 @@ export const NotFound: Story = {
   render: () => <NotFoundRouteState path="/missing" />,
 };
 
-export const NotFoundMobile: Story = {
-  globals: { viewport: { value: "mobile1", isRotated: false } },
-  render: () => <NotFoundRouteState path="/missing" />,
-};
-
 export const RouteLoadFailure: Story = {
   render: () => (
     <RouteLoadFailureState
@@ -182,25 +141,14 @@ export const RouteLoadFailure: Story = {
   ),
 };
 
-export const RouteLoadFailureMobile: Story = {
-  globals: { viewport: { value: "mobile1", isRotated: false } },
+export const RouteLoadFailureFetchError: Story = {
+  name: "Route Load Failure / Fetch Error",
   render: () => (
     <RouteLoadFailureState title="Something went wrong?" description="Failed to fetch" />
   ),
 };
 
 export const RootAppError: Story = {
-  render: () => (
-    <RootAppErrorState
-      title="Something went wrong?"
-      description="The app failed to initialize. Please try reloading the page."
-      homeLabel="Go Home"
-    />
-  ),
-};
-
-export const RootAppErrorMobile: Story = {
-  globals: { viewport: { value: "mobile1", isRotated: false } },
   render: () => (
     <RootAppErrorState
       title="Something went wrong?"
@@ -224,10 +172,4 @@ export const EmptyInboxWithTitle: Story = {
       description="You have no new notifications right now."
     />
   ),
-};
-
-export const EmptyInboxMobile: Story = {
-  name: "Empty Inbox / Mobile",
-  globals: { viewport: { value: "mobile1", isRotated: false } },
-  render: () => <EmptyInboxState image={fixtureGhostImage} description="No notifications" />,
 };

@@ -49,7 +49,7 @@ export function PostComposerMobileAttachmentBar(props: {
             <button
               aria-label={action.label}
               class={cn(
-                "grid size-11 place-items-center rounded-full text-muted-foreground transition-colors",
+                "grid size-11 cursor-pointer place-items-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                 props.activeKind === action.kind && "bg-muted text-foreground",
               )}
               onClick={() => props.onSelect(action.kind)}

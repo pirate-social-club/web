@@ -8,11 +8,11 @@ import type { JSX } from "@solidjs/web";
 import {
   Avatar,
   Checkbox,
+  CheckboxLabel,
   IconGlobe,
   IconMaskHappy,
   IconUsersThree,
   Input,
-  Label,
   RadioIndicator,
   Type,
 } from "../../../design-system";
@@ -263,11 +263,12 @@ export function PostComposerSettingsSections(props: PostComposerSettingsSections
             checked={props.ageGatePolicy === "18_plus"}
             id="settings-age-gate"
             onChange={(next) => props.onAgeGatePolicyChange(next === true ? "18_plus" : "none")}
-          />
-          <Label class="flex-1 text-base leading-6" for="settings-age-gate">
-            <span class="block font-medium text-foreground">{copy().ageGateTitle}</span>
-            <span class="block text-muted-foreground">{copy().ageGateDescription}</span>
-          </Label>
+          >
+            <CheckboxLabel class="flex-1 text-base leading-6">
+              <span class="block font-medium text-foreground">{copy().ageGateTitle}</span>
+              <span class="block text-muted-foreground">{copy().ageGateDescription}</span>
+            </CheckboxLabel>
+          </Checkbox>
         </div>
       </section>
 
@@ -281,10 +282,11 @@ export function PostComposerSettingsSections(props: PostComposerSettingsSections
                   checked={props.access === "paid"}
                   id="settings-paid-access"
                   onChange={(next) => props.onPriceChange(props.price, next === true ? "paid" : "free")}
-                />
-                <Label class="flex-1 text-base leading-6" for="settings-paid-access">
-                  {copy().paidUnlockTitle}
-                </Label>
+                >
+                  <CheckboxLabel class="flex-1 text-base leading-6">
+                    {copy().paidUnlockTitle}
+                  </CheckboxLabel>
+                </Checkbox>
               </div>
             </Show>
             <Show when={showPaidFields()}>
@@ -346,10 +348,11 @@ export function PostComposerSettingsSections(props: PostComposerSettingsSections
                     checked={props.regionalPricingEnabled}
                     id="settings-regional-pricing"
                     onChange={(next) => props.onRegionalPricingChange?.(next === true)}
-                  />
-                  <Label class="flex-1 text-base leading-6" for="settings-regional-pricing">
-                    {copy().regionalPricingLabel}
-                  </Label>
+                  >
+                    <CheckboxLabel class="flex-1 text-base leading-6">
+                      {copy().regionalPricingLabel}
+                    </CheckboxLabel>
+                  </Checkbox>
                 </div>
                 <Show when={canPreviewRegionalPricing()}>
                   <RegionalPricingPreviewDialog

@@ -238,24 +238,6 @@ export const AgentAccess: Story = {
   ),
 };
 
-export const MobilePaid: Story = {
-  name: "Mobile / Paid needs ticket",
-  globals: { viewport: { value: "mobile1", isRotated: false } },
-  render: () => (
-    <PostCard
-      {...basePost}
-      content={{
-        ...baseLiveRoom,
-        accessMode: "paid",
-        accessState: "purchase_required",
-        listingMode: "listed",
-        listingStatus: "active",
-        priceLabel: "$12.00",
-        onBuy: noop,
-      }}
-    />
-  ),
-};
 
 export const DuetFeedAndPostPage: Story = {
   name: "Participants / Duet feed and post page",

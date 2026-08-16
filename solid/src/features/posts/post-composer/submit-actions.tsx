@@ -201,7 +201,7 @@ export function PostComposerMobileSubmitBar(props: {
 
     if (step.isWriteStep) {
       return (
-        <div class="fixed inset-x-0 bottom-0 z-20 border-t border-border-soft bg-background/95 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3 backdrop-blur-xl">
+        <div class="fixed inset-x-0 bottom-18 z-20 border-t border-border-soft bg-background/95 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3 backdrop-blur-xl">
           <div class="px-4">
             <Button
               class="w-full"

@@ -134,7 +134,7 @@ function VideoAttachmentPreview(props: {
       </div>
       <button
         aria-label="Remove video"
-        class="absolute right-3 top-3 grid size-10 place-items-center rounded-full bg-background/85 text-foreground shadow-sm backdrop-blur"
+        class="absolute right-3 top-3 grid size-10 cursor-pointer place-items-center rounded-full bg-background/85 text-foreground shadow-sm backdrop-blur transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         onClick={(event) => {
           event.stopPropagation();
           props.onRemove();
@@ -189,7 +189,7 @@ export function PostComposerAttachmentCard(props: {
                     />
                     <button
                       aria-label="Remove link"
-                      class="grid size-11 place-items-center rounded-full bg-muted text-foreground"
+                      class="grid size-11 cursor-pointer place-items-center rounded-full bg-muted text-foreground transition-colors hover:bg-muted/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       onClick={props.onRemove}
                       type="button"
                     >
@@ -223,7 +223,7 @@ export function PostComposerAttachmentCard(props: {
                 </Show>
                 <button
                   aria-label="Remove image"
-                  class="absolute right-3 top-3 grid size-10 place-items-center rounded-full bg-background/85 text-foreground shadow-sm backdrop-blur"
+                  class="absolute right-3 top-3 grid size-10 cursor-pointer place-items-center rounded-full bg-background/85 text-foreground shadow-sm backdrop-blur transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   onClick={props.onRemove}
                   type="button"
                 >
@@ -270,7 +270,7 @@ export function PostComposerAttachmentCard(props: {
                 </span>
                 <button
                   aria-label="Remove audio"
-                  class="grid size-10 place-items-center rounded-full text-muted-foreground"
+                  class="grid size-10 cursor-pointer place-items-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   onClick={(event) => {
                     event.stopPropagation();
                     props.onRemove();
@@ -292,7 +292,7 @@ export function PostComposerAttachmentCard(props: {
                 <Type as="span" variant="body-strong" class="min-w-0 flex-1 truncate">{file().label}</Type>
                 <button
                   aria-label="Remove asset"
-                  class="grid size-10 place-items-center rounded-full text-muted-foreground"
+                  class="grid size-10 cursor-pointer place-items-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   onClick={props.onRemove}
                   type="button"
                 >

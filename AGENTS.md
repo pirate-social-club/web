@@ -139,7 +139,21 @@ re-running the workflow. In particular:
 - Migration batches are counted by distinct rendered states, not export-name
   parity. Do not satisfy coverage by aliasing one `Story` object to another;
   each exported story must render a distinct state or interaction.
-- Every exported primitive must have a same-name `.stories.tsx`; `bun run ui:audit` enforces this.
+- Every exported primitive must have a same-name `.stories.tsx`; `bun run ui:audit` enforces this for React primitives and Solid design-system entry modules.
+- Solid stories must be deterministic and offline; `bun run ui:audit` rejects timers, random values, current-time reads, and `fetch` calls.
+- Keep button labels to one word, or two when the verb needs an object; allow
+  three only when naming a destination (for example, `Add to calendar`). Never
+  put a sentence in a button.
+- Use one primary surface per view. Flatten secondary bright areas so the CTA
+  remains visually clear.
+- Left-align dialog body copy. Center a title only when it is short; never
+  center multi-line body text.
+- Keep destructive actions on the left and primary actions on the right, using
+  the same order across panels in one view.
+- Name the thing in labels rather than describing it in a sentence (`Fee /
+  session`, not `Fee per session booked`).
+- Let mobile composition surfaces be full-bleed by default. Add a constrained
+  mobile width only when the responsive layout specifically requires it.
 
 ## Code Quality
 

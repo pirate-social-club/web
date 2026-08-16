@@ -141,6 +141,7 @@ export {
   CardContent,
   CardFooter,
   Checkbox,
+  CheckboxLabel,
   Chip,
   Combobox,
   CommunityAvatar,

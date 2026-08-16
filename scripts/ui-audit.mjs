@@ -1,6 +1,8 @@
 import fs from "node:fs";
+import { createHash } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import * as ts from "typescript";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -10,6 +12,14 @@ const workspaceRoot = path.resolve(projectRoot, "..");
 const primitivesDir = path.join(projectRoot, "src", "components", "primitives");
 const compositionsDir = path.join(projectRoot, "src", "components", "compositions");
 const srcDir = path.join(projectRoot, "src");
+const solidStoryRoots = [
+  path.join(projectRoot, "solid"),
+  path.join(projectRoot, "packages", "solid-ui"),
+];
+const solidPrimitiveRoots = [
+  path.join(projectRoot, "packages", "solid-ui", "src", "components"),
+  path.join(projectRoot, "packages", "solid-ui", "src", "patterns"),
+];
 const uiSourceDirs = [
   srcDir,
   path.join(projectRoot, "solid"),
@@ -75,18 +85,147 @@ function checkNoDuplicateWebTrees() {
 }
 
 function checkPrimitiveStoryCoverage() {
-  const primitiveFiles = fs
+  const reactPrimitiveFiles = fs
     .readdirSync(primitivesDir)
     .filter((name) => name.endsWith(".tsx") && !name.endsWith(".stories.tsx") && !name.endsWith(".test.tsx"));
 
-  const missingStories = primitiveFiles
+  const missingReactStories = reactPrimitiveFiles
     .filter((name) => !fs.existsSync(path.join(primitivesDir, name.replace(/\.tsx$/, ".stories.tsx"))))
     .map((name) => relative(path.join(primitivesDir, name)));
+
+  const solidPrimitiveFiles = solidPrimitiveRoots.flatMap((root) =>
+    walk(root, { skipIgnoredDirs: true })
+      .filter((filePath) => filePath.endsWith(".tsx"))
+      .filter((filePath) => !filePath.endsWith(".stories.tsx") && !filePath.endsWith(".test.tsx") && !filePath.endsWith(".spec.tsx"))
+      .filter((filePath) => path.basename(filePath, ".tsx") === path.basename(path.dirname(filePath))),
+  );
+
+  const missingSolidStories = solidPrimitiveFiles
+    .filter((filePath) => !fs.existsSync(filePath.replace(/\.tsx$/, ".stories.tsx")))
+    .map(relative);
+
+  const missingStories = [...missingReactStories, ...missingSolidStories].sort();
 
   return {
     label: "primitives/story-coverage",
     passed: missingStories.length === 0,
     details: missingStories,
+  };
+}
+
+function propertyName(property) {
+  if (!property.name) return null;
+  if (ts.isIdentifier(property.name) || ts.isStringLiteral(property.name) || ts.isNumericLiteral(property.name)) {
+    return property.name.text;
+  }
+  return null;
+}
+
+function normalizeNode(node, sourceFile) {
+  return node.getText(sourceFile).replace(/\s+/gu, " ").trim();
+}
+
+function normalizeProperty(property, sourceFile) {
+  if (!ts.isPropertyAssignment(property)) return normalizeNode(property, sourceFile);
+
+  return `${propertyName(property)}:${normalizeNode(property.initializer, sourceFile)}`;
+}
+
+function normalizeMetadata(initializer, sourceFile) {
+  if (!ts.isObjectLiteralExpression(initializer)) return normalizeNode(initializer, sourceFile);
+
+  const properties = initializer.properties
+    .filter((property) => propertyName(property) !== "viewport")
+    .map((property) => normalizeProperty(property, sourceFile));
+
+  return properties.length === 0 ? null : `{${properties.join(",")}}`;
+}
+
+function normalizeStory(story, sourceFile) {
+  const properties = [];
+
+  for (const property of story.properties) {
+    const name = propertyName(property);
+    if (name === "name") continue;
+
+    if ((name === "globals" || name === "parameters") && ts.isPropertyAssignment(property)) {
+      const metadata = normalizeMetadata(property.initializer, sourceFile);
+      if (metadata) properties.push(`${name}:${metadata}`);
+      continue;
+    }
+
+    properties.push(normalizeProperty(property, sourceFile));
+  }
+
+  return `{${properties.join(",")}}`;
+}
+
+function checkNoDuplicateStoryBodies() {
+  const offenders = [];
+
+  for (const filePath of walkRoots(solidStoryRoots, { skipIgnoredDirs: true })) {
+    if (!filePath.endsWith(".stories.tsx")) continue;
+
+    const source = fs.readFileSync(filePath, "utf8");
+    const sourceFile = ts.createSourceFile(filePath, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+    const stories = new Map();
+
+    for (const statement of sourceFile.statements) {
+      if (!ts.isVariableStatement(statement) || !statement.modifiers?.some((modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword)) continue;
+
+      for (const declaration of statement.declarationList.declarations) {
+        if (!ts.isIdentifier(declaration.name) || !ts.isObjectLiteralExpression(declaration.initializer)) continue;
+        if (!declaration.initializer.properties.some((property) => ["render", "args", "play"].includes(propertyName(property)))) continue;
+
+        const normalized = normalizeStory(declaration.initializer, sourceFile);
+        const hash = createHash("sha256").update(normalized).digest("hex");
+        const entries = stories.get(hash) ?? [];
+        entries.push({ name: declaration.name.text, line: sourceFile.getLineAndCharacterOfPosition(declaration.getStart(sourceFile)).line + 1 });
+        stories.set(hash, entries);
+      }
+    }
+
+    for (const entries of stories.values()) {
+      if (entries.length < 2) continue;
+      const file = relative(filePath);
+      offenders.push(`${file}: ${entries.map(({ name, line }) => `${name} (${line})`).join(", ")}`);
+    }
+  }
+
+  return {
+    label: "stories/no-duplicate-render-bodies",
+    passed: offenders.length === 0,
+    details: offenders,
+  };
+}
+
+function checkNoStoryNondeterminism() {
+  const offenders = [];
+  const bannedPatterns = [
+    { label: "setInterval", pattern: /\bsetInterval\s*\(/u },
+    { label: "setTimeout", pattern: /\bsetTimeout\s*\(/u },
+    { label: "Math.random", pattern: /\bMath\.random\s*\(/u },
+    { label: "Date.now", pattern: /\bDate\.now\s*\(/u },
+    { label: "fetch", pattern: /\bfetch\s*\(/u },
+  ];
+
+  for (const filePath of walkRoots(solidStoryRoots, { skipIgnoredDirs: true })) {
+    if (!filePath.endsWith(".stories.tsx")) continue;
+
+    const lines = fs.readFileSync(filePath, "utf8").split("\n");
+    lines.forEach((line, index) => {
+      for (const bannedPattern of bannedPatterns) {
+        if (bannedPattern.pattern.test(line)) {
+          offenders.push(`${relative(filePath)}:${index + 1}: ${bannedPattern.label}`);
+        }
+      }
+    });
+  }
+
+  return {
+    label: "stories/no-nondeterminism",
+    passed: offenders.length === 0,
+    details: offenders,
   };
 }
 
@@ -301,6 +440,8 @@ function checkStaleMarkers() {
 const checks = [
   checkNoDuplicateWebTrees(),
   checkPrimitiveStoryCoverage(),
+  checkNoDuplicateStoryBodies(),
+  checkNoStoryNondeterminism(),
   checkNoSmallText(),
   checkNoHardcodedColors(),
   checkNoArbitrarySpacing(),

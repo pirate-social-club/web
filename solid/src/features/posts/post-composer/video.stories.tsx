@@ -20,6 +20,33 @@ const video = {
   primaryVideoAspectRatio: 16 / 9,
   posterFrameSeconds: "1.5",
 };
+
+const regionalPricingPreview = {
+  defaultTierKey: "high_income",
+  tiers: [
+    {
+      tierKey: "high_income",
+      displayName: "High income",
+      adjustmentType: "multiplier" as const,
+      adjustmentValue: 1,
+      countryCodes: ["US", "CA", "GB", "DE", "JP", "AU"],
+    },
+    {
+      tierKey: "standard",
+      displayName: "Standard",
+      adjustmentType: "multiplier" as const,
+      adjustmentValue: 0.65,
+      countryCodes: ["BR", "MX", "PL", "ZA", "TH"],
+    },
+    {
+      tierKey: "reduced",
+      displayName: "Reduced",
+      adjustmentType: "multiplier" as const,
+      adjustmentValue: 0.4,
+      countryCodes: ["CO", "EC", "ID", "PE", "PH"],
+    },
+  ],
+} satisfies NonNullable<PostComposerProps["regionalPricingPreview"]>;
 export const OriginalDetails: Story = {
   name: "Original / Details",
   render: () => (
@@ -123,7 +150,19 @@ export const Upload: Story = {
 
 export const PaidUnlock: Story = {
   name: "Access / Paid unlock",
-  render: () => videoVariant({ composerStep: "settings", monetization: { visible: true, priceUsd: "4.99" }, license: { presetId: "commercial-use" } }),
+  render: () => videoVariant({
+    captionValue: "Members can preview the post; buyers unlock the full video.",
+    composerStep: "settings",
+    monetization: {
+      regionalPricingAvailable: true,
+      regionalPricingEnabled: true,
+      priceUsd: "4.99",
+      visible: true,
+    },
+    regionalPricingPreview,
+    titleValue: "Full backstage cut",
+    video: { ...video, primaryVideoLabel: "full-backstage-cut.mp4" },
+  }),
 };
 
 export const UploadFailed: Story = {

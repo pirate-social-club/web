@@ -5,12 +5,12 @@ import { For, Show } from "solid-js";
 
 import {
   Checkbox,
+  CheckboxLabel,
   Chip,
   FormNote,
   FormSectionHeading,
   IconPlus,
   Input,
-  Label,
   Switch,
   Type,
 } from "../../../design-system";
@@ -122,8 +122,9 @@ export function LiveTabContent(props: {
                 scheduleForLater: checked === true,
               })
             }
-          />
-          <Label for="live-schedule-for-later">{props.copy.live.scheduleForLater}</Label>
+          >
+            <CheckboxLabel>{props.copy.live.scheduleForLater}</CheckboxLabel>
+          </Checkbox>
         </div>
 
         <Show when={scheduleForLater()}>
@@ -259,26 +260,26 @@ export function LiveTabContent(props: {
               >
                 <For each={gateAssetOptions()}>
                   {(option) => (
-                    <label class="flex items-start gap-2 rounded-md border border-border px-3 py-2">
-                      <Checkbox
-                        checked={selectedGateTargets().has(option.id)}
-                        onChange={(checked) => {
-                          const current = new Set(live().audienceGateTargetRefs ?? []);
-                          if (checked === true) {
-                            current.add(option.id);
-                          } else {
-                            current.delete(option.id);
-                          }
-                          onLiveChange({ ...live(), audienceGateTargetRefs: [...current] });
-                        }}
-                      />
-                      <span class="min-w-0">
+                    <Checkbox
+                      checked={selectedGateTargets().has(option.id)}
+                      class="flex w-full items-start gap-2 rounded-md border border-border px-3 py-2"
+                      onChange={(checked) => {
+                        const current = new Set(live().audienceGateTargetRefs ?? []);
+                        if (checked === true) {
+                          current.add(option.id);
+                        } else {
+                          current.delete(option.id);
+                        }
+                        onLiveChange({ ...live(), audienceGateTargetRefs: [...current] });
+                      }}
+                    >
+                      <CheckboxLabel class="min-w-0">
                         <Type as="span" variant="body" class="block truncate">{option.label}</Type>
                         <Show when={option.subtitle}>
                           <Type as="span" variant="caption" class="block truncate text-muted-foreground">{option.subtitle}</Type>
                         </Show>
-                      </span>
-                    </label>
+                      </CheckboxLabel>
+                    </Checkbox>
                   )}
                 </For>
               </Show>

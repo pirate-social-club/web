@@ -56,11 +56,6 @@ export const TextPost: Story = {
   render: () => <PostCard {...basePost} />,
 };
 
-export const SharePillActions: Story = {
-  name: "Share Pill / Crosspost and Link",
-  render: () => <PostCard {...basePost} />,
-};
-
 export const SharePillCrosspostIneligible: Story = {
   name: "Share Pill / Link Only",
   render: () => (

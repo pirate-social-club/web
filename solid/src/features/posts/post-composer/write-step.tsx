@@ -184,7 +184,7 @@ export function PostComposerWriteStep(props: { controller: PostComposerControlle
         <Inputs />
       </CardContent>
     }>
-      <div class="space-y-7 px-0 pb-32 pt-1" style={{ "padding-bottom": `${120 + keyboardOffset()}px` }}>{body(true)}</div>
+      <div class="space-y-7 px-0 pb-40 pt-1" style={{ "padding-bottom": `${160 + keyboardOffset()}px` }}>{body(true)}</div>
       <PostComposerMobileAttachmentBar actions={attachmentActions} activeKind={attachment()?.kind ?? null} onSelect={selectAttachment} />
       <Inputs />
     </Show>

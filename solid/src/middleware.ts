@@ -124,7 +124,7 @@ async function seamMiddleware(request: Request, next: () => Promise<Response>) {
   const headers = new Headers(response.headers);
   headers.set(
     "content-security-policy",
-    buildSolidContentSecurityPolicy({ nonce }),
+    buildSolidContentSecurityPolicy({ nonce, allowLocalApiOrigin: isLocalHost(hostname) }),
   );
   headers.set("x-seam-host-surface", surface);
   const status = event.locals.routeStatus ?? response.status;

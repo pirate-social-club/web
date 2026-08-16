@@ -60,17 +60,19 @@ function headSnapshot(body) {
 
 function assertHead(name, body, expected) {
   const actual = headSnapshot(body);
+  const sameSequence = (values, expectedValues) =>
+    values.length === expectedValues.length && values.every((value, index) => value === expectedValues[index]);
   check(`${name} has exactly one title`, actual.titles.length === 1, `${actual.titles.length}`);
-  check(`${name} title is correct`, actual.titles[0] === expected.title, actual.titles[0] ?? "missing");
+  check(`${name} title is correct`, sameSequence(actual.titles, [expected.title]), actual.titles[0] ?? "missing");
   const canonical = expected.canonical == null ? [] : [expected.canonical];
   check(`${name} has exactly one canonical identity`, actual.canonical.length === canonical.length, `${actual.canonical.length}`);
-  check(`${name} canonical is correct`, actual.canonical.join("\u0000") === canonical.join("\u0000"), actual.canonical.join(", ") || "missing");
+  check(`${name} canonical is correct`, sameSequence(actual.canonical, canonical), actual.canonical.join(", ") || "missing");
   const descriptions = expected.description == null ? [] : [expected.description];
-  check(`${name} description metadata is correct`, actual.descriptions.join("\u0000") === descriptions.join("\u0000"), actual.descriptions.join(", ") || "missing");
+  check(`${name} description metadata is correct`, sameSequence(actual.descriptions, descriptions), actual.descriptions.join(", ") || "missing");
   const ogTitles = expected.ogTitle == null ? [] : [expected.ogTitle];
-  check(`${name} og:title metadata is correct`, actual.ogTitles.join("\u0000") === ogTitles.join("\u0000"), actual.ogTitles.join(", ") || "missing");
+  check(`${name} og:title metadata is correct`, sameSequence(actual.ogTitles, ogTitles), actual.ogTitles.join(", ") || "missing");
   const ogTypes = expected.ogType == null ? [] : [expected.ogType];
-  check(`${name} og:type metadata is correct`, actual.ogTypes.join("\u0000") === ogTypes.join("\u0000"), actual.ogTypes.join(", ") || "missing");
+  check(`${name} og:type metadata is correct`, sameSequence(actual.ogTypes, ogTypes), actual.ogTypes.join(", ") || "missing");
 }
 
 const root = await get("/", { headers: { host: "app.example.hns" } });

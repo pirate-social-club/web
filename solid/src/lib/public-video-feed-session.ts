@@ -28,17 +28,42 @@ export function writeFeedPosition(position: FeedPosition): void {
   }
 }
 
+export function resolveFeedActiveId(
+  items: PublicVideoFeedItem[],
+  preferredId: string | null,
+): string | null {
+  return items.some(item => item.post.post.id === preferredId)
+    ? preferredId
+    : items[0]?.post.post.id ?? null;
+}
+
 export function createFeedSessionPersistence(options: {
   feed: Accessor<HTMLDivElement | undefined>;
   activeId: Accessor<string | null>;
   setActiveId: Setter<string | null>;
   items: Accessor<PublicVideoFeedItem[]>;
 }): void {
+  let skippedInitialPersist = false;
+
   createEffect(
     () => options.activeId(),
     activeId => {
       if (isServer) return;
+      // The restoration effect below must read the previous session value
+      // before this owner writes its initial active item back to storage.
+      if (!skippedInitialPersist) {
+        skippedInitialPersist = true;
+        return;
+      }
       writeFeedPosition({ activeId, scrollTop: options.feed()?.scrollTop ?? 0 });
+    },
+  );
+
+  createEffect(
+    () => ({ activeId: options.activeId(), items: options.items() }),
+    ({ activeId, items }) => {
+      const nextActiveId = resolveFeedActiveId(items, activeId);
+      if (nextActiveId !== activeId) options.setActiveId(nextActiveId);
     },
   );
 
@@ -49,15 +74,16 @@ export function createFeedSessionPersistence(options: {
       const element = options.feed();
       if (!element) return;
       const stored = readFeedPosition();
-      if (stored.activeId && options.items().some(item => item.post.post.id === stored.activeId)) {
-        options.setActiveId(stored.activeId);
-      }
+      const restoredActiveId = resolveFeedActiveId(options.items(), stored.activeId);
+      if (restoredActiveId !== options.activeId()) options.setActiveId(restoredActiveId);
+      let restoreFrame: number | undefined;
       if (stored.scrollTop > 0) {
-        requestAnimationFrame(() => { element.scrollTop = stored.scrollTop; });
+        restoreFrame = requestAnimationFrame(() => { element.scrollTop = stored.scrollTop; });
       }
       const save = () => writeFeedPosition({ activeId: options.activeId(), scrollTop: element.scrollTop });
       element.addEventListener("scroll", save, { passive: true });
       return () => {
+        if (restoreFrame !== undefined) cancelAnimationFrame(restoreFrame);
         element.removeEventListener("scroll", save);
         save();
       };

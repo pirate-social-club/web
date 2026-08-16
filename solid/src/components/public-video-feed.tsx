@@ -19,22 +19,42 @@ export default function PublicVideoFeed() {
   };
 
   return (
-    <section
-      ref={feed}
-      id="public-video-feed"
-      data-feed-status={feedData.query.isError ? "error" : feedData.query.data ? "ready" : "loading"}
-      data-feed-pending={isPending(feedData.data) ? "true" : "false"}
-      data-active-video="none"
-      aria-label={copy().label}
-      tabindex="0"
-    >
-      <Errored fallback={(_, reset) => (
+    <Errored fallback={(_, reset) => (
+      <section
+        id="public-video-feed"
+        data-feed-status="error"
+        data-feed-pending="false"
+        data-active-video="none"
+        aria-label={copy().label}
+        tabindex="0"
+      >
         <p data-feed-error="true" role="alert">
           {copy().unavailable}
           <Button type="button" onClick={() => retry(reset)}>{copy().retry}</Button>
         </p>
+      </section>
+    )}>
+      <Loading fallback={(
+        <section
+          id="public-video-feed"
+          data-feed-status="loading"
+          data-feed-pending="true"
+          data-active-video="none"
+          aria-label={copy().label}
+          tabindex="0"
+        >
+          <p data-feed-loading="true" role="status">{copy().loadingMore}</p>
+        </section>
       )}>
-        <Loading fallback={<p data-feed-loading="true" role="status">{copy().loadingMore}</p>}>
+        <section
+          ref={feed}
+          id="public-video-feed"
+          data-feed-status={feedData.query.isError ? "error" : "ready"}
+          data-feed-pending={isPending(feedData.data) ? "true" : "false"}
+          data-active-video="none"
+          aria-label={copy().label}
+          tabindex="0"
+        >
           <PublicVideoFeedView
             query={feedData.query}
             items={feedData.items}
@@ -44,8 +64,8 @@ export default function PublicVideoFeed() {
             locale={locale}
             feed={() => feed}
           />
-        </Loading>
-      </Errored>
-    </section>
+        </section>
+      </Loading>
+    </Errored>
   );
 }

@@ -66,6 +66,12 @@ is a known API integration trap and must be captured in the query contract
 before a feature route is added. Metadata uses the Solid 2-compatible
 `@solidjs/meta@1.0.0-next.2` API (`Head`, `Title`, `Meta`, and `Link`).
 
+The app owns the temporary `@tanstack/solid-query@6.0.0-rc.0` patch in
+`patches/` because stream hydration must prime a query before its client
+observer subscribes. Remove the `patchedDependencies` entry and patch when a
+released TanStack package carries the equivalent guard and the hydration gate
+passes without it.
+
 The API data seam is framework-neutral and lives under `src/lib/api/`. Hostname
 resolution mirrors the existing Web resolver: canonical, sovereign-app, and
 imported sovereign hosts resolve to `https://api.pirate.sc`, staging hosts to

@@ -1,0 +1,80 @@
+diff --git a/src/hydrationChannel.ts b/src/hydrationChannel.ts
+index 75bd4359cc859992fa85d062d4e6c9a87b33f592..d845622db6e679ec0e5968d730a90af579251145 100644
+--- a/src/hydrationChannel.ts
++++ b/src/hydrationChannel.ts
+@@ -190,6 +190,11 @@ interface HydrationCoordinator {
+    * dehydrated, so their components must not wait forever).
+    */
+   whenQueryPrimed: (queryHash: string, callback: () => void) => void
++  /**
++   * Whether the stream has applied this query's entry, or has completed
++   * without one.
++   */
++  isQueryPrimed: (queryHash: string) => boolean
+ }
+ 
+ /**
+@@ -253,6 +258,9 @@ export function createHydrationCoordinator(
+       }
+       list.push(callback)
+     },
++    isQueryPrimed(queryHash) {
++      return channelDone || applied.has(queryHash)
++    },
+   }
+ }
+ 
+diff --git a/src/useBaseQuery.ts b/src/useBaseQuery.ts
+index 94e3775f4eec774cc5cc083f1ebf161fc891946b..d2cbcde182249ca1f52adcbd3438c86105fad38b 100644
+--- a/src/useBaseQuery.ts
++++ b/src/useBaseQuery.ts
+@@ -311,8 +311,7 @@ export function useBaseQuery<
+       unsubscribe = createClientSubscriber()
+     }
+   }
+-  const scheduleHydratedAttach = () => {
+-    const queryHash = untrack(() => observer.getCurrentQuery().queryHash)
++  const scheduleHydratedAttach = (queryHash: string) => {
+     if (coordinator) {
+       coordinator.whenQueryPrimed(queryHash, attachHydratedSubscriber)
+     } else {
+@@ -338,6 +337,9 @@ export function useBaseQuery<
+     const opts = trackedDefaultedOptions()
+     // Read isRestoring unconditionally so the memo re-runs when it changes
+     const restoring = isRestoring()
++    const queryHash = untrack(() => observer.getCurrentQuery().queryHash)
++    const streamHydrationPending =
++      coordinator !== null && !coordinator.isQueryPrimed(queryHash)
+ 
+     if (isServer) {
+       // On retry passes (after the streaming Loading boundary awaits a
+@@ -372,7 +374,11 @@ export function useBaseQuery<
+         unsubscribe = createServerSubscriber((data) => {
+           resolve(data as ResourceData)
+         }, reject)
+-      } else if (!unsubscribe && !restoring) {
++      } else if (
++        !unsubscribe &&
++        !restoring &&
++        !streamHydrationPending
++      ) {
+         unsubscribe = createClientSubscriber()
+       }
+       // Use getOptimisticResult instead of updateResult to keep the memo
+@@ -418,11 +424,11 @@ export function useBaseQuery<
+       }
+     })
+ 
+-    if (!isServer && !replayProbe.executorRan) {
+-      // Hydration replay: `Promise` was mocked and the executor above never
+-      // ran, so no subscriber was created. Schedule the attach through the
+-      // provider's hydration coordinator (see scheduleHydratedAttach).
+-      scheduleHydratedAttach()
++    if (!isServer && (streamHydrationPending || !replayProbe.executorRan)) {
++      // A stream-hydrated query must wait for its cache entry before attaching
++      // even when Promise runs its executor during hydration. The replay path
++      // also schedules here because its executor did not create a subscriber.
++      scheduleHydratedAttach(queryHash)
+     }
+ 
+     return resource

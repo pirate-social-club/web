@@ -125,7 +125,7 @@ export function createVideoPosterUrl(file: Accessor<File | null | undefined>): A
 
 // Selected-frame poster for the publish preview. Keeps the last valid frame
 // when a new frame cannot be extracted (same as React).
-function createVideoPosterFrameUrl(
+export function createVideoPosterFrameUrl(
   file: Accessor<File | null | undefined>,
   frameSeconds: Accessor<string | undefined>,
 ): Accessor<string | undefined> {
@@ -189,7 +189,7 @@ export function createKeyboardBottomOffset(): Accessor<number> {
   return offset;
 }
 
-interface LocalAudioPreview {
+export interface LocalAudioPreview {
   durationMs: Accessor<number | undefined>;
   onPause: () => void;
   onPlay: () => Promise<void>;
@@ -200,7 +200,7 @@ interface LocalAudioPreview {
 
 // Local <audio> preview playback for the song publish preview, ported from the
 // React useLocalAudioPreview.
-function createLocalAudioPreview(src: Accessor<string | undefined>): LocalAudioPreview {
+export function createLocalAudioPreview(src: Accessor<string | undefined>): LocalAudioPreview {
   const audio = typeof Audio === "undefined" ? null : new Audio();
   const [state, setState] = createSignal<PlaybackState>("idle");
   const [progressMs, setProgressMs] = createSignal(0);
@@ -305,7 +305,7 @@ function createLocalAudioPreview(src: Accessor<string | undefined>): LocalAudioP
   return { durationMs, onPause, onPlay, onSeek, progressMs, state };
 }
 
-function downloadLocalPreviewFile(url: string, filename: string | undefined) {
+export function downloadLocalPreviewFile(url: string, filename: string | undefined) {
   if (typeof document === "undefined") return;
 
   const anchor = document.createElement("a");

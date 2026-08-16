@@ -307,7 +307,7 @@ export function buildPostComposerPreviewContent({
 
 // Event attached to the preview card (skipped for live attachments, which
 // carry their own schedule). Ported from the React buildPreviewEvent.
-function buildPreviewEvent(event: ComposerEventState): PostCardProps["event"] | undefined {
+export function buildPreviewEvent(event: ComposerEventState): PostCardProps["event"] | undefined {
   if (event.enabled !== true || !event.startsAt?.trim()) {
     return undefined;
   }

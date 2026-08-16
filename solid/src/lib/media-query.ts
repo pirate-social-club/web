@@ -4,14 +4,17 @@ import { MOBILE_BREAKPOINT_QUERY } from "./breakpoints";
 export function createMediaQuery(query: string, serverFallback = false): Accessor<boolean> {
   const [matches, setMatches] = createSignal(serverFallback);
 
-  createEffect(() => {
-    if (typeof window === "undefined") return;
-    const media = window.matchMedia(query);
-    const update = () => setMatches(media.matches);
-    update();
-    media.addEventListener("change", update);
-    onCleanup(() => media.removeEventListener("change", update));
-  });
+  createEffect(
+    () => query,
+    () => {
+      if (typeof window === "undefined") return;
+      const media = window.matchMedia(query);
+      const update = () => setMatches(media.matches);
+      update();
+      media.addEventListener("change", update);
+      onCleanup(() => media.removeEventListener("change", update));
+    },
+  );
 
   return matches;
 }

@@ -80,25 +80,29 @@ export default function PublicVideoFeed() {
     });
   }
 
-  createEffect(() => {
-    const page = firstPage.data;
-    if (!page) return;
-    appendPage(page.items);
-    setNextCursor(page.next_cursor);
-    const stored = readPosition();
-    const initial = page.items.find(item => item.post.post.id === stored.activeId)?.post.post.id
-      ?? page.items[0]?.post.post.id
-      ?? null;
-    setActiveId(initial);
-  });
+  createEffect(
+    () => firstPage.data,
+    page => {
+      if (!page) return;
+      appendPage(page.items);
+      setNextCursor(page.next_cursor);
+      const stored = readPosition();
+      const initial = page.items.find(item => item.post.post.id === stored.activeId)?.post.post.id
+        ?? page.items[0]?.post.post.id
+        ?? null;
+      setActiveId(initial);
+    },
+  );
 
-  createEffect(() => {
-    const page = nextPage.data;
-    if (!page || !cursor()) return;
-    appendPage(page.items);
-    setNextCursor(page.next_cursor);
-    setIsLoadingMore(false);
-  });
+  createEffect(
+    () => ({ page: nextPage.data, cursor: cursor() }),
+    ({ page, cursor: activeCursor }) => {
+      if (!page || !activeCursor) return;
+      appendPage(page.items);
+      setNextCursor(page.next_cursor);
+      setIsLoadingMore(false);
+    },
+  );
 
   function pauseAllExcept(id: string | null): void {
     for (const [videoId, video] of videos) {
@@ -109,18 +113,20 @@ export default function PublicVideoFeed() {
     }
   }
 
-  createEffect(() => {
-    const id = activeId();
-    pauseAllExcept(id);
-    const video = id ? videos.get(id) : undefined;
-    if (!video || reducedMotion()) return;
-    void video.play().then(() => {
-      video.dataset.playbackState = "playing";
-    }).catch(() => {
-      video.dataset.playbackState = "autoplay-blocked";
-    });
-    writePosition({ activeId: id, scrollTop: feed?.scrollTop ?? 0 });
-  });
+  createEffect(
+    () => ({ id: activeId(), reducedMotion: reducedMotion() }),
+    ({ id, reducedMotion: motionReduced }) => {
+      pauseAllExcept(id);
+      const video = id ? videos.get(id) : undefined;
+      if (!video || motionReduced) return;
+      void video.play().then(() => {
+        video.dataset.playbackState = "playing";
+      }).catch(() => {
+        video.dataset.playbackState = "autoplay-blocked";
+      });
+      writePosition({ activeId: id, scrollTop: feed?.scrollTop ?? 0 });
+    },
+  );
 
   function registerCard(id: string, element: HTMLElement): void {
     cards.set(id, element);
@@ -140,31 +146,34 @@ export default function PublicVideoFeed() {
     cards.get(item.post.post.id)?.scrollIntoView({ behavior: reducedMotion() ? "auto" : "smooth", block: "center" });
   }
 
-  createEffect(() => {
-    if (isServer) return;
-    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const syncMotion = () => setReducedMotion(media.matches);
-    syncMotion();
-    media.addEventListener("change", syncMotion);
-    const observer = new IntersectionObserver(entries => {
-      const candidate = entries
-        .filter(entry => entry.isIntersecting)
-        .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-      const id = candidate?.target.getAttribute("data-feed-item-id");
-      if (id && (candidate?.intersectionRatio ?? 0) >= 0.5) setActiveId(id);
-    }, { threshold: [0.5, 0.75, 1] });
-    for (const card of cards.values()) observer.observe(card);
-    const stored = readPosition();
-    if (stored.scrollTop > 0) requestAnimationFrame(() => { const element = currentFeed(feed); if (element) element.scrollTop = stored.scrollTop; });
-    const save = () => writePosition({ activeId: activeId(), scrollTop: currentFeed(feed)?.scrollTop ?? 0 });
-    currentFeed(feed)?.addEventListener("scroll", save, { passive: true });
-    onCleanup(() => {
-      observer.disconnect();
-      media.removeEventListener("change", syncMotion);
-      currentFeed(feed)?.removeEventListener("scroll", save);
-      save();
-    });
-  });
+  createEffect(
+    () => isServer,
+    server => {
+      if (server) return;
+      const media = window.matchMedia("(prefers-reduced-motion: reduce)");
+      const syncMotion = () => setReducedMotion(media.matches);
+      syncMotion();
+      media.addEventListener("change", syncMotion);
+      const observer = new IntersectionObserver(entries => {
+        const candidate = entries
+          .filter(entry => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+        const id = candidate?.target.getAttribute("data-feed-item-id");
+        if (id && (candidate?.intersectionRatio ?? 0) >= 0.5) setActiveId(id);
+      }, { threshold: [0.5, 0.75, 1] });
+      for (const card of cards.values()) observer.observe(card);
+      const stored = readPosition();
+      if (stored.scrollTop > 0) requestAnimationFrame(() => { const element = currentFeed(feed); if (element) element.scrollTop = stored.scrollTop; });
+      const save = () => writePosition({ activeId: activeId(), scrollTop: currentFeed(feed)?.scrollTop ?? 0 });
+      currentFeed(feed)?.addEventListener("scroll", save, { passive: true });
+      onCleanup(() => {
+        observer.disconnect();
+        media.removeEventListener("change", syncMotion);
+        currentFeed(feed)?.removeEventListener("scroll", save);
+        save();
+      });
+    },
+  );
 
   function loadMore(): void {
     const next = nextCursor();

@@ -1,4 +1,4 @@
-import { Head, Title } from "@solidjs/meta";
+import { Title } from "@solidjs/meta";
 import { createRouter } from "@solidjs/router";
 import { fileRoutes } from "@solidjs/router/fs";
 import { QueryClientProvider } from "@tanstack/solid-query";
@@ -14,15 +14,22 @@ export default function App() {
   const hostContext = readHostContext();
   const queryClient = createAppQueryClient();
   const uiLocale = readInitialUiLocale();
+  const diagnosticsWindow = typeof window === "undefined" ? undefined : window as Window & {
+    __solidHydrationDiagnostics?: boolean;
+    __solidQueryClient?: {
+      getQueryCache: () => unknown;
+    };
+  };
+  if (diagnosticsWindow?.__solidHydrationDiagnostics) {
+    diagnosticsWindow.__solidQueryClient = queryClient;
+  }
 
   return (
     <UiLocaleProvider locale={uiLocale}>
       <HostContextProvider value={hostContext}>
         <QueryClientProvider client={queryClient}>
-          <Head>
-            <Title>Pirate Web</Title>
-            <Router>{props => props.children}</Router>
-          </Head>
+          <Title>Pirate Web</Title>
+          <Router>{props => props.children}</Router>
         </QueryClientProvider>
       </HostContextProvider>
     </UiLocaleProvider>

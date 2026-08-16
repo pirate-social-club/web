@@ -59,30 +59,32 @@ export function UiLocaleProvider(props: ParentProps<{ locale: UiLocaleCode }>) {
   const direction = createMemo(() => resolveLocaleDirection(locale()));
   let restoredStoredLocale = false;
 
-  createEffect(() => {
-    if (typeof document === "undefined") return;
-    if (!restoredStoredLocale) {
-      restoredStoredLocale = true;
-      try {
-        const stored = window.localStorage.getItem(LOCALE_STORAGE_KEY);
-        if (stored && isUiLocaleCode(stored) && stored !== locale()) {
-          setLocale(stored);
-          return;
+  createEffect(
+    () => locale(),
+    activeLocale => {
+      if (typeof document === "undefined") return;
+      if (!restoredStoredLocale) {
+        restoredStoredLocale = true;
+        try {
+          const stored = window.localStorage.getItem(LOCALE_STORAGE_KEY);
+          if (stored && isUiLocaleCode(stored) && stored !== activeLocale) {
+            setLocale(stored);
+            return;
+          }
+        } catch {
+          // Locale persistence is optional in restricted browser contexts.
         }
+      }
+      document.documentElement.dir = resolveLocaleDirection(activeLocale);
+      document.documentElement.lang = resolveLocaleLanguageTag(activeLocale);
+      document.documentElement.dataset.uiLocale = activeLocale;
+      try {
+        window.localStorage.setItem(LOCALE_STORAGE_KEY, activeLocale);
       } catch {
         // Locale persistence is optional in restricted browser contexts.
       }
-    }
-    const activeLocale = locale();
-    document.documentElement.dir = resolveLocaleDirection(activeLocale);
-    document.documentElement.lang = resolveLocaleLanguageTag(activeLocale);
-    document.documentElement.dataset.uiLocale = activeLocale;
-    try {
-      window.localStorage.setItem(LOCALE_STORAGE_KEY, activeLocale);
-    } catch {
-      // Locale persistence is optional in restricted browser contexts.
-    }
-  });
+    },
+  );
 
   return (
     <UiLocaleContext

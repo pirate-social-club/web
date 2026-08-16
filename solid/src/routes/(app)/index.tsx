@@ -40,7 +40,7 @@ export default function HomeRoute() {
       <Meta name="description" content={copy().description} />
       <Meta property="og:title" content={copy().title} />
       <Meta property="og:type" content="website" />
-      <Link rel="canonical" href="/" />
+      <Link rel="canonical" href="/" key="canonical" />
       <h1>{copy().heading}</h1>
       <p id="seam-host">host-surface: {host.surface}</p>
       <p id="host-community-slug">host-community-slug: {host.communitySlug ?? "none"}</p>

@@ -6,15 +6,16 @@ import { fileURLToPath } from "node:url";
 const appRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const appRequire = createRequire(resolve(appRoot, "package.json"));
 
-function packageRoot(specifier) {
+function packageRoot(requireInstance, specifier) {
   let entry;
   let directory;
   try {
-    entry = appRequire.resolve(specifier);
+    entry = requireInstance.resolve(specifier);
     directory = dirname(realpathSync(entry));
   } catch (error) {
     if (error?.code !== "ERR_PACKAGE_PATH_NOT_EXPORTED") throw error;
-    directory = realpathSync(resolve(appRoot, "node_modules", specifier));
+    const packageDirectory = dirname(requireInstance.resolve("./package.json"));
+    directory = realpathSync(resolve(packageDirectory, "node_modules", specifier));
   }
   while (!existsSync(resolve(directory, "package.json"))) {
     const parent = dirname(directory);
@@ -24,10 +25,12 @@ function packageRoot(specifier) {
   return directory;
 }
 
-const appSolid = packageRoot("solid-js");
-const appWeb = packageRoot("@solidjs/web");
-const kobalteRoot = packageRoot("@kobalte/core");
-const designSystemRoot = packageRoot("@pirate/web-solid-ui");
+const appSolid = packageRoot(appRequire, "solid-js");
+const appWeb = packageRoot(appRequire, "@solidjs/web");
+const designSystemRoot = packageRoot(appRequire, "@pirate/web-solid-ui");
+const designSystemPackage = resolve(designSystemRoot, "package.json");
+const designRequire = createRequire(designSystemPackage);
+const kobalteRoot = packageRoot(designRequire, "@kobalte/core");
 const aliases = {
   solid: appSolid,
   web: appWeb,
@@ -37,9 +40,7 @@ for (const [label, target] of Object.entries(aliases)) {
   if (realpathSync(target) !== (label === "solid" ? appSolid : appWeb)) throw new Error(`Duplicate Solid runtime alias for ${label}: ${target}`);
 }
 
-const designSystemPackage = resolve(designSystemRoot, "package.json");
 const designSystemConfig = JSON.parse(readFileSync(designSystemPackage, "utf8"));
-const designRequire = createRequire(designSystemPackage);
 
 function optionalResolve(requireInstance, specifier) {
   try {

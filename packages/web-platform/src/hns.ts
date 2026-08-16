@@ -5,7 +5,10 @@ export function hostName(host: string): string {
 }
 
 export function isLocalHost(hostname: string): boolean {
-  return hostname === "localhost" || hostname === "127.0.0.1" || hostname.startsWith("127.");
+  return hostname === "localhost"
+    || hostname.endsWith(".localhost")
+    || hostname === "127.0.0.1"
+    || hostname.startsWith("127.");
 }
 
 export function classifyHost(host: string): HostSurface {

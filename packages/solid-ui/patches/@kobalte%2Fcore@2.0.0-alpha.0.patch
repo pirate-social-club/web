@@ -1,3 +1,29 @@
+diff --git a/dist/alert-dialog/B8GtJUah.js b/dist/alert-dialog/B8GtJUah.js
+index 40814f2ae90f15888194936c680186b2bfdd5321..50412156905e3ba8ed0928a27cf561d9abadfc2b 100644
+--- a/dist/alert-dialog/B8GtJUah.js
++++ b/dist/alert-dialog/B8GtJUah.js
+@@ -21,7 +21,7 @@ var alert_dialog_exports = /* @__PURE__ */ __exportAll({
+ 	Title: () => DialogTitle,
+ 	Trigger: () => DialogTrigger
+ });
+-const AlertDialog = Object.assign(DialogRoot, {
++const AlertDialog = Object.assign((props) => createComponent(DialogRoot, props), {
+ 	CloseButton: DialogCloseButton,
+ 	Content: AlertDialogContent,
+ 	Description: DialogDescription,
+diff --git a/dist/alert-dialog/DqopKvhq.jsx b/dist/alert-dialog/DqopKvhq.jsx
+index bc11f3dd103da3aa659dd3d7bafde0bb4135ba9f..c0271b8d4621be1d47d8d62edbf57605eca14503 100644
+--- a/dist/alert-dialog/DqopKvhq.jsx
++++ b/dist/alert-dialog/DqopKvhq.jsx
+@@ -20,7 +20,7 @@ var alert_dialog_exports = /* @__PURE__ */ __exportAll({
+ 	Title: () => DialogTitle,
+ 	Trigger: () => DialogTrigger
+ });
+-const AlertDialog = Object.assign(DialogRoot, {
++const AlertDialog = Object.assign((props) => <DialogRoot {...props} />, {
+ 	CloseButton: DialogCloseButton,
+ 	Content: AlertDialogContent,
+ 	Description: DialogDescription,
 diff --git a/dist/button/DvspU6cJ.jsx b/dist/button/DvspU6cJ.jsx
 index 5000f2871ccda16662437b482ecb25609fa1fd2f..cb36a8cdbb91cad4dbae069606738a204f8af1ec 100644
 --- a/dist/button/DvspU6cJ.jsx

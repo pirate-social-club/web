@@ -13,7 +13,7 @@ export default function ProfileRoute() {
     <main data-route-path="/u/:handle" data-route-handle={params.handle}>
       <Title>{title()}</Title>
       <Meta property="og:title" content={title()} />
-      <Link rel="canonical" href={`/u/${handle()}`} />
+      <Link rel="canonical" href={`/u/${handle()}`} key="canonical" />
       <h1>{interpolateMessage(copy().heading, { handle: handle() })}</h1>
     </main>
   );

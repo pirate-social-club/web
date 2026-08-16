@@ -14,6 +14,15 @@ export default function App() {
   const hostContext = readHostContext();
   const queryClient = createAppQueryClient();
   const uiLocale = readInitialUiLocale();
+  const diagnosticsWindow = typeof window === "undefined" ? undefined : window as Window & {
+    __solidHydrationDiagnostics?: boolean;
+    __solidQueryClient?: {
+      getQueryCache: () => unknown;
+    };
+  };
+  if (diagnosticsWindow?.__solidHydrationDiagnostics) {
+    diagnosticsWindow.__solidQueryClient = queryClient;
+  }
 
   return (
     <UiLocaleProvider locale={uiLocale}>

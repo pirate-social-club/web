@@ -30,9 +30,25 @@ async function readApiVersionAttempts(page) {
   return page.evaluate(() => [...(window.__solidHydrationApiAttempts ?? [])]);
 }
 
-async function logApiVersionPhase(page, phase) {
+async function readQueryCacheState(page) {
+  return page.evaluate(() => {
+    const queryClient = window.__solidQueryClient;
+    if (!queryClient) return { error: "QueryClient diagnostic hook was not installed" };
+    return queryClient.getQueryCache().getAll().map(query => ({
+      key: query.queryKey,
+      status: query.state.status,
+      fetchStatus: query.state.fetchStatus,
+      dataUpdatedAt: query.state.dataUpdatedAt,
+      observers: query.getObserversCount(),
+      staleTime: query.options.staleTime,
+    }));
+  });
+}
+
+async function logApiVersionPhase(page, phase, diagnostics = []) {
   const attempts = await readApiVersionAttempts(page);
-  console.log(JSON.stringify({ apiVersionPhase: phase, attempts }));
+  const queries = await readQueryCacheState(page);
+  console.log(JSON.stringify({ apiVersionPhase: phase, attempts, diagnostics, queries }));
   return attempts;
 }
 
@@ -40,21 +56,37 @@ async function readPublicFeedAttempts(page) {
   return page.evaluate(() => [...(window.__solidPublicFeedAttempts ?? [])]);
 }
 
-async function assertNoPublicFeedAttempts(page, phase) {
+async function readPublicFeedAttemptStates(page) {
+  return page.evaluate(() => [...(window.__solidPublicFeedAttemptStates ?? [])]);
+}
+
+async function assertNoPublicFeedAttempts(page, phase, diagnostics = []) {
   const attempts = await readPublicFeedAttempts(page);
-  console.log(JSON.stringify({ publicFeedPhase: phase, attempts }));
+  const queries = await readQueryCacheState(page);
+  const attemptStates = await readPublicFeedAttemptStates(page);
+  console.log(JSON.stringify({ publicFeedPhase: phase, attempts, attemptStates, diagnostics, queries }));
   if (attempts.length) {
-    throw new Error(`Public feed query attempted during ${phase} ${attempts.length} time(s): ${attempts.join(", ")}`);
+    throw new Error(`Public feed query attempted during ${phase} ${attempts.length} time(s): ${attempts.join(", ")} attemptStates=${JSON.stringify(attemptStates)} cache=${JSON.stringify(queries)} diagnostics=${diagnostics.join(" | ") || "none"}`);
   }
   return attempts;
+}
+
+async function clearPhaseAttempts(page) {
+  await page.evaluate(() => {
+    window.__solidHydrationApiAttempts?.splice(0);
+    window.__solidPublicFeedAttempts?.splice(0);
+    window.__solidPublicFeedAttemptStates?.splice(0);
+  });
 }
 
 async function installApiVersionInstrumentation(page) {
   await page.addInitScript(() => {
     window.sessionStorage.clear();
     window.localStorage.clear();
+    window.__solidHydrationDiagnostics = true;
     const attempts = [];
     const publicFeedAttempts = [];
+    const publicFeedAttemptStates = [];
     Object.defineProperty(window, "__solidHydrationApiAttempts", {
       value: attempts,
       configurable: true,
@@ -63,13 +95,27 @@ async function installApiVersionInstrumentation(page) {
       value: publicFeedAttempts,
       configurable: true,
     });
+    Object.defineProperty(window, "__solidPublicFeedAttemptStates", {
+      value: publicFeedAttemptStates,
+      configurable: true,
+    });
+    const readQueryState = () => [...(window.__solidQueryClient?.getQueryCache().getAll() ?? [])].map(query => ({
+      key: query.queryKey,
+      status: query.state.status,
+      fetchStatus: query.state.fetchStatus,
+      dataUpdatedAt: query.state.dataUpdatedAt,
+      observers: query.getObserversCount(),
+      staleTime: query.options.staleTime,
+    }));
     const originalFetch = window.fetch.bind(window);
     window.fetch = (input, init) => {
       const rawUrl = input instanceof Request ? input.url : String(input);
       const url = new URL(rawUrl, window.location.href);
       if (url.pathname === "/__version") attempts.push(`${url.origin}${url.pathname}`);
       if (url.pathname === "/feed/home/videos/public") {
-        publicFeedAttempts.push(`${url.origin}${url.pathname}${url.search}`);
+        const attemptedUrl = `${url.origin}${url.pathname}${url.search}`;
+        publicFeedAttempts.push(attemptedUrl);
+        publicFeedAttemptStates.push({ url: attemptedUrl, queries: readQueryState() });
       }
       return originalFetch(input, init);
     };
@@ -90,18 +136,18 @@ function installBrowserDiagnostics(page, report) {
   });
 }
 
-async function assertResolvedApiVersion(page, name) {
+async function assertResolvedApiVersion(page, name, diagnostics = []) {
   const apiVersion = page.locator("#api-version");
   await apiVersion.waitFor({ state: "attached" });
   if (await apiVersion.getAttribute("data-api-status") !== "success") {
-    throw new Error(`${name} API query did not resolve: ${await apiVersion.textContent()}`);
+    throw new Error(`${name} API query did not resolve: ${await apiVersion.textContent()} cache=${JSON.stringify(await readQueryCacheState(page))} diagnostics=${diagnostics.join(" | ") || "none"}`);
   }
   if (!(await apiVersion.textContent()).includes("api")) {
     throw new Error(`${name} API data is not visible in the streamed HTML`);
   }
 }
 
-async function assertResolvedPublicFeed(page, name) {
+async function assertResolvedPublicFeed(page, name, diagnostics = []) {
   const feed = page.locator("#public-video-feed");
   await feed.waitFor({ state: "attached" });
   try {
@@ -115,7 +161,7 @@ async function assertResolvedPublicFeed(page, name) {
       itemCount: document.querySelectorAll("[data-feed-item-id]").length,
       streamResult: document.querySelector("#stream-result")?.textContent,
     }));
-    throw new Error(`${name} public video feed did not resolve: ${JSON.stringify(state)}; ${error.message}`);
+    throw new Error(`${name} public video feed did not resolve: ${JSON.stringify(state)} attempts=${JSON.stringify(await readPublicFeedAttempts(page))} attemptStates=${JSON.stringify(await readPublicFeedAttemptStates(page))} cache=${JSON.stringify(await readQueryCacheState(page))} diagnostics=${diagnostics.join(" | ") || "none"}; ${error.message}`);
   }
 }
 
@@ -155,7 +201,7 @@ try {
   );
   if (!noncedScripts) throw new Error("SSR script missing nonce");
 
-  await assertResolvedApiVersion(page, "SSR");
+  await assertResolvedApiVersion(page, "SSR", violations);
   await page.locator("#stream-result").waitFor({ state: "attached" });
   await assertHead(page, "deferred/Suspense reveal", {
     title: "Home · Pirate Web",
@@ -203,7 +249,7 @@ try {
   if (apiVersionAttemptsAfterHydration.length) {
     throw new Error(`Hydrated API query attempted ${apiVersionAttemptsAfterHydration.length} time(s): ${apiVersionAttemptsAfterHydration.join(", ")}`);
   }
-  await assertNoPublicFeedAttempts(page, "initial hydration");
+  await assertNoPublicFeedAttempts(page, "initial hydration", violations);
 
   const homeReloadPage = await browser.newPage();
   const reloadDiagnostics = { fresh: [], reload: [] };
@@ -213,25 +259,27 @@ try {
   const homeResponse = await homeReloadPage.goto(base, { waitUntil: "networkidle" });
   if (!homeResponse?.ok()) throw new Error(`Fresh Home page returned ${homeResponse?.status()}`);
   await assertSerializedPublicFeed(homeResponse, homeReloadPage, "fresh Home");
-  await assertResolvedPublicFeed(homeReloadPage, "Fresh Home");
+  await assertResolvedPublicFeed(homeReloadPage, "Fresh Home", reloadDiagnostics.fresh);
   const freshReloadButton = homeReloadPage.locator("#hydration-button");
   const freshReloadBefore = await freshReloadButton.textContent();
   await freshReloadButton.click();
   if (freshReloadBefore === await freshReloadButton.textContent()) {
     throw new Error(`Fresh Home did not hydrate: ${freshReloadBefore}`);
   }
-  await assertNoPublicFeedAttempts(homeReloadPage, "fresh Home");
+  await logApiVersionPhase(homeReloadPage, "fresh Home", reloadDiagnostics.fresh);
+  await assertNoPublicFeedAttempts(homeReloadPage, "fresh Home", reloadDiagnostics.fresh);
   if (reloadDiagnostics.fresh.length) {
     throw new Error(`Fresh Home browser diagnostics: ${reloadDiagnostics.fresh.join(" | ")}`);
   }
 
+  await clearPhaseAttempts(homeReloadPage);
   reloadPhase = "reload";
   const homeReloadResponse = await homeReloadPage.reload({ waitUntil: "networkidle" });
   if (!homeReloadResponse?.ok()) throw new Error(`Reloaded Home page returned ${homeReloadResponse?.status()}`);
   await assertSerializedPublicFeed(homeReloadResponse, homeReloadPage, "reloaded Home");
   await homeReloadPage.locator('[data-route-path="/"]').waitFor({ state: "attached" });
-  await assertResolvedApiVersion(homeReloadPage, "Reloaded Home");
-  await assertResolvedPublicFeed(homeReloadPage, "Reloaded Home");
+  await assertResolvedApiVersion(homeReloadPage, "Reloaded Home", reloadDiagnostics.reload);
+  await assertResolvedPublicFeed(homeReloadPage, "Reloaded Home", reloadDiagnostics.reload);
   await homeReloadPage.locator("#stream-result").waitFor({ state: "attached" });
   const reloadButton = homeReloadPage.locator("#hydration-button");
   const reloadBefore = await reloadButton.textContent();
@@ -249,7 +297,7 @@ try {
   if (apiVersionAttemptsAfterReload.length) {
     throw new Error(`Reloaded Home query attempted ${apiVersionAttemptsAfterReload.length} time(s): ${apiVersionAttemptsAfterReload.join(", ")}`);
   }
-  await assertNoPublicFeedAttempts(homeReloadPage, "reloaded Home");
+  await assertNoPublicFeedAttempts(homeReloadPage, "reloaded Home", reloadDiagnostics.reload);
   if (reloadDiagnostics.reload.length) throw new Error(`Reload browser diagnostics: ${reloadDiagnostics.reload.join(" | ")}`);
   await homeReloadPage.close();
 
@@ -286,7 +334,7 @@ try {
     ogTitle: "Threads · demo",
     ogType: null,
   });
-  await logApiVersionPhase(page, "client navigation");
+  await logApiVersionPhase(page, "client navigation", violations);
 
   const refreshPage = await browser.newPage();
   await installApiVersionInstrumentation(refreshPage);
@@ -309,7 +357,7 @@ try {
   await page.goBack({ waitUntil: "networkidle" });
   await page.waitForURL(url => url.pathname === "/");
   await page.locator('[data-route-path="/"]').waitFor({ state: "attached" });
-  await assertResolvedApiVersion(page, "Back navigation");
+  await assertResolvedApiVersion(page, "Back navigation", violations);
   await assertHead(page, "same-document back navigation to home", {
     title: "Home · Pirate Web",
     canonical: "/",
@@ -317,7 +365,7 @@ try {
     ogTitle: "Home · Pirate Web",
     ogType: "website",
   });
-  await logApiVersionPhase(page, "back navigation");
+  await logApiVersionPhase(page, "back navigation", violations);
 
   await page.locator('a[href="/seam/host"]').first().click();
   await page.waitForURL(url => url.pathname === "/seam/host");
@@ -333,8 +381,8 @@ try {
   await page.goBack({ waitUntil: "networkidle" });
   await page.waitForURL(url => url.pathname === "/");
   await page.locator('[data-route-path="/"]').waitFor({ state: "attached" });
-  await assertResolvedApiVersion(page, "Home remount");
-  await logApiVersionPhase(page, "remount");
+  await assertResolvedApiVersion(page, "Home remount", violations);
+  await logApiVersionPhase(page, "remount", violations);
   const homeLinks = await page.locator('a[href="/p/demo-post"], a[href="/u/demo-user"]').all();
   if (homeLinks.length !== 2) throw new Error("Home route did not expose both overlap navigation links");
   await page.evaluate(() => {
@@ -369,7 +417,7 @@ try {
   await page.locator(overlap.marker).waitFor({ state: "attached" });
   await assertHead(page, "competing navigation final head cleanliness", overlap);
 
-  const apiVersionAttemptsAfterNavigation = await logApiVersionPhase(page, "competing navigation");
+  const apiVersionAttemptsAfterNavigation = await logApiVersionPhase(page, "competing navigation", violations);
   if (apiVersionAttemptsAfterNavigation.length) {
     throw new Error(`API query attempted during cache-warm navigation ${apiVersionAttemptsAfterNavigation.length} time(s): ${apiVersionAttemptsAfterNavigation.join(", ")}`);
   }

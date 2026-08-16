@@ -40,6 +40,34 @@ function fileState() {
 }
 
 describe("downloadable file post submission", () => {
+  for (const status of ["failed", "rejected", "cancelled"] as const) {
+    test(`does not publish against a terminal ${status} content blob`, async () => {
+      let postCalls = 0;
+      let uploadCalls = 0;
+
+      await expect(submitDownloadableFilePost({
+        communityId: "com_1",
+        title: "Records",
+        file: fileState(),
+        baseRequest,
+        contentBlobId: "blob_terminal",
+        createContentBlob: async () => contentBlob(status, "blob_terminal"),
+        getContentBlob: async () => contentBlob(status, "blob_terminal"),
+        uploadContentBlob: async () => {
+          uploadCalls += 1;
+          return contentBlob("uploaded", "blob_terminal");
+        },
+        createPost: async () => {
+          postCalls += 1;
+          return { id: "post_terminal" };
+        },
+      })).rejects.toThrow("can no longer be resumed");
+
+      expect(postCalls).toBe(0);
+      expect(uploadCalls).toBe(0);
+    });
+  }
+
   test("creates, uploads, and publishes a locked file post", async () => {
     const createdBodies: Array<Record<string, unknown>> = [];
     const progress: string[] = [];

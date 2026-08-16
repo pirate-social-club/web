@@ -38,7 +38,7 @@ export interface PostCardEngagementBarProps {
 }
 
 const pillClassName =
-  "inline-flex h-11 items-center gap-2 rounded-full border border-border-soft bg-background px-4 text-base font-medium text-muted-foreground transition-colors hover:border-border hover:bg-muted/60 hover:text-foreground";
+  "inline-flex h-11 cursor-pointer items-center gap-2 rounded-full border border-border-soft bg-background px-4 text-base font-medium text-muted-foreground transition-colors hover:border-border hover:bg-muted/60 hover:text-foreground";
 
 function SharePillMenu(props: {
   actions: PostCardShareAction[];

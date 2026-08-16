@@ -78,7 +78,7 @@ export function VotePill(props: VotePillProps) {
         aria-label={props.upvoteLabel ?? "Upvote"}
         aria-pressed={props.viewerVote === "up" ? "true" : "false"}
         class={cn(
-          "inline-flex items-center justify-center justify-self-center rounded-full transition-colors",
+          "inline-flex cursor-pointer items-center justify-center justify-self-center rounded-full transition-colors disabled:pointer-events-none",
           (props.size ?? "default") === "default" ? "size-10" : "size-8",
           props.viewerVote === "up"
             ? "text-primary-text hover:bg-primary/10"
@@ -112,7 +112,7 @@ export function VotePill(props: VotePillProps) {
         aria-label={props.downvoteLabel ?? "Downvote"}
         aria-pressed={props.viewerVote === "down" ? "true" : "false"}
         class={cn(
-          "inline-flex items-center justify-center justify-self-center rounded-full transition-colors",
+          "inline-flex cursor-pointer items-center justify-center justify-self-center rounded-full transition-colors disabled:pointer-events-none",
           (props.size ?? "default") === "default" ? "size-10" : "size-8",
           props.viewerVote === "down"
             ? "text-destructive-text hover:bg-destructive/10"

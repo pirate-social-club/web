@@ -264,7 +264,12 @@ function collectTypographyViolationCounts() {
   const counts = {};
 
   for (const filePath of walkRoots(typographyRoots, { skipIgnoredDirs: true })) {
-    if (!filePath.endsWith(".tsx") || typographyPrimitivePaths.has(path.normalize(filePath))) continue;
+    if (
+      !filePath.endsWith(".tsx") ||
+      filePath.endsWith(".test.tsx") ||
+      filePath.endsWith(".spec.tsx") ||
+      typographyPrimitivePaths.has(path.normalize(filePath))
+    ) continue;
 
     const count = fs
       .readFileSync(filePath, "utf8")

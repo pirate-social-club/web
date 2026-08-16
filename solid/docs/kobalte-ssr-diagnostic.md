@@ -36,8 +36,9 @@ changing the dirty canonical checkout:
    `2.0.0-rc.0` entries in `peerDependencies` only. Link the package through
    the app's Bun workspace so a clean install cannot create a second runtime.
 2. Apply the pinned Kobalte patch in the design-system package. The exact
-   `@kobalte/core@2.0.0-alpha.0` pin and patch path must remain in both package
-   manifests/lockfiles. The default
+   `@kobalte/core@2.0.0-alpha.0` pin and patch path belong to the design-system
+   package and its lockfile. The Solid app consumes Kobalte only through that
+   package. The default
    Button must render the native element directly; custom polymorphic `as`
    remains on the original path. The design-system Button must pass children
    directly; it may use `omit(...)` for ordinary attribute forwarding once the

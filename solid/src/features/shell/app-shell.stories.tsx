@@ -53,6 +53,7 @@ function ShellFrame(props: { children: JSX.Element }) {
 }
 
 export const MobileHeaderBack: Story = {
+  name: "Mobile / Header back",
   globals: { viewport: { value: "mobile1", isRotated: false } },
   render: () => (
     <ShellFrame>
@@ -62,6 +63,7 @@ export const MobileHeaderBack: Story = {
 };
 
 export const MobileFooter: Story = {
+  name: "Mobile / Footer",
   globals: { viewport: { value: "mobile1", isRotated: false } },
   render: () => (
     <ShellFrame>
@@ -80,6 +82,7 @@ export const MobileFooter: Story = {
 };
 
 export const MobileFooterWithNotifications: Story = {
+  name: "Mobile / Footer with notifications",
   globals: { viewport: { value: "mobile1", isRotated: false } },
   render: () => (
     <ShellFrame>
@@ -103,6 +106,7 @@ export const MobileFooterWithNotifications: Story = {
 };
 
 export const MobileFooterWithChatNotification: Story = {
+  name: "Mobile / Footer with chat notification",
   globals: { viewport: { value: "mobile1", isRotated: false } },
   render: () => (
     <ShellFrame>
@@ -122,6 +126,7 @@ export const MobileFooterWithChatNotification: Story = {
 };
 
 export const RouteFallback: Story = {
+  name: "State / Route fallback",
   render: () => (
     <ShellFrame>
       <RouteContentFallback route={communityRoute} />
@@ -134,6 +139,7 @@ function BrokenChild(): JSX.Element {
 }
 
 export const RootError: Story = {
+  name: "State / Root error",
   render: () => (
     <ShellFrame>
       <RootErrorBoundary

@@ -5,7 +5,7 @@ import { baseComposer, communityItems } from "./story-fixtures";
 import { ComposerFrame, InteractiveComposer } from "./story-helpers";
 
 const meta = {
-  title: "App/Posts/PostComposer/Composer",
+  title: "App/Posts/PostComposer",
   component: PostComposer,
   args: baseComposer,
   parameters: {
@@ -29,6 +29,12 @@ export const Overview: Story = {
       <PostComposer {...baseComposer} />
     </ComposerFrame>
   ),
+};
+
+export const Mobile: Story = {
+  ...Overview,
+  name: "Mobile",
+  globals: { viewport: { value: "mobile1", isRotated: false } },
 };
 export const DragAndDrop: Story = {
   name: "Drag and drop",
@@ -266,9 +272,3 @@ export const FileDownload: Story = {
     </ComposerFrame>
   ),
 };
-
-// Keep the original React export names available while retaining the clearer
-// state labels above in the rendered catalog.
-export const AudiencePublic: Story = PublicAudience;
-export const AudiencePublicDisabled: Story = MembersOnly;
-export const LinkPasteUrl: Story = LinkPaste;

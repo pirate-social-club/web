@@ -5,7 +5,7 @@ import { baseComposer } from "./story-fixtures";
 import { ComposerFrame } from "./story-helpers";
 
 const meta = {
-  title: "App/Posts/PostComposer/Composer/Text",
+  title: "App/Posts/PostComposer/Text",
   component: PostComposer,
   args: baseComposer,
   parameters: { layout: "fullscreen" },
@@ -17,6 +17,12 @@ type Story = StoryObj<typeof meta>;
 export const Compose: Story = {
   name: "Default",
   render: () => <ComposerFrame><PostComposer {...baseComposer} /></ComposerFrame>,
+};
+
+export const Mobile: Story = {
+  ...Compose,
+  name: "Mobile",
+  globals: { viewport: { value: "mobile1", isRotated: false } },
 };
 export const PublicHandleOnly: Story = {
   name: "Public handle only",
@@ -85,8 +91,6 @@ export const AnonymousWithoutDisclosure: Story = {
     </ComposerFrame>
   ),
 };
-
-export const AnonymousWithoutQualifierDisclosure: Story = AnonymousWithoutDisclosure;
 
 export const CommunityInRestrictedCommunity: Story = {
   name: "Community / Restricted",

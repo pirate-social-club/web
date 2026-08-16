@@ -20,6 +20,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
+  name: "Default",
   args: {
     title: "Create post",
     children: (
@@ -35,6 +36,7 @@ export const Default: Story = {
 };
 
 export const WithFooter: Story = {
+  name: "Footer / With footer",
   args: {
     title: "Publish",
     trailingAction: (

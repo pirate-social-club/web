@@ -263,6 +263,7 @@ function MediaShellReview(props: {
 }
 
 export const DesktopShell: Story = {
+  name: "Desktop / Default",
   render: () => <ShellChrome />,
 };
 
@@ -302,16 +303,19 @@ export const MediaShellWithDock: Story = {
 };
 
 export const DesktopShellRtl: Story = {
+  name: "Desktop / RTL",
   globals: { direction: "rtl" },
   render: () => <ShellChrome isRtl />,
 };
 
 export const MobileShell: Story = {
+  name: "Mobile / Default",
   globals: { viewport: { value: "mobile1", isRotated: false } },
   render: () => <ShellChrome mobile />,
 };
 
 export const MobileShellRtl: Story = {
+  name: "Mobile / RTL",
   globals: {
     direction: "rtl",
     viewport: { value: "mobile1", isRotated: false },

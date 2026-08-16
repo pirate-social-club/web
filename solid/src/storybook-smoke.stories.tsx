@@ -16,7 +16,7 @@ import {
 // Tailwind tokens, the design-system facade, and the locale/direction/theme
 // decorators all work together. Product stories land under src/features/.
 const meta = {
-  title: "App/Foundations/Storybook Smoke",
+  title: "App/Foundations/StorybookSmoke",
   parameters: {
     layout: "centered",
   },
@@ -42,4 +42,4 @@ const meta = {
 
 export default meta;
 
-export const Default: StoryObj = {};
+export const Default: StoryObj = { name: "Default" };

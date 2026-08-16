@@ -19,6 +19,7 @@ type Story = StoryObj<typeof meta>;
 const cardClass = "rounded-[var(--radius-2xl)] border border-border-soft bg-card px-5 py-4";
 
 export const Default: Story = {
+  name: "Default",
   args: {
     header: (
       <div class={cardClass}>
@@ -44,7 +45,14 @@ export const Default: Story = {
   },
 };
 
+export const Mobile: Story = {
+  ...Default,
+  name: "Mobile",
+  globals: { viewport: { value: "mobile1", isRotated: false } },
+};
+
 export const WithoutHeader: Story = {
+  name: "Layout / Without header",
   args: {
     children: (
       <div class={cardClass}>
@@ -60,6 +68,7 @@ export const WithoutHeader: Story = {
 };
 
 export const WithoutRail: Story = {
+  name: "Layout / Without rail",
   args: {
     header: (
       <div class={cardClass}>

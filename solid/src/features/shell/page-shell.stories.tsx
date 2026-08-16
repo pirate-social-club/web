@@ -88,6 +88,7 @@ function StoryContent(props: { bleed?: boolean }) {
 }
 
 export const StandardRouteDesktop: Story = {
+  name: "Route / Standard desktop",
   render: () => (
     <div class="min-h-screen bg-background">
       <StandardRoutePage size="rail">
@@ -98,6 +99,7 @@ export const StandardRouteDesktop: Story = {
 };
 
 export const StandardRouteMobile: Story = {
+  name: "Route / Standard mobile",
   globals: { viewport: { value: "mobile1", isRotated: false } },
   render: () => (
     <div class="min-h-screen bg-background">
@@ -111,6 +113,7 @@ export const StandardRouteMobile: Story = {
 };
 
 export const StandaloneMobile: Story = {
+  name: "Route / Standalone mobile",
   globals: { viewport: { value: "mobile1", isRotated: false } },
   render: () => (
     <StandaloneMobilePage title="Settings" onBack={() => {}}>
@@ -126,6 +129,7 @@ export const StandaloneMobile: Story = {
 };
 
 export const PublicRouteDesktop: Story = {
+  name: "Route / Public desktop",
   render: () => (
     <PublicRoutePage size="default">
       <div class="flex flex-col gap-4 py-6">
@@ -140,6 +144,7 @@ export const PublicRouteDesktop: Story = {
 };
 
 export const PublicRouteMobile: Story = {
+  name: "Route / Public mobile",
   globals: { viewport: { value: "mobile1", isRotated: false } },
   render: () => (
     <PublicRoutePage size="default">

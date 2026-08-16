@@ -8,7 +8,7 @@ import { ComposerFrame } from "./story-helpers";
 import type { ComposerStep } from "./types";
 
 const meta = {
-  title: "App/Posts/PostComposer/Composer/File",
+  title: "App/Posts/PostComposer/File",
   component: PostComposer,
   args: baseComposer,
   parameters: { layout: "fullscreen" },
@@ -54,6 +54,12 @@ export const Flow: Story = {
   render: () => <FileComposerFlow />,
 };
 
+export const Mobile: Story = {
+  ...Flow,
+  name: "Mobile",
+  globals: { viewport: { value: "mobile1", isRotated: false } },
+};
+
 export const Processing: Story = {
   name: "Processing — scanner pending",
   render: () => <FileComposerFlow initialStep="publish" initialStatus="Processing file" />,
@@ -73,5 +79,3 @@ export const Published: Story = {
   name: "Terminal — published navigation",
   render: () => <FileComposerFlow initialStep="publish" initialStatus="Published — navigating to the post" />,
 };
-
-export const StoryRetry: Story = Retrying;

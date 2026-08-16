@@ -1,4 +1,3 @@
-import { createEffect, createSignal, onCleanup } from "solid-js";
 import type { Meta, StoryObj } from "storybook-solidjs-vite";
 
 import { Type } from "../../../design-system";
@@ -23,22 +22,19 @@ function stepsForScenario(scenario: Scenario) {
   return simpleSubmitProgressSteps({ mode: scenario, hasMedia: scenario === "image" });
 }
 
-function FlowDemo(props: { scenario: Scenario; intervalMs: number }) {
-  const [current, setCurrent] = createSignal<SubmitProgress | null>(null);
-
-  createEffect(() => {
-    const reporter = createSubmitProgressReporter(stepsForScenario(props.scenario), setCurrent);
-    const steps = stepsForScenario(props.scenario);
-    let index = 0;
-    const tick = () => {
-      const step = steps[index % steps.length]!;
-      reporter(step.key, step.phase === "uploading_media" ? "62%" : undefined);
-      index = (index + 1) % steps.length;
-    };
-    tick();
-    const timer = window.setInterval(tick, props.intervalMs);
-    onCleanup(() => window.clearInterval(timer));
+function progressForScenario(scenario: Scenario): SubmitProgress {
+  const steps = stepsForScenario(scenario);
+  let progress: SubmitProgress | undefined;
+  const reporter = createSubmitProgressReporter(steps, (next) => {
+    progress = next;
   });
+  const step = steps.find(({ phase }) => phase !== "validating" && phase !== "done") ?? steps[0]!;
+  reporter(step.key, step.phase === "uploading_media" ? "62%" : undefined);
+  return progress!;
+}
+
+function FlowDemo(props: { scenario: Scenario }) {
+  const current = () => progressForScenario(props.scenario);
 
   const mode = (): ComposerTab => props.scenario;
   return (
@@ -67,17 +63,22 @@ function ShowProgress(props: { progress: SubmitProgress | null; mode: ComposerTa
 }
 
 const meta = {
-  title: "App/Posts/PostComposer/Composer/SubmitProgressFlow",
+  title: "App/Posts/PostComposer/SubmitProgressFlow",
   component: FlowDemo,
   parameters: { layout: "fullscreen" },
   argTypes: {
     scenario: { control: "select", options: ["text", "image", "song", "video"] },
-    intervalMs: { control: { type: "range", min: 300, max: 2000, step: 100 } },
   },
-  args: { scenario: "image", intervalMs: 900 },
+  args: { scenario: "image" },
 } satisfies Meta<typeof FlowDemo>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Flow: Story = { name: "Flow (interactive)" };
+export const Flow: Story = { name: "Flow (deterministic)" };
+
+export const Mobile: Story = {
+  ...Flow,
+  name: "Mobile",
+  globals: { viewport: { value: "mobile1", isRotated: false } },
+};

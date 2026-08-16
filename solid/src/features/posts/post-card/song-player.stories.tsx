@@ -30,7 +30,7 @@ function SongPlayerPreview(props: { width: number }) {
 }
 
 const meta = {
-  title: "App/Posts/PostCard/Song Player",
+  title: "App/Posts/PostCard/SongPlayer",
   component: SongPostContent,
   args: {
     content: {
@@ -59,6 +59,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Desktop: Story = {
+  name: "Desktop",
   render: () => <SongPlayerPreview width={560} />,
 };
 

@@ -6,7 +6,7 @@ import { baseComposer } from "./story-fixtures";
 import { ComposerFrame, InteractiveComposer } from "./story-helpers";
 
 const meta = {
-  title: "App/Posts/PostComposer/Composer/Song",
+  title: "App/Posts/PostComposer/Song",
   component: PostComposer,
   args: baseComposer,
   parameters: { layout: "fullscreen" },
@@ -37,6 +37,12 @@ export const Original: Story = {
       />
     </ComposerFrame>
   ),
+};
+
+export const Mobile: Story = {
+  ...Original,
+  name: "Mobile",
+  globals: { viewport: { value: "mobile1", isRotated: false } },
 };
 
 export const RemixSource: Story = {

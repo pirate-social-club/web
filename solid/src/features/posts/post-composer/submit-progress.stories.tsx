@@ -6,7 +6,7 @@ import { ComposerFrame } from "./story-helpers";
 import type { ComposerTab, SubmitProgress } from "./types";
 
 const meta = {
-  title: "App/Posts/PostComposer/Composer/SubmitProgress",
+  title: "App/Posts/PostComposer/SubmitProgress",
   component: PostComposer,
   args: baseComposer,
   parameters: { layout: "fullscreen" },
@@ -35,6 +35,12 @@ function progressStory(progress: SubmitProgress, mode: ComposerTab = "image") {
 export const ImageUploadingActivity: Story = {
   name: "Activity / Image uploading",
   render: () => progressStory(imageProgress),
+};
+
+export const Mobile: Story = {
+  ...ImageUploadingActivity,
+  name: "Mobile",
+  globals: { viewport: { value: "mobile1", isRotated: false } },
 };
 
 export const TextPublishingActivity: Story = {

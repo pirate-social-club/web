@@ -48,6 +48,7 @@ function SearchReview(props: {
 }
 
 export const DesktopResults: Story = {
+  name: "Desktop / Results",
   render: () => <SearchReview initialQuery="pirate" />,
   play: async () => {
     const dialog = await within(document.body).findByRole("dialog");
@@ -58,11 +59,13 @@ export const DesktopResults: Story = {
 };
 
 export const Mobile: Story = {
+  name: "Mobile",
   globals: { viewport: { value: "mobile1", isRotated: false } },
   render: () => <SearchReview initialQuery="pirate" />,
 };
 
 export const EmptyResults: Story = {
+  name: "State / Empty results",
   render: () => <SearchReview initialQuery="nothing" searchCommunities={async () => []} />,
   play: async () => {
     const dialog = await within(document.body).findByRole("dialog");
@@ -73,6 +76,7 @@ export const EmptyResults: Story = {
 };
 
 export const ErrorState: Story = {
+  name: "State / Error",
   render: () => (
     <SearchReview
       initialQuery="error"

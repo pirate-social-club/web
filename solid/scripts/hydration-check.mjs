@@ -143,6 +143,23 @@ try {
     throw new Error(`Hydrated API query attempted ${apiVersionAttemptsAfterHydration.length} time(s): ${apiVersionAttemptsAfterHydration.join(", ")}`);
   }
 
+  const homeReloadResponse = await page.reload({ waitUntil: "networkidle" });
+  if (!homeReloadResponse?.ok()) throw new Error(`Reloaded Home page returned ${homeReloadResponse?.status()}`);
+  await page.locator('[data-route-path="/"]').waitFor({ state: "attached" });
+  await page.locator("#api-version").waitFor({ state: "attached" });
+  await page.locator("#stream-result").waitFor({ state: "attached" });
+  await assertHead(page, "reloaded Home", {
+    title: "Home · Pirate Web",
+    canonical: "/",
+    description: "Pirate Web video feed",
+    ogTitle: "Home · Pirate Web",
+    ogType: "website",
+  });
+  const apiVersionAttemptsAfterReload = await logApiVersionPhase(page, "Home reload");
+  if (apiVersionAttemptsAfterReload.length) {
+    throw new Error(`Reloaded Home query attempted ${apiVersionAttemptsAfterReload.length} time(s): ${apiVersionAttemptsAfterReload.join(", ")}`);
+  }
+
   if (await feedItems.count() > 1) {
     await feedItems.nth(1).scrollIntoViewIfNeeded();
     await page.waitForTimeout(100);

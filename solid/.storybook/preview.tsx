@@ -176,7 +176,15 @@ const preview: Preview = {
     layout: "centered",
     options: {
       storySort: {
-        order: ["App", ["Foundations", "Posts", "Shell"]],
+        order: [
+          "App",
+          ["Foundations", "Posts", "Shell"],
+          "Foundations",
+          "Components",
+          ["Actions", "Forms", "Overlays", "Disclosure", "Feedback", "Data Display", "Media"],
+          "Patterns",
+          ["Forms", "Overlays", "Feedback", "Identity", "Engagement", "Layout", "Navigation"],
+        ],
       },
     },
   },

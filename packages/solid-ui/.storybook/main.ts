@@ -5,8 +5,9 @@ import remarkGfm from "remark-gfm";
 import type { StorybookConfig } from "storybook-solidjs-vite";
 
 const config: StorybookConfig = {
-  // This catalog is the standalone design-system Storybook (port 6007). The
-  // app Storybook at solid/.storybook intentionally owns only app stories.
+  // This remains the standalone design-system Storybook (port 6007). The
+  // review catalog at solid/.storybook also mounts these stories alongside
+  // the app catalog on port 6008.
   stories: ["../src/**/*.stories.@(js|jsx|mjs|ts|tsx)", "../src/**/*.mdx"],
   addons: [
     {

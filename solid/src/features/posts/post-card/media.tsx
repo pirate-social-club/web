@@ -11,6 +11,7 @@ import { createSignal, Match, Show, Switch } from "solid-js";
 import { Button, FormattedText, IconGlobe, IconLock, Type } from "../../../design-system";
 import { cn } from "../../../design-system";
 import { CrosspostSourcePreviewCard } from "./crosspost-preview";
+import { formatGenericAssetMeta } from "./content-rules";
 import { OfficialOEmbed, OfficialYouTubeEmbed, PostEmbedPreview } from "./embed";
 import { LiveRoomPostContent } from "./live-room-content";
 import { SongPostContent } from "./song-content";
@@ -43,6 +44,7 @@ export interface PostCardMediaLabels {
   purchaseRequired?: string;
   deliveryPending?: string;
   lockedFileHint?: string;
+  publicFileHint?: string;
 }
 
 const defaultMediaLabels: Required<PostCardMediaLabels> = {
@@ -59,6 +61,7 @@ const defaultMediaLabels: Required<PostCardMediaLabels> = {
   purchaseRequired: "Purchase required.",
   deliveryPending: "Delivery is still being prepared.",
   lockedFileHint: "Locked downloadable file · signed delivery",
+  publicFileHint: "Downloadable file",
 };
 
 const TEXT_PREVIEW_CHARACTER_LIMIT = 1_200;
@@ -205,8 +208,13 @@ function GenericAssetCard(props: { content: GenericAssetContent; labels: Require
         <div class="min-w-0 flex-1">
           <Type as="p" variant="body-strong" class="truncate">{props.content.filename ?? props.content.title}</Type>
           <Type as="p" variant="caption" class="text-muted-foreground">
-            {props.labels.lockedFileHint}
+            {props.content.accessMode === "locked" ? props.labels.lockedFileHint : props.labels.publicFileHint}
           </Type>
+          <Show when={formatGenericAssetMeta(props.content.mimeType, props.content.sizeBytes)}>
+            {(meta) => (
+              <Type as="p" variant="caption" class="text-muted-foreground">{meta()}</Type>
+            )}
+          </Show>
         </div>
       </div>
       <Show when={pending()}>

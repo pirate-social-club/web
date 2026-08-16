@@ -47,6 +47,12 @@ export const Playing: Story = {
   ),
 };
 
+export const Mobile: Story = {
+  ...Playing,
+  name: "Mobile",
+  globals: { viewport: { value: "mobile1", isRotated: false } },
+};
+
 export const Paused: Story = {
   name: "Playback / Paused",
   render: () => (
@@ -392,24 +398,6 @@ export const FreeDownloadWithStems: Story = {
         stems: [
           { kind: "instrumental", durationLabel: "3:47", durationMs: 227000, accessPolicy: "free", onDownload: noop },
           { kind: "vocals", label: "Vocals", durationLabel: "3:45", durationMs: 225000, accessPolicy: "free", onDownload: noop },
-        ],
-      }}
-    />
-  ),
-};
-
-export const StemsInstrumentalOnly: Story = {
-  name: "Stems / Instrumental only",
-  render: () => (
-    <PostCard
-      {...songPostFixture}
-      title="Instrumental available for download"
-      content={{
-        ...baseSongFixture,
-        downloadPolicy: "free_download",
-        onDownload: noop,
-        stems: [
-          { kind: "instrumental", durationLabel: "3:47", durationMs: 227000, accessPolicy: "free", onDownload: noop },
         ],
       }}
     />

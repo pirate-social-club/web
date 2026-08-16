@@ -90,7 +90,7 @@ Sub-split by size (sources under `src/components/compositions/posts/`):
 
 - B7a post-card: `post-card.tsx` (594) + song (843) + embed (721) + live-room
   (628) + video (596) + media (460) sources; stories post-card (1615!), song
-  (808), live (348), video (238), song-player. Biggest surface; start here.
+  (808), live (348), and video (238). Biggest surface; start here.
 - B7b post-composer: write-step (561), publish-settings (500),
   event-section (475) + stories (base 348, song 815, video 700, text 209,
   submit-progress 181+155, file 98).

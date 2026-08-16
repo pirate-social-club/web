@@ -5,7 +5,24 @@
   "compatibility_flags": ["nodejs_compat"],
   "main": "./src/worker.ts",
   "assets": { "directory": "./dist/client", "binding": "ASSETS" },
+  "vars": { "SOLID_ENV": "production" },
   "services": [
     { "binding": "PUBLIC", "service": "pirate-web-solid-public" }
-  ]
+  ],
+  "env": {
+    "staging": {
+      "name": "pirate-web-solid-staging",
+      "vars": { "SOLID_ENV": "staging" },
+      "services": [
+        { "binding": "PUBLIC", "service": "pirate-web-solid-public-staging" }
+      ]
+    },
+    "production": {
+      "name": "pirate-web-solid",
+      "vars": { "SOLID_ENV": "production" },
+      "services": [
+        { "binding": "PUBLIC", "service": "pirate-web-solid-public" }
+      ]
+    }
+  }
 }

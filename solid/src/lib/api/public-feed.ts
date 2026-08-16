@@ -63,18 +63,14 @@ export function normalizeAuthorUser(value: unknown): string | null {
   return value.startsWith("usr_usr_") ? value.slice("usr_".length) : value;
 }
 
-function requestForFeed(): Request | undefined {
+export function requestForFeed(): Request | undefined {
   const serverRequest = getRequestEvent()?.request;
   if (serverRequest) return serverRequest;
   if (typeof window === "undefined") return undefined;
 
-  const url = new URL(window.location.href);
-  // Local preview has no API Worker. Use the canonical public surface for
-  // browser pagination; the server-side middleware already does this for SSR.
-  if (url.hostname === "localhost" || url.hostname === "127.0.0.1" || url.hostname.startsWith("127.")) {
-    url.hostname = "app.pirate.sc";
-  }
-  return new Request(url);
+  // Keep the preview origin intact. API origin resolution is environment-aware
+  // and must never silently turn local browser pagination into production I/O.
+  return new Request(window.location.href);
 }
 
 function fetchWithTimeout(timeoutMs = 4_000): typeof fetch {

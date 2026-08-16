@@ -188,7 +188,7 @@ jobs:
         working-directory: api/services/efp-shared
         run: bun install --frozen-lockfile
 
-      - name: Run Solid routes lane stub gate
+      - name: Run the full Solid test suite
         run: bun run solid-routes:ci
 
   unit-tests:

@@ -1,5 +1,13 @@
 import { getRequestEvent } from "@solidjs/web";
-import { resolveApiOriginFromHostname } from "./origin";
+import { resolveApiOriginFromExecution } from "./origin";
+
+function resolveExecutionEnvironment(): "local" | "staging" | "production" {
+  if (import.meta.env?.DEV || import.meta.env?.MODE === "development" || import.meta.env?.MODE === "local") {
+    return "local";
+  }
+  if (import.meta.env?.MODE === "staging") return "staging";
+  return "production";
+}
 
 export function resolveApiOriginForRequest(request?: Request): string {
   const eventOrigin = getRequestEvent()?.locals?.apiOrigin;
@@ -10,7 +18,7 @@ export function resolveApiOriginForRequest(request?: Request): string {
     : typeof window !== "undefined"
       ? window.location.hostname
       : "localhost";
-  return resolveApiOriginFromHostname(hostname);
+  return resolveApiOriginFromExecution(hostname, resolveExecutionEnvironment());
 }
 
 export function resolveApiUrl(pathname: string, request?: Request): string {

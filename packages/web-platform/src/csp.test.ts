@@ -19,3 +19,24 @@ describe("Solid CSP local API allowance", () => {
     expect(policy).toContain(localApiOrigin);
   });
 });
+
+describe("Solid CSP perimeter policy", () => {
+  test("covers every independently applicable resource directive", () => {
+    const policy = buildSolidContentSecurityPolicy({ nonce: "nonce-value" });
+
+    for (const directive of [
+      "script-src 'self' 'nonce-nonce-value' 'strict-dynamic'",
+      "connect-src 'self' https://api.pirate.sc https://api-staging.pirate.sc",
+      "img-src 'self' data: https:",
+      "media-src 'self' https:",
+      "font-src 'self' data:",
+      "style-src 'self' 'unsafe-inline'",
+      "form-action 'self'",
+      "frame-ancestors 'self'",
+      "worker-src 'self' blob:",
+      "manifest-src 'self'",
+    ]) {
+      expect(policy).toContain(directive);
+    }
+  });
+});

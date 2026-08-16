@@ -11,10 +11,10 @@ export interface RouteContract {
 
 /** Frozen route metadata; per-route migration entries are added by lane R. */
 export const routeContracts = [
-  { path: "/", surface: "app", signedIn: false, readOnly: true, migration: "migrating" },
-  { path: "/auth", surface: "bare", signedIn: false, readOnly: true, migration: "migrating" },
-  { path: "/api/health", surface: "api", signedIn: false, readOnly: true, migration: "migrating" },
-  { path: "/seam/host", surface: "seam", signedIn: false, readOnly: true, migration: "migrating" },
+  { path: "/", surface: "app", signedIn: false, readOnly: true, migration: "react" },
+  { path: "/auth", surface: "bare", signedIn: false, readOnly: true, migration: "react" },
+  { path: "/api/health", surface: "api", signedIn: false, readOnly: true, migration: "react" },
+  { path: "/seam/host", surface: "seam", signedIn: false, readOnly: true, migration: "react" },
   { path: "/privacy", surface: "bare", signedIn: false, readOnly: true, migration: "migrating" },
   { path: "/robots.txt", surface: "api", signedIn: false, readOnly: true, migration: "migrating" },
 ] as const satisfies readonly RouteContract[];

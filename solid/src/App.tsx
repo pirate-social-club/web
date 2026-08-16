@@ -1,4 +1,4 @@
-import { Head, Title } from "@solidjs/meta";
+import { Title } from "@solidjs/meta";
 import { createRouter } from "@solidjs/router";
 import { fileRoutes } from "@solidjs/router/fs";
 import { QueryClientProvider } from "@tanstack/solid-query";
@@ -19,10 +19,8 @@ export default function App() {
     <UiLocaleProvider locale={uiLocale}>
       <HostContextProvider value={hostContext}>
         <QueryClientProvider client={queryClient}>
-          <Head>
-            <Title>Pirate Web</Title>
-            <Router>{props => props.children}</Router>
-          </Head>
+          <Title>Pirate Web</Title>
+          <Router>{props => props.children}</Router>
         </QueryClientProvider>
       </HostContextProvider>
     </UiLocaleProvider>

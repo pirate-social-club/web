@@ -6,6 +6,26 @@ const browser = await chromium.launch({
   executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE,
 });
 
+async function assertHead(page, name, expected) {
+  const actual = await page.evaluate(() => ({
+    titles: [...document.head.querySelectorAll("title")].map(element => element.textContent ?? ""),
+    canonicals: [...document.head.querySelectorAll('link[rel="canonical"]')].map(element => element.getAttribute("href") ?? ""),
+    descriptions: [...document.head.querySelectorAll('meta[name="description"]')].map(element => element.getAttribute("content") ?? ""),
+    ogTitles: [...document.head.querySelectorAll('meta[property="og:title"]')].map(element => element.getAttribute("content") ?? ""),
+    ogTypes: [...document.head.querySelectorAll('meta[property="og:type"]')].map(element => element.getAttribute("content") ?? ""),
+  }));
+  const expectedState = {
+    titles: [expected.title],
+    canonicals: expected.canonical == null ? [] : [expected.canonical],
+    descriptions: expected.description == null ? [] : [expected.description],
+    ogTitles: expected.ogTitle == null ? [] : [expected.ogTitle],
+    ogTypes: expected.ogType == null ? [] : [expected.ogType],
+  };
+  if (JSON.stringify(actual) !== JSON.stringify(expectedState)) {
+    throw new Error(`${name} head mismatch: expected=${JSON.stringify(expectedState)} actual=${JSON.stringify(actual)}`);
+  }
+}
+
 try {
   const page = await browser.newPage();
   const violations = [];
@@ -20,6 +40,13 @@ try {
   });
   const response = await page.goto(base, { waitUntil: "networkidle" });
   if (!response?.ok()) throw new Error(`SSR page returned ${response?.status()}`);
+  await assertHead(page, "initial SSR/hydrated home", {
+    title: "Home · Pirate Web",
+    canonical: "/",
+    description: "Pirate Web video feed",
+    ogTitle: "Home · Pirate Web",
+    ogType: "website",
+  });
 
   const csp = response.headers()["content-security-policy"] ?? "";
   const nonce = csp.match(/nonce-([^']+)/)?.[1];
@@ -36,6 +63,14 @@ try {
     throw new Error(`SSR API query did not resolve: ${await apiVersion.textContent()}`);
   }
   if (!(await apiVersion.textContent()).includes("api")) throw new Error("SSR API data is not visible in the streamed HTML");
+  await page.locator("#stream-result").waitFor({ state: "attached" });
+  await assertHead(page, "deferred/Suspense reveal", {
+    title: "Home · Pirate Web",
+    canonical: "/",
+    description: "Pirate Web video feed",
+    ogTitle: "Home · Pirate Web",
+    ogType: "website",
+  });
 
   const feed = page.locator("#public-video-feed");
   await feed.waitFor({ state: "attached" });
@@ -99,14 +134,88 @@ try {
     throw new Error(`Client navigation did not render the community threads route: url=${page.url()} markers=${markers.join(",")} diagnostics=${violations.join(" | ") || "none"}`);
   }
   if (await threadsRoute.getAttribute("data-route-slug") !== "demo") throw new Error("Dynamic community slug was not preserved during client navigation");
+  await assertHead(page, "client navigation to threads", {
+    title: "Threads · demo",
+    canonical: "/c/demo/threads",
+    description: "Threads for community demo",
+    ogTitle: "Threads · demo",
+    ogType: null,
+  });
 
   await page.reload({ waitUntil: "networkidle" });
   await page.locator('[data-route-path="/c/:slug/threads"]').waitFor({ state: "attached" });
   if (await page.locator('[data-route-path="/c/:slug/threads"]').count() !== 1) throw new Error("Dynamic route did not survive refresh");
+  await assertHead(page, "threads refresh", {
+    title: "Threads · demo",
+    canonical: "/c/demo/threads",
+    description: "Threads for community demo",
+    ogTitle: "Threads · demo",
+    ogType: null,
+  });
+
+  await page.goBack({ waitUntil: "networkidle" });
+  await page.waitForURL(url => url.pathname === "/");
+  await page.locator('[data-route-path="/"]').waitFor({ state: "attached" });
+  await assertHead(page, "back navigation to home", {
+    title: "Home · Pirate Web",
+  canonical: "/",
+  description: "Pirate Web video feed",
+  ogTitle: "Home · Pirate Web",
+  ogType: "website",
+  });
+
+  await page.locator('a[href="/seam/host"]').first().click();
+  await page.waitForURL(url => url.pathname === "/seam/host");
+  await page.locator('[data-route-path="/seam/host"]').waitFor({ state: "attached" });
+  await assertHead(page, "route disposal restores fallback head", {
+    title: "Pirate Web",
+    canonical: null,
+    description: null,
+    ogTitle: null,
+    ogType: null,
+  });
+
+  await page.goBack({ waitUntil: "networkidle" });
+  await page.waitForURL(url => url.pathname === "/");
+  await page.locator('[data-route-path="/"]').waitFor({ state: "attached" });
+  const homeLinks = await page.locator('a[href="/p/demo-post"], a[href="/u/demo-user"]').all();
+  if (homeLinks.length !== 2) throw new Error("Home route did not expose both overlap navigation links");
+  await page.evaluate(() => {
+    const links = [...document.querySelectorAll("a")];
+    const post = links.find(link => link.getAttribute("href") === "/p/demo-post");
+    const profile = links.find(link => link.getAttribute("href") === "/u/demo-user");
+    if (!post || !profile) throw new Error("Overlap navigation links are missing");
+    post.click();
+    profile.click();
+  });
+  await page.waitForURL(url => ["/p/demo-post", "/u/demo-user"].includes(url.pathname));
+  const overlapPath = await page.evaluate(() => location.pathname);
+  const overlap = {
+    "/p/demo-post": {
+      marker: '[data-route-path="/p/:id"]',
+      title: "Post demo-post · Pirate Web",
+      canonical: "/p/demo-post",
+      description: null,
+      ogTitle: "Post demo-post",
+      ogType: null,
+    },
+    "/u/demo-user": {
+      marker: '[data-route-path="/u/:handle"]',
+      title: "@demo-user · Pirate Web",
+      canonical: "/u/demo-user",
+      description: null,
+      ogTitle: "@demo-user · Pirate Web",
+      ogType: null,
+    },
+  }[overlapPath];
+  if (!overlap) throw new Error(`Rapid overlapping navigation ended at an unexpected path: ${overlapPath}`);
+  await page.locator(overlap.marker).waitFor({ state: "attached" });
+  await assertHead(page, "overlapping route transition", overlap);
+
   if (apiVersionRequests !== 0) throw new Error(`API query refetched during navigation/refresh (${apiVersionRequests})`);
   if (violations.length) throw new Error(`Browser console errors: ${violations.join(" | ")}`);
 
-  console.log(JSON.stringify({ ok: true, before, after, navigated: "/c/demo/threads", nonceLength: nonce.length, apiVersionRequests, overlay: true, form: true }));
+  console.log(JSON.stringify({ ok: true, before, after, navigated: "/c/demo/threads", backNavigation: true, routeDisposal: true, overlapPath, deferredReveal: true, nonceLength: nonce.length, apiVersionRequests, overlay: true, form: true }));
 } finally {
   await browser.close();
 }

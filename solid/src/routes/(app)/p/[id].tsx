@@ -7,7 +7,7 @@ export default function PostRoute() {
     <main data-route-path="/p/:id" data-route-id={params.id}>
       <Title>Post {params.id} · Pirate Web</Title>
       <Meta property="og:title" content={`Post ${params.id}`} />
-      <Link rel="canonical" href={`/p/${params.id}`} />
+      <Link rel="canonical" href={`/p/${params.id}`} key="canonical" />
       <h1>Post: {params.id}</h1>
     </main>
   );

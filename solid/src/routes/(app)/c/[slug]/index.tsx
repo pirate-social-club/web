@@ -8,7 +8,7 @@ export default function CommunityRoute() {
       <Title>Community {params.slug} · Pirate Web</Title>
       <Meta property="og:title" content={`Community ${params.slug}`} />
       <Meta property="og:type" content="website" />
-      <Link rel="canonical" href={`/c/${params.slug}`} />
+      <Link rel="canonical" href={`/c/${params.slug}`} key="canonical" />
       <h1>Community: {params.slug}</h1>
       <a href={`/c/${params.slug}/threads`}>View threads</a>
     </main>

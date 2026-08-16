@@ -8,7 +8,7 @@ export default function CommunityThreadsRoute() {
       <Title>Threads · {params.slug}</Title>
       <Meta name="description" content={`Threads for community ${params.slug}`} />
       <Meta property="og:title" content={`Threads · ${params.slug}`} />
-      <Link rel="canonical" href={`/c/${params.slug}/threads`} />
+      <Link rel="canonical" href={`/c/${params.slug}/threads`} key="canonical" />
       <h1>Threads for {params.slug}</h1>
       <a href={`/c/${params.slug}`}>Back to community</a>
     </main>

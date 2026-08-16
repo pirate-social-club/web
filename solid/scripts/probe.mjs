@@ -39,6 +39,40 @@ function check(name, ok, detail = "") {
   checks.push({ name, ok, detail });
 }
 
+function headSnapshot(body) {
+  const titles = [...body.matchAll(/<title\b[^>]*>([\s\S]*?)<\/title>/gi)].map(match => match[1].trim());
+  const links = [...body.matchAll(/<link\b[^>]*>/gi)].map(match => match[0]);
+  const canonical = links
+    .filter(tag => /\brel=["']canonical["']/i.test(tag))
+    .map(tag => tag.match(/\bhref=["']([^"']*)["']/i)?.[1] ?? "");
+  const metas = [...body.matchAll(/<meta\b[^>]*>/gi)].map(match => match[0]);
+  const contentFor = (attribute, value) => metas
+    .filter(tag => new RegExp(`\\b${attribute}=["']${value}["']`, "i").test(tag))
+    .map(tag => tag.match(/\bcontent=["']([^"']*)["']/i)?.[1] ?? "");
+  return {
+    titles,
+    canonical,
+    descriptions: contentFor("name", "description"),
+    ogTitles: contentFor("property", "og:title"),
+    ogTypes: contentFor("property", "og:type"),
+  };
+}
+
+function assertHead(name, body, expected) {
+  const actual = headSnapshot(body);
+  check(`${name} has exactly one title`, actual.titles.length === 1, `${actual.titles.length}`);
+  check(`${name} title is correct`, actual.titles[0] === expected.title, actual.titles[0] ?? "missing");
+  const canonical = expected.canonical == null ? [] : [expected.canonical];
+  check(`${name} has exactly one canonical identity`, actual.canonical.length === canonical.length, `${actual.canonical.length}`);
+  check(`${name} canonical is correct`, actual.canonical.join("\u0000") === canonical.join("\u0000"), actual.canonical.join(", ") || "missing");
+  const descriptions = expected.description == null ? [] : [expected.description];
+  check(`${name} description metadata is correct`, actual.descriptions.join("\u0000") === descriptions.join("\u0000"), actual.descriptions.join(", ") || "missing");
+  const ogTitles = expected.ogTitle == null ? [] : [expected.ogTitle];
+  check(`${name} og:title metadata is correct`, actual.ogTitles.join("\u0000") === ogTitles.join("\u0000"), actual.ogTitles.join(", ") || "missing");
+  const ogTypes = expected.ogType == null ? [] : [expected.ogType];
+  check(`${name} og:type metadata is correct`, actual.ogTypes.join("\u0000") === ogTypes.join("\u0000"), actual.ogTypes.join(", ") || "missing");
+}
+
 const root = await get("/", { headers: { host: "app.example.hns" } });
 const html = await root.text();
 const csp = root.headers.get("content-security-policy") ?? "";
@@ -59,6 +93,14 @@ check("compound form fixture is SSR-marked", html.includes('id="hydration-displa
 check("public video feed is SSR-marked", html.includes('id="public-video-feed"') && html.includes('data-feed-status="ready"'));
 check("public feed includes a video item", html.includes('data-feed-item-id="') && html.includes("<video"));
 check("public feed preserves cursor-safe API data", html.includes("data-feed-active="));
+assertHead("root SSR head", html, {
+  title: "Home · Pirate Web",
+  canonical: "/",
+  description: "Pirate Web video feed",
+  ogTitle: "Home · Pirate Web",
+  ogType: "website",
+});
+check("SSR deferred content is revealed", html.includes('id="stream-result">stream-complete'));
 
 const apex = await get("/", { redirect: "manual", headers: { host: "example.hns" } });
 check("HNS apex redirects", apex.status === 307, String(apex.status));
@@ -74,24 +116,25 @@ check("service-binding route returns JSON payload", binding.headers.get("content
 check("adapter returns streamed-capable response", root.body.length > 0);
 
 const htmlRoutes = [
-  ["home route", "/", 'data-route-path="/"', 'data-layout="app-shell"'],
-  ["community route", "/c/demo", 'data-route-path="/c/:slug"', 'data-layout="app-shell"'],
-  ["community threads route", "/c/demo/threads", 'data-route-path="/c/:slug/threads"', 'data-layout="app-shell"'],
-  ["post route", "/p/demo-post", 'data-route-path="/p/:id"', 'data-layout="app-shell"'],
-  ["profile route", "/u/demo-user", 'data-route-path="/u/:handle"', 'data-layout="app-shell"'],
-  ["settings route", "/settings", 'data-route-path="/settings"', 'data-layout="app-shell"'],
-  ["settings child route", "/settings/profile", 'data-route-path="/settings/profile"', 'data-layout="app-shell"'],
-  ["auth bare route", "/auth", 'data-route-path="/auth"', 'data-layout="bare"'],
-  ["embed bare route", "/embed", 'data-route-path="/embed"', 'data-layout="bare"'],
-  ["telegram bare route", "/telegram", 'data-route-path="/telegram"', 'data-layout="bare"'],
-  ["host seam route", "/seam/host", 'data-route-path="/seam/host"'],
-  ["binding seam route", "/seam/binding", 'data-route-path="/seam/binding"'],
+  ["home route", "/", 'data-route-path="/"', 'data-layout="app-shell"', { title: "Home · Pirate Web", canonical: "/", description: "Pirate Web video feed", ogTitle: "Home · Pirate Web", ogType: "website" }],
+  ["community route", "/c/demo", 'data-route-path="/c/:slug"', 'data-layout="app-shell"', { title: "Community demo · Pirate Web", canonical: "/c/demo", description: null, ogTitle: "Community demo", ogType: "website" }],
+  ["community threads route", "/c/demo/threads", 'data-route-path="/c/:slug/threads"', 'data-layout="app-shell"', { title: "Threads · demo", canonical: "/c/demo/threads", description: "Threads for community demo", ogTitle: "Threads · demo", ogType: null }],
+  ["post route", "/p/demo-post", 'data-route-path="/p/:id"', 'data-layout="app-shell"', { title: "Post demo-post · Pirate Web", canonical: "/p/demo-post", description: null, ogTitle: "Post demo-post", ogType: null }],
+  ["profile route", "/u/demo-user", 'data-route-path="/u/:handle"', 'data-layout="app-shell"', { title: "@demo-user · Pirate Web", canonical: "/u/demo-user", description: null, ogTitle: "@demo-user · Pirate Web", ogType: null }],
+  ["settings route", "/settings", 'data-route-path="/settings"', 'data-layout="app-shell"', { title: "Settings · Pirate Web", canonical: null, description: null, ogTitle: null, ogType: null }],
+  ["settings child route", "/settings/profile", 'data-route-path="/settings/profile"', 'data-layout="app-shell"', { title: "Profile settings · Pirate Web", canonical: null, description: null, ogTitle: null, ogType: null }],
+  ["auth bare route", "/auth", 'data-route-path="/auth"', 'data-layout="bare"', { title: "Pirate Web", canonical: null, description: null, ogTitle: null, ogType: null }],
+  ["embed bare route", "/embed", 'data-route-path="/embed"', 'data-layout="bare"', { title: "Pirate Web", canonical: null, description: null, ogTitle: null, ogType: null }],
+  ["telegram bare route", "/telegram", 'data-route-path="/telegram"', 'data-layout="bare"', { title: "Pirate Web", canonical: null, description: null, ogTitle: null, ogType: null }],
+  ["host seam route", "/seam/host", 'data-route-path="/seam/host"', undefined, { title: "Pirate Web", canonical: null, description: null, ogTitle: null, ogType: null }],
+  ["binding seam route", "/seam/binding", 'data-route-path="/seam/binding"', undefined, { title: "Pirate Web", canonical: null, description: null, ogTitle: null, ogType: null }],
 ];
-for (const [name, path, marker, layout] of htmlRoutes) {
+for (const [name, path, marker, layout, head] of htmlRoutes) {
   const response = await get(path, { headers: { host: "app.example.hns" } });
   const body = await response.text();
   check(`${name} serves SSR`, response.status === 200 && body.includes(marker), `${response.status}`);
   if (layout) check(`${name} uses expected layout`, body.includes(layout));
+  assertHead(`${name} SSR head`, body, head);
 }
 
 const api = await get("/api/health", { headers: { host: "app.example.hns", accept: "application/json" } });

@@ -63,12 +63,6 @@ export const Idle: Story = {
   render: () => <PostCard {...basePost} content={{ ...baseVideo, playbackState: "idle" }} />,
 };
 
-export const Mobile: Story = {
-  ...Idle,
-  name: "Mobile",
-  globals: { viewport: { value: "mobile1", isRotated: false } },
-};
-
 export const Playing: Story = {
   name: "Playback / Playing",
   render: () => (

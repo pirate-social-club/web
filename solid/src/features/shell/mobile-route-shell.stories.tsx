@@ -10,9 +10,6 @@ const meta = {
   parameters: {
     layout: "fullscreen",
   },
-  globals: {
-    viewport: { value: "mobile2", isRotated: false },
-  },
 } satisfies Meta<typeof MobileRouteShell>;
 
 export default meta;

@@ -45,12 +45,6 @@ export const Default: Story = {
   },
 };
 
-export const Mobile: Story = {
-  ...Default,
-  name: "Mobile",
-  globals: { viewport: { value: "mobile1", isRotated: false } },
-};
-
 export const WithoutHeader: Story = {
   name: "Layout / Without header",
   args: {

@@ -47,12 +47,6 @@ export const Playing: Story = {
   ),
 };
 
-export const Mobile: Story = {
-  ...Playing,
-  name: "Mobile",
-  globals: { viewport: { value: "mobile1", isRotated: false } },
-};
-
 export const Paused: Story = {
   name: "Playback / Paused",
   render: () => (

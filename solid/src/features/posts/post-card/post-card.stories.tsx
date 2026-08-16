@@ -56,12 +56,6 @@ export const TextPost: Story = {
   render: () => <PostCard {...basePost} />,
 };
 
-export const Mobile: Story = {
-  ...TextPost,
-  name: "Mobile",
-  globals: { viewport: { value: "mobile1", isRotated: false } },
-};
-
 export const SharePillActions: Story = {
   name: "Share Pill / Crosspost and Link",
   render: () => <PostCard {...basePost} />,

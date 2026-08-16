@@ -12,6 +12,7 @@
   "pause": "暂停",
   "play": "播放",
   "loadingMore": "正在加载更多",
+  "retry": "重试",
   "loadMore": "加载更多视频",
   "paginationError": "无法加载更多视频。"
 }

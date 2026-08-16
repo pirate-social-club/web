@@ -18,6 +18,36 @@ export type BookingState =
   | "refunded"
   | "disputed";
 
+export interface BookingAllocation {
+  legs: Array<{
+    recipientType: "host" | "platform_fee";
+    shareBps: number;
+    amountCents: number;
+    settlementStrategy: "operator_payout" | "platform_fee_payout";
+  }>;
+}
+
+export interface BookingQuotePreview {
+  slot: ResolvedSlot;
+  grossCents: number;
+  platformFeeCents: number;
+  hostPayoutCents: number;
+  allocation: BookingAllocation;
+  expiresAtUtc: IsoInstant;
+}
+
+export interface BookingCancellationPreview {
+  object: "booking_cancellation_preview";
+  bookingId: string;
+  cancelledBy: "host" | "booker";
+  grossCents: number;
+  refundCents: number;
+  hostPayoutCents: number;
+  platformFeeCents: number;
+  previewedAt: IsoInstant;
+  policyCutoffAt: IsoInstant | null;
+}
+
 export interface ResolvedSlot {
   startUtc: IsoInstant;
   endUtc: IsoInstant;

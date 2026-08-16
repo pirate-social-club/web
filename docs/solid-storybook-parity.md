@@ -92,13 +92,13 @@ Notes: React `sonner.stories.tsx` maps to the Solid `overlays/toast` implementat
 | 13 | `components/compositions/app/page-shell/stories/page-shell.stories.tsx` | solid/src/features/shell | B6 | done — solid/src/features/shell/page-shell.stories.tsx |
 | 14 | `components/compositions/bookings/add-to-calendar/add-to-calendar.stories.tsx` | solid/src/features/bookings/add-to-calendar | B9 | done — solid/src/features/bookings/add-to-calendar/add-to-calendar.stories.tsx; HourLong consolidated because it renders the same button |
 | 15 | `components/compositions/bookings/availability-calendar/availability-calendar.stories.tsx` | solid/src/features/bookings/availability-calendar | B9 | done — 7 distinct states in solid/src/features/bookings/availability-calendar/availability-calendar.stories.tsx; resolver-backed React fixtures replaced with deterministic offline fixtures |
-| 16 | `components/compositions/bookings/booking-cancellation-dialog/booking-cancellation-dialog.stories.tsx` | solid/src/features/bookings | B9 | pending |
+| 16 | `components/compositions/bookings/booking-cancellation-dialog/booking-cancellation-dialog.stories.tsx` | solid/src/features/bookings/booking-cancellation-dialog | B9 | done — 7 distinct states in solid/src/features/bookings/booking-cancellation-dialog/booking-cancellation-dialog.stories.tsx; viewport-only MobileNoRefund omitted |
 | 17 | `components/compositions/bookings/booking-checkout/booking-checkout.stories.tsx` | solid/src/features/bookings | B9 | pending |
 | 18 | `components/compositions/bookings/booking-management-view/booking-management-view.stories.tsx` | solid/src/features/bookings | B9 | pending |
 | 19 | `components/compositions/bookings/booking-session-controls/booking-session-controls.stories.tsx` | solid/src/features/bookings | B9 | pending |
 | 20 | `components/compositions/bookings/bookings-list/bookings-list.stories.tsx` | solid/src/features/bookings | B9 | pending |
 | 21 | `components/compositions/bookings/booking-status-card/booking-status-card.stories.tsx` | solid/src/features/bookings/booking-status-card | B9 | done — 6 distinct states in solid/src/features/bookings/booking-status-card/booking-status-card.stories.tsx; terminal states consolidated into StateMatrix and the viewport-only Mobile replay omitted |
-| 22 | `components/compositions/bookings/booking-summary/booking-summary.stories.tsx` | solid/src/features/bookings | B9 | pending |
+| 22 | `components/compositions/bookings/booking-summary/booking-summary.stories.tsx` | solid/src/features/bookings/booking-summary | B9 | done — 4 distinct states in solid/src/features/bookings/booking-summary/booking-summary.stories.tsx; viewport-only Mobile replay omitted |
 | 23 | `components/compositions/bookings/feed-booking-sheet/stories/feed-booking-sheet.stories.tsx` | solid/src/features/bookings | B9 | pending |
 | 24 | `components/compositions/bookings/host-availability-editor/host-availability-editor.stories.tsx` | solid/src/features/bookings | B9 | pending |
 | 25 | `components/compositions/bookings/host-booking-page/host-booking-page.stories.tsx` | solid/src/features/bookings | B9 | pending |

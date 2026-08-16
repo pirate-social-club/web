@@ -167,6 +167,7 @@ export {
   TabsList,
   TabsTrigger,
   Textarea,
+  Separator,
 } from "@pirate/web-solid-ui";
 
 // Icons used by the post-composer feature (B7b).

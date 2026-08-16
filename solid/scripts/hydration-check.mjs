@@ -158,10 +158,10 @@ try {
   await page.locator('[data-route-path="/"]').waitFor({ state: "attached" });
   await assertHead(page, "back navigation to home", {
     title: "Home · Pirate Web",
-  canonical: "/",
-  description: "Pirate Web video feed",
-  ogTitle: "Home · Pirate Web",
-  ogType: "website",
+    canonical: "/",
+    description: "Pirate Web video feed",
+    ogTitle: "Home · Pirate Web",
+    ogType: "website",
   });
 
   await page.locator('a[href="/seam/host"]').first().click();
@@ -210,7 +210,7 @@ try {
   }[overlapPath];
   if (!overlap) throw new Error(`Rapid overlapping navigation ended at an unexpected path: ${overlapPath}`);
   await page.locator(overlap.marker).waitFor({ state: "attached" });
-  await assertHead(page, "overlapping route transition", overlap);
+  await assertHead(page, "competing navigation final head cleanliness", overlap);
 
   if (apiVersionRequests !== 0) throw new Error(`API query refetched during navigation/refresh (${apiVersionRequests})`);
   if (violations.length) throw new Error(`Browser console errors: ${violations.join(" | ")}`);

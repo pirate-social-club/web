@@ -7,9 +7,9 @@ state, timers, or random data); reusable UI in `packages/solid-ui`, product UI i
 `solid/src/features/`. No original story state may silently disappear; consolidation
 or splitting is allowed when noted in the Disposition/Notes column.
 
-Current source disposition: 47 covered primitive files plus 70 done
-product/composition files, or 117/177 total. 60 product/composition sources remain
-not done (59 pending, one moved to B12). Counts are by React source file, not by
+Current source disposition: 47 covered primitive files plus 71 done
+product/composition files, or 118/177 total. 59 product/composition sources remain
+not done (58 pending, one moved to B12). Counts are by React source file, not by
 Solid story export or catalog file.
 
 ## A. Primitives — covered by the existing Solid catalog (47)
@@ -78,7 +78,7 @@ Notes: React `sonner.stories.tsx` maps to the Solid `overlays/toast` implementat
 | patterns/overlays/confirm-dialog | Solid-only pattern |
 | patterns/engagement/vertical-feed | engagement lane (owned, do not edit) |
 
-## C. Product/composition source disposition (130; 70 done, 60 not done)
+## C. Product/composition source disposition (130; 71 done, 59 not done)
 
 | # | React story file | Planned Solid target | Batch | Status |
 | --- | --- | --- | --- | --- |
@@ -128,7 +128,7 @@ Notes: React `sonner.stories.tsx` maps to the Solid `overlays/toast` implementat
 | 44 | `components/compositions/community/links-editor/stories/links-editor.stories.tsx` | solid/src/features/community | B10 | done — solid/src/features/community/links-editor/links-editor.stories.tsx |
 | 45 | `components/compositions/community/machine-access/stories/machine-access.stories.tsx` | solid/src/features/community | B10 | pending |
 | 46 | `components/compositions/community/membership-gate-panel/stories/membership-gate-panel.stories.tsx` | solid/src/features/community | B10 | pending |
-| 47 | `components/compositions/community/membership-requests-page/stories/membership-requests-page.stories.tsx` | solid/src/features/community | B10 | pending |
+| 47 | `components/compositions/community/membership-requests-page/stories/membership-requests-page.stories.tsx` | solid/src/features/community | B10 | done — solid/src/features/community/membership-requests-page/membership-requests-page.stories.tsx |
 | 48 | `components/compositions/community/moderation-index-page/stories/moderation-index-page.stories.tsx` | solid/src/features/community | B10 | pending |
 | 49 | `components/compositions/community/moderation-queue-page/stories/moderation-queue-page.stories.tsx` | solid/src/features/community | B10 | pending |
 | 50 | `components/compositions/community/moderation-shell/stories/moderation-shell.stories.tsx` | solid/src/features/community | B10 | pending |

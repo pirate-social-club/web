@@ -7,9 +7,9 @@ state, timers, or random data); reusable UI in `packages/solid-ui`, product UI i
 `solid/src/features/`. No original story state may silently disappear; consolidation
 or splitting is allowed when noted in the Disposition/Notes column.
 
-Current source disposition: 47 covered primitive files plus 63 done
-product/composition files, or 110/177 total. 67 product/composition sources remain
-not done (66 pending, one moved to B12). Counts are by React source file, not by
+Current source disposition: 47 covered primitive files plus 65 done
+product/composition files, or 112/177 total. 65 product/composition sources remain
+not done (64 pending, one moved to B12). Counts are by React source file, not by
 Solid story export or catalog file.
 
 ## A. Primitives — covered by the existing Solid catalog (47)
@@ -78,7 +78,7 @@ Notes: React `sonner.stories.tsx` maps to the Solid `overlays/toast` implementat
 | patterns/overlays/confirm-dialog | Solid-only pattern |
 | patterns/engagement/vertical-feed | engagement lane (owned, do not edit) |
 
-## C. Product/composition source disposition (130; 63 done, 67 not done)
+## C. Product/composition source disposition (130; 65 done, 65 not done)
 
 | # | React story file | Planned Solid target | Batch | Status |
 | --- | --- | --- | --- | --- |
@@ -205,8 +205,8 @@ Notes: React `sonner.stories.tsx` maps to the Solid `overlays/toast` implementat
 | 121 | `components/compositions/verification/self-verification-modal/stories/self-verification-modal.stories.tsx` | solid/src/features/verification | B11 | pending |
 | 122 | `components/compositions/verification/verification-app-download-links/stories/verification-app-download-links.stories.tsx` | solid/src/features/verification | B11 | pending |
 | 123 | `components/compositions/verification/verification-modal-header/stories/verification-modal-header.stories.tsx` | solid/src/features/verification | B11 | pending |
-| 124 | `components/compositions/wallet/royalty-claim-modal/stories/royalty-claim-modal.stories.tsx` | solid/src/features/wallet | B8 | pending |
-| 125 | `components/compositions/wallet/song-purchase-modal/stories/song-purchase-modal.stories.tsx` | solid/src/features/wallet | B8 | pending |
+| 124 | `components/compositions/wallet/royalty-claim-modal/stories/royalty-claim-modal.stories.tsx` | solid/src/features/wallet | B8 | done — solid/src/features/wallet/royalty-claim-modal/royalty-claim-modal.stories.tsx |
+| 125 | `components/compositions/wallet/song-purchase-modal/stories/song-purchase-modal.stories.tsx` | solid/src/features/wallet | B8 | done — solid/src/features/wallet/song-purchase-modal/song-purchase-modal.stories.tsx |
 | 126 | `components/compositions/wallet/wallet-hub/stories/wallet-hub.stories.tsx` | solid/src/features/wallet | B8 | done — solid/src/features/wallet/wallet-hub.stories.tsx |
 | 127 | `components/compositions/wallet/wallet-receive-sheet/stories/wallet-receive-sheet.stories.tsx` | solid/src/features/wallet | B8 | done — solid/src/features/wallet/wallet-receive-sheet.stories.tsx |
 | 128 | `components/compositions/wallet/wallet-send-sheet/stories/wallet-send-sheet.stories.tsx` | solid/src/features/wallet | B8 | done — solid/src/features/wallet/wallet-send-sheet.stories.tsx |

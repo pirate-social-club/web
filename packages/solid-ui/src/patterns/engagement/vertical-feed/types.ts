@@ -43,7 +43,7 @@ export interface VideoPlayerProps {
   onTogglePlay: () => void;
   /** Called when the browser blocks playback (autoplay policy). */
   onPlayFailed?: () => void;
-  onTimeUpdate?: (currentTime: number) => void;
+  onTimeUpdate?: (currentTime: number, duration: number) => void;
 }
 
 export interface MediaActionsProps {

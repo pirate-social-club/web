@@ -1,0 +1,19 @@
+{
+  "name": "@pirate/api-client",
+  "version": "0.3.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./provenance.json": "./src/generated/provenance.json"
+  },
+  "files": [
+    "src/index.ts",
+    "src/generated/client.ts",
+    "src/generated/provenance.json"
+  ],
+  "sideEffects": false
+}

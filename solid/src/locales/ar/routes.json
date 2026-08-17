@@ -6,7 +6,17 @@
   },
   "profile": {
     "title": "@{handle} · بايرت ويب",
-    "heading": "الملف الشخصي: @{handle}"
+    "heading": "الملف الشخصي: @{handle}",
+    "loading": "جارٍ تحميل الملف الشخصي",
+    "invalid": "اسم الملف الشخصي غير صالح.",
+    "notFound": "تعذر العثور على هذا الملف الشخصي.",
+    "error": "الملف الشخصي غير متاح مؤقتًا.",
+    "emptyCommunities": "لم يتم إنشاء مجتمعات بعد.",
+    "createdCommunities": "المجتمعات التي تم إنشاؤها",
+    "createdCommunityPluralDescription": "أنشأ {name} عدد {count} من المجتمعات على Pirate Web.",
+    "createdCommunitySingularDescription": "أنشأ {name} مجتمعًا واحدًا على Pirate Web.",
+    "defaultDescription": "الملف الشخصي العام لـ {name} على Pirate Web.",
+    "openCommunity": "فتح {name}"
   },
   "notFound": {
     "title": "غير موجود",

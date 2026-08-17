@@ -89,9 +89,7 @@ export const Default: Story = {
 
 export const Mobile: Story = {
   parameters: {
-    viewport: {
-      defaultViewport: "mobile1",
-    },
+    globals: { viewport: "mobile1" },
   },
 };
 

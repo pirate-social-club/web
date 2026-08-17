@@ -1,4 +1,4 @@
-export interface PrivySession {
+interface PrivySession {
   accessToken: string;
   userId: string;
   walletAddress: string | null;

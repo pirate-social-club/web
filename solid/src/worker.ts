@@ -6,6 +6,7 @@ import {
   classifySolidHost,
   fetchWithTimeout,
   SOLID_UPSTREAM_TIMEOUT_MS,
+  verifySolidEdgeRequest,
 } from "@pirate/web-platform";
 
 type SolidWorkerEnv = {
@@ -19,6 +20,8 @@ type SolidWorkerEnv = {
   SOLID_BUILD_REF?: string;
   SOLID_ENV?: string;
   SOLID_STAGING_HOST?: string;
+  SOLID_EDGE_HMAC_KEY?: string;
+  SOLID_EDGE_MAX_CLOCK_SKEW_SECONDS?: string;
 };
 
 function notFound(): Response {
@@ -42,6 +45,14 @@ function versionResponse(env: SolidWorkerEnv): Response {
 
 export default {
   async fetch(request: Request, env: SolidWorkerEnv): Promise<Response> {
+    // This Worker is private behind the React service binding. Verify the
+    // binding signature before host routing, HNS handling, SSR, assets, or
+    // version work. Invalid/missing/stale requests fail closed with no app or
+    // upstream I/O and the shared key never enters the forwarded request.
+    const edgeAuthentication = await verifySolidEdgeRequest({ request, ...env });
+    if (!edgeAuthentication.ok) return notFound();
+    request = edgeAuthentication.request;
+
     if (classifySolidHost(
       request.headers.get("host") ?? new URL(request.url).hostname,
       env.SOLID_STAGING_HOST,
@@ -50,7 +61,7 @@ export default {
     }
 
     const pathname = new URL(request.url).pathname;
-    const assetRequest = pathname === "/favicon.ico" || pathname.startsWith("/assets/");
+    const assetRequest = pathname === "/favicon.ico" || pathname.startsWith("/_solid/assets/");
     if (pathname === "/__version" || assetRequest) {
       const forwarding = await authenticateHnsForwarderRequest(request, env);
       if (forwarding.rejection) {
@@ -58,7 +69,13 @@ export default {
           forwarding.rejection === "configuration"
             ? "HNS forwarder authentication is not configured."
             : "HNS forwarder authentication failed.",
-          { status: forwarding.rejection === "configuration" ? 503 : 403 },
+          {
+            status: forwarding.rejection === "configuration" ? 503 : 403,
+            headers: {
+              "cache-control": "no-store",
+              "content-type": "text/plain; charset=utf-8",
+            },
+          },
         );
       }
       request = forwarding.request;
@@ -66,6 +83,11 @@ export default {
 
     if (pathname === "/__version") return versionResponse(env);
     if (assetRequest && env.ASSETS) {
+      const assetUrl = new URL(request.url);
+      if (assetUrl.pathname.startsWith("/_solid/assets/")) {
+        assetUrl.pathname = assetUrl.pathname.slice("/_solid".length);
+        request = new Request(assetUrl, request);
+      }
       return fetchWithTimeout(
         (input, init) => env.ASSETS!.fetch(input, init),
         request,

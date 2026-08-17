@@ -84,4 +84,23 @@ describe("Solid HNS forwarding boundary", () => {
       expect(resolveEffectiveRequestUrl(result.request)).toBe(requestUrl);
     }
   });
+
+  test("rejects duplicate timestamp/signature fields instead of first-value wins", async () => {
+    const duplicateSignature = signedRequest();
+    duplicateSignature.headers.append(
+      "x-pirate-hns-forwarder-signature",
+      duplicateSignature.headers.get("x-pirate-hns-forwarder-signature")!,
+    );
+    const duplicateTimestamp = signedRequest();
+    duplicateTimestamp.headers.append("x-pirate-hns-forwarder-timestamp", String(TIMESTAMP));
+
+    for (const input of [duplicateSignature, duplicateTimestamp]) {
+      const result = await authenticateHnsForwarderRequest(
+        input,
+        { HNS_FORWARDER_HMAC_KEY: KEY },
+        TIMESTAMP * 1_000,
+      );
+      expect(result.rejection).toBe("authentication");
+    }
+  });
 });

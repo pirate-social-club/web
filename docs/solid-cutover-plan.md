@@ -357,7 +357,7 @@ route's slice.
    dynamic imports, and the Kobalte families in use.
 8. `/seam/*` returns 404 in a production build and is unreachable on staging.
 9. No local or preview environment can resolve the production API origin.
-10. Asset routing works for what Slice 0 needs: `/assets/*`, `favicon.ico`,
+10. Asset routing works for what Slice 0 needs: `/_solid/assets/*`, `favicon.ico`,
     `robots.txt`.
 11. The client entry cannot execute before its mount node exists, verified with
     a cached chunk against a throttled document.
@@ -502,7 +502,7 @@ that must go red to green. A blocker with no test here is not closed.
 | B7 | Checkout requires an absent sibling repo | Reproducibility | 2 | `web-ci.yml` job `solid-clean-checkout` |
 | B8 | `/seam/*` reachable, untimed, uncaught | Security | 2 | `solid/src/server/seam-gating.test.ts` + `solid/e2e/seam-denied.spec.ts` |
 | B9 | Local preview resolves the production API | Correctness | 2 | `solid/src/lib/api/origin.test.ts`, extended |
-| B10 | Only `/assets/` routed to ASSETS | Correctness | 2 | `solid/e2e/discovery-assets.spec.ts`, Slice 0 set |
+| B10 | Only `/_solid/assets/` routed to ASSETS | Correctness | 2 | `solid/e2e/discovery-assets.spec.ts`, Slice 0 set |
 | B11 | Async entry script races the mount node | Hydration | 2 | `solid/e2e/entry-order.spec.ts` |
 | B12 | No production topology or release order | Reproducibility | 2 | `.github/workflows/solid-release.yml` + `/__version` probe in `release-canaries.yml` |
 | B13 | `verify` omits the public-feed test | Reproducibility | 2 | `web-ci.yml` job `solid-unit` runs the whole suite |

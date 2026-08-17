@@ -6,7 +6,17 @@
   },
   "profile": {
     "title": "@{handle} · Pirate Web",
-    "heading": "个人资料：@{handle}"
+    "heading": "个人资料：@{handle}",
+    "loading": "正在加载个人资料",
+    "invalid": "该个人资料句柄无效。",
+    "notFound": "找不到该个人资料。",
+    "error": "该个人资料暂时不可用。",
+    "emptyCommunities": "尚未创建社区。",
+    "createdCommunities": "已创建的社区",
+    "createdCommunityPluralDescription": "{name} 在 Pirate Web 创建了 {count} 个社区。",
+    "createdCommunitySingularDescription": "{name} 在 Pirate Web 创建了 1 个社区。",
+    "defaultDescription": "{name} 在 Pirate Web 的公开个人资料。",
+    "openCommunity": "打开 {name}"
   },
   "notFound": {
     "title": "未找到",

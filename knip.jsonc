@@ -1,10 +1,7 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema-jsonc.json",
   "ignore": [
-    "solid/**",
-    "packages/solid-ui/**",
-    "packages/web-platform/**",
-    "packages/route-contracts/**",
+    "scripts/story-cdr-direct-read-check.ts",
     "src/lib/auth/privy-react-auth.ssr.tsx",
     "src/lib/dotenv-browser-shim.ts",
     "src/lib/rwsdk-router.client.ts",
@@ -16,7 +13,6 @@
     "core/scripts/community/apply-listings-asset-unique-index-d1-migration.ts",
     "core/scripts/community/apply-generic-assets-learning-foundation-d1-migration.ts",
     "core/scripts/community/repair-staging-1158-source-columns.ts",
-    "REPAIR",
     "core/scripts/community/apply-song-study-fill-blank-d1-migration.ts",
     "core/scripts/community/apply-lyrics-language-d1-migration.ts",
     "core/scripts/community/apply-song-study-orchestration-v2-d1-migration.ts",
@@ -44,7 +40,16 @@
   ],
   "ignoreIssues": {
     // Mock modules expose reusable fixture types even when the app does not import every type.
-    "src/app/mocks/types.ts": ["types"]
+    "src/app/mocks/types.ts": ["types"],
+    // These exports are intentional public/compatibility seams for external consumers and
+    // routes that have not migrated to the create-style accessors yet.
+    "packages/solid-ui/src/patterns/navigation/sidebar/index.ts": ["exports"],
+    "solid/src/lib/breakpoints.ts": ["exports"],
+    "solid/src/lib/host-context.tsx": ["exports", "types", "duplicates"],
+    "solid/src/lib/media-query.ts": ["exports"],
+    "solid/src/lib/public-video-feed-session.ts": ["exports", "types"],
+    "solid/src/lib/ui-locale.tsx": ["exports", "types", "duplicates"],
+    "solid/src/lib/api/origin.ts": ["types"]
   },
   "workspaces": {
     ".": {
@@ -73,6 +78,40 @@
     "packages/karaoke-runtime": {
       "entry": ["scripts/**/*.ts"],
       "project": ["src/**/*.ts", "tests/**/*.ts", "scripts/**/*.ts"]
+    },
+    "solid": {
+      "entry": [
+        "vite.config.ts",
+        ".storybook/vite.config.ts",
+        "src/entry-client.tsx",
+        "src/entry-server.tsx",
+        "src/middleware.ts",
+        "src/design-system.ts",
+        "src/routes/**/*.{ts,tsx}",
+        "src/**/*.stories.{ts,tsx}",
+        "src/**/*.test.{ts,tsx}",
+        "scripts/**/*.{mjs,ts}"
+      ],
+      "project": [
+        ".storybook/**/*.{ts,tsx}",
+        "scripts/**/*.{mjs,ts}",
+        "src/**/*.{ts,tsx,js,jsx}"
+      ],
+      "ignoreDependencies": ["cloudflare"],
+      "vite": false
+    },
+    "packages/solid-ui": {
+      "entry": [
+        "src/**/*.stories.{ts,tsx}",
+        "src/**/*.test.{ts,tsx}",
+        "scripts/**/*.{mjs,ts,tsx}"
+      ],
+      "project": [
+        ".storybook/**/*.{ts,tsx}",
+        "scripts/**/*.{mjs,ts,tsx}",
+        "src/**/*.{ts,tsx,js,jsx}"
+      ],
+      "vite": false
     }
   }
 }

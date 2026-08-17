@@ -4,7 +4,7 @@ import { createMemo, omit, type ParentProps } from "solid-js";
 import { cn } from "@/lib/cn";
 import { cva, type VariantProps } from "@/lib/recipe";
 
-const pillButtonVariants = cva(
+export const pillButtonVariants = cva(
   "inline-flex h-9 cursor-pointer items-center justify-center rounded-full border px-4 text-base font-semibold whitespace-nowrap transition-[color,background-color,border-color,box-shadow] motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50",
   {
     variants: {

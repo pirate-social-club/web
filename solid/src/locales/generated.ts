@@ -31,7 +31,17 @@ export const GENERATED_LOCALE_CATALOGS = {
         "title": "غير موجود"
       },
       "profile": {
+        "createdCommunities": "المجتمعات التي تم إنشاؤها",
+        "createdCommunityPluralDescription": "أنشأ {name} عدد {count} من المجتمعات على Pirate Web.",
+        "createdCommunitySingularDescription": "أنشأ {name} مجتمعًا واحدًا على Pirate Web.",
+        "defaultDescription": "الملف الشخصي العام لـ {name} على Pirate Web.",
+        "emptyCommunities": "لم يتم إنشاء مجتمعات بعد.",
+        "error": "الملف الشخصي غير متاح مؤقتًا.",
         "heading": "الملف الشخصي: @{handle}",
+        "invalid": "اسم الملف الشخصي غير صالح.",
+        "loading": "جارٍ تحميل الملف الشخصي",
+        "notFound": "تعذر العثور على هذا الملف الشخصي.",
+        "openCommunity": "فتح {name}",
         "title": "@{handle} · بايرت ويب"
       }
     },
@@ -78,7 +88,17 @@ export const GENERATED_LOCALE_CATALOGS = {
         "title": "Not found"
       },
       "profile": {
+        "createdCommunities": "Created communities",
+        "createdCommunityPluralDescription": "{name} created {count} communities on Pirate Web.",
+        "createdCommunitySingularDescription": "{name} created 1 community on Pirate Web.",
+        "defaultDescription": "Public profile for {name} on Pirate Web.",
+        "emptyCommunities": "No communities created yet.",
+        "error": "This profile is temporarily unavailable.",
         "heading": "Profile: @{handle}",
+        "invalid": "That profile handle is not valid.",
+        "loading": "Loading profile",
+        "notFound": "This profile could not be found.",
+        "openCommunity": "Open {name}",
         "title": "@{handle} · Pirate Web"
       }
     },
@@ -125,7 +145,17 @@ export const GENERATED_LOCALE_CATALOGS = {
         "title": "未找到"
       },
       "profile": {
+        "createdCommunities": "已创建的社区",
+        "createdCommunityPluralDescription": "{name} 在 Pirate Web 创建了 {count} 个社区。",
+        "createdCommunitySingularDescription": "{name} 在 Pirate Web 创建了 1 个社区。",
+        "defaultDescription": "{name} 在 Pirate Web 的公开个人资料。",
+        "emptyCommunities": "尚未创建社区。",
+        "error": "该个人资料暂时不可用。",
         "heading": "个人资料：@{handle}",
+        "invalid": "该个人资料句柄无效。",
+        "loading": "正在加载个人资料",
+        "notFound": "找不到该个人资料。",
+        "openCommunity": "打开 {name}",
         "title": "@{handle} · Pirate Web"
       }
     },

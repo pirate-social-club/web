@@ -12,6 +12,7 @@ function Composer(props: {
   focusOnMount?: boolean;
   onChange?: (value: string) => void;
   placeholder?: string;
+  toolbarLabels?: { bold?: string; link?: string };
   value?: string;
 }) {
   const [value, setValue] = createSignal(props.value ?? "");
@@ -24,6 +25,7 @@ function Composer(props: {
         props.onChange?.(next);
       }}
       placeholder={props.placeholder}
+      toolbarLabels={props.toolbarLabels}
       value={value()}
     />
   );
@@ -48,6 +50,16 @@ describe("FormattedTextarea", () => {
     ]) {
       expect(within(container).getByRole("button", { name })).toBeVisible();
     }
+  });
+
+  it("uses host-provided localized toolbar labels", () => {
+    const container = render(() => (
+      <Composer toolbarLabels={{ bold: "Gras", link: "Lien" }} />
+    ));
+
+    expect(within(container).getByRole("button", { name: "Gras" })).toBeVisible();
+    expect(within(container).getByRole("button", { name: "Lien" })).toBeVisible();
+    expect(within(container).getByRole("button", { name: "Italic" })).toBeVisible();
   });
 
   it("wraps the current selection with bold tokens and reports onChange", async () => {

@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, test } from "bun:test";
+import { fetchPublicVideoFeedPage } from "../solid/src/lib/api/public-feed";
 
 function readJsonc(path: string): Record<string, any> {
   return JSON.parse(readFileSync(path, "utf8").replace(/\/\/.*$/gm, ""));
@@ -20,11 +21,15 @@ describe("Solid staging perimeter configuration", () => {
   });
 
   test("builds the auxiliary PUBLIC Worker before the entry Worker", () => {
-    const vite = readFileSync("solid/vite.config.ts", "utf8");
     const worker = readFileSync("solid/src/worker.ts", "utf8");
+    const vite = readFileSync("solid/vite.config.ts", "utf8");
     const workflow = readFileSync(".github/workflows/solid-release.yml", "utf8");
     expect(vite).toContain('auxiliaryWorkers: [{ configPath: "./workers/public/wrangler.jsonc" }]');
     expect(worker).toContain('pathname === "/favicon.ico"');
+    expect(worker).toContain('pathname.startsWith("/_solid/assets/")');
+    expect(worker).not.toContain('pathname.startsWith("/assets/")');
+    expect(worker.indexOf("verifySolidEdgeRequest")).toBeLessThan(worker.indexOf("handleRequest(request)"));
+    expect(vite).toContain('base: "/_solid/"');
     expect(workflow).toContain("solid/dist/pirate_web_solid_public/wrangler.json");
     expect(workflow).toContain("solid/dist/ssr/wrangler.json");
     expect(workflow.indexOf("Deploy Solid PUBLIC staging Worker")).toBeLessThan(
@@ -37,13 +42,33 @@ describe("Solid staging perimeter configuration", () => {
     const middleware = readFileSync("solid/src/middleware.ts", "utf8");
     const authentication = middleware.indexOf("authenticateHnsForwarderRequest(request");
     const disposition = middleware.indexOf("const disposition = resolveSolidRequestDisposition");
-    const homeFetch = middleware.indexOf("const feed = await createApiClient");
+    const homeFetch = middleware.indexOf("fetchPublicVideoFeedPage({");
     const bindingFetch = middleware.indexOf("const upstream = await fetchWithTimeout");
 
     expect(authentication).toBeGreaterThan(-1);
     expect(authentication).toBeLessThan(disposition);
     expect(disposition).toBeLessThan(homeFetch);
     expect(disposition).toBeLessThan(bindingFetch);
+    expect(middleware.match(/fetchPublicVideoFeedPage\(\{/g)).toHaveLength(2);
+    expect(middleware).toContain('import { describeApiNextError, fetchPublicVideoFeedPage } from "./lib/api/public-feed";');
+    expect(middleware).not.toContain("createApiClient");
+    expect(middleware).not.toContain("/feed/home/videos/public");
     expect(middleware).not.toContain('apiOrigin = "https://api.pirate.sc"');
+  });
+
+  test("pins the shared public-feed adapter to the generated public operation", async () => {
+    let requestedUrl = "";
+    let authorization: string | null = null;
+    await expect(fetchPublicVideoFeedPage({
+      request: new Request("https://pirate.sc/", { headers: { authorization: "Bearer should-not-forward" } }),
+      fetchImpl: async (input, init) => {
+        requestedUrl = String(input);
+        authorization = new Headers(init?.headers).get("authorization");
+        return Response.json({ items: [], top_communities: [], next_cursor: null });
+      },
+      timeoutMs: 100,
+    })).resolves.toEqual({ items: [], next_cursor: null });
+    expect(requestedUrl).toBe("https://api.pirate.sc/feed/home/public?locale=en&sort=best");
+    expect(authorization).toBeNull();
   });
 });

@@ -29,6 +29,11 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
+  render: (args) => (
+    <div class="w-[calc(100vw-2rem)] max-w-full p-4">
+      <Skeleton class={args.class} />
+    </div>
+  ),
   play: async ({ canvasElement }) => {
     const skeleton = canvasElement.querySelector(".animate-pulse");
     await expect(skeleton).toHaveClass("bg-surface-skeleton");

@@ -1,6 +1,7 @@
 import { Show } from "solid-js";
 
 import { Avatar } from "@/components/data-display/avatar/avatar";
+import { Type } from "@/components/data-display/type/type";
 import { IconMusicNote } from "@/components/media/icons";
 import { cn } from "@/lib/cn";
 
@@ -210,9 +211,9 @@ export function MediaActions(props: MediaActionsProps) {
             />
           </div>
           <Show when={props.likeCount !== undefined}>
-            <span class="text-xs font-semibold text-foreground">
+            <Type as="span" variant="caption" class="font-semibold text-foreground">
               {formatCount(props.likeCount!)}
-            </span>
+            </Type>
           </Show>
         </button>
       </Show>

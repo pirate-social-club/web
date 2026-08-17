@@ -16,9 +16,9 @@ export const dialogOverlayClass =
   "fixed inset-0 z-50 bg-black/55 backdrop-blur-sm";
 
 export const dialogContentClass =
-  "fixed inset-x-0 top-[50%] z-50 mx-auto grid w-[min(100%-2rem,32rem)] translate-y-[-50%] gap-4 rounded-[var(--radius-xl)] border border-border bg-card p-6 shadow-xl";
+  "fixed inset-x-0 bottom-4 top-auto z-50 mx-auto grid max-h-[calc(100dvh-2rem)] w-[min(100%-2rem,32rem)] translate-y-0 gap-4 overflow-y-auto rounded-[var(--radius-xl)] border border-border bg-card p-6 shadow-xl sm:bottom-auto sm:top-[50%] sm:translate-y-[-50%]";
 
-export const dialogCloseButtonClass =
+const dialogCloseButtonClass =
   "absolute end-4 top-4 inline-flex size-10 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
 export const dialogTitleClass = "text-lg font-semibold leading-none tracking-tight";
@@ -45,7 +45,7 @@ export function DialogHeaderLayout(
   props: ParentProps<JSX.HTMLAttributes<HTMLDivElement>>,
 ) {
   const className = createMemo(() =>
-    cn("flex flex-col space-y-1.5 pe-14 text-center sm:text-start", props.class),
+    cn("flex flex-col space-y-1.5 pe-14 text-start", props.class),
   );
   const rest = omit(props, "class");
 

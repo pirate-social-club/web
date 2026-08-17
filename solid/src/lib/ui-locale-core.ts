@@ -1,4 +1,4 @@
-export const SUPPORTED_UI_LOCALES = ["en", "ar", "zh", "pseudo"] as const;
+const SUPPORTED_UI_LOCALES = ["en", "ar", "zh", "pseudo"] as const;
 
 export type UiLocaleCode = (typeof SUPPORTED_UI_LOCALES)[number];
 export type RealUiLocaleCode = Exclude<UiLocaleCode, "pseudo">;

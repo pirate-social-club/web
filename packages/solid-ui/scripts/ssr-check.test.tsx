@@ -57,6 +57,36 @@ import {
 import { Toaster } from "@/components/overlays/toast/toast";
 import { ActionMenu } from "@/patterns/overlays/action-menu/action-menu";
 import { ConfirmDialog } from "@/patterns/overlays/confirm-dialog/confirm-dialog";
+import { FlatTabBar, FlatTabButton } from "@/patterns/navigation/flat-tabs/flat-tabs";
+import { StackedSectionNav } from "@/patterns/navigation/stacked-section-nav/stacked-section-nav";
+import { ResponsiveOptionSelect } from "@/patterns/forms/responsive-option-select/responsive-option-select";
+import { AvatarBadge } from "@/patterns/identity/avatar-badge/avatar-badge";
+import {
+  Modal,
+  ModalContent,
+  ModalDescription,
+  ModalHeader,
+  ModalTitle,
+} from "@/patterns/overlays/modal/modal";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+} from "@/patterns/navigation/sidebar";
+import { AppHeader } from "@/patterns/navigation/app-header/app-header";
+import { MobileFooterNav } from "@/patterns/navigation/mobile-footer-nav/mobile-footer-nav";
+import { MobilePageHeader } from "@/patterns/navigation/mobile-page-header/mobile-page-header";
+import {
+  AuthRequiredRouteState,
+  NotFoundRouteState,
+  RouteLoadingState,
+} from "@/patterns/feedback/route-states/route-states";
+import { StatusCard } from "@/patterns/feedback/status-card/status-card";
+import { StackPageShell } from "@/patterns/layout/stack-page-shell/stack-page-shell";
 import { VerticalFeed } from "@/patterns/engagement/vertical-feed/vertical-feed";
 
 function renderHtml(ui: () => unknown): string {
@@ -187,6 +217,144 @@ describe("SSR smoke", () => {
         />
       )),
     ).toContain("@wavemaker");
+  });
+
+  it("renders FlatTabs without browser APIs", () => {
+    expect(
+      renderHtml(() => (
+        <FlatTabBar columns={2}>
+          <FlatTabButton active>Feed</FlatTabButton>
+          <FlatTabButton>About</FlatTabButton>
+        </FlatTabBar>
+      )),
+    ).toContain("Feed");
+  });
+
+  it("renders StackedSectionNav without browser APIs", () => {
+    expect(
+      renderHtml(() => (
+        <StackedSectionNav
+          sections={[
+            {
+              label: "Account",
+              items: [{ label: "Profile", active: true }, { label: "Privacy" }],
+            },
+          ]}
+        />
+      )),
+    ).toContain("Profile");
+  });
+
+  it("renders ResponsiveOptionSelect without browser APIs", () => {
+    expect(
+      renderHtml(() => (
+        <ResponsiveOptionSelect
+          ariaLabel="Sort"
+          drawerTitle="Sort"
+          options={[{ label: "Best", value: "best" }]}
+          value="best"
+        />
+      )),
+    ).toContain("Best");
+  });
+
+  it("renders AvatarBadge without browser APIs", () => {
+    expect(
+      renderHtml(() => (
+        <AvatarBadge
+          badgeCountryCode="us"
+          badgeLabel="Verified United States nationality"
+          fallback="Ada Lovelace"
+          flagUrlForCountryCode={(code) => `/flags/${code}.svg`}
+        />
+      )),
+    ).toContain("/flags/us.svg");
+  });
+
+  it("renders Modal without browser APIs", () => {
+    // Dialog/Sheet content is portaled, so SSR output is intentionally empty;
+    // the check proves the pattern evaluates with no module-scope browser API.
+    expect(
+      renderHtml(() => (
+        <Modal forceMobile={false} open>
+          <ModalContent>
+            <ModalHeader>
+              <ModalTitle>Unlock this content</ModalTitle>
+              <ModalDescription>Add funds to continue.</ModalDescription>
+            </ModalHeader>
+          </ModalContent>
+        </Modal>
+      )),
+    ).toBe("");
+  });
+
+  it("renders Sidebar without browser APIs", () => {
+    expect(
+      renderHtml(() => (
+        <SidebarProvider>
+          <Sidebar>
+            <SidebarHeader>
+              <span>Brand</span>
+            </SidebarHeader>
+            <SidebarContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton isActive tooltip="Home">
+                    <span>Home</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarContent>
+          </Sidebar>
+        </SidebarProvider>
+      )),
+    ).toContain("Home");
+  });
+
+  it("renders AppHeader without browser APIs", () => {
+    expect(
+      renderHtml(() => <AppHeader forceMobile={false} />),
+    ).toContain("PIRATE");
+  });
+
+  it("renders MobileFooterNav without browser APIs", () => {
+    expect(
+      renderHtml(() => <MobileFooterNav activeItem="inbox" forceMobile />),
+    ).toContain("Inbox");
+  });
+
+  it("renders MobilePageHeader without browser APIs", () => {
+    expect(
+      renderHtml(() => <MobilePageHeader title="Notifications" />),
+    ).toContain("Notifications");
+  });
+
+  it("renders route states without browser APIs", () => {
+    expect(renderHtml(() => <RouteLoadingState />)).toContain("svg");
+    expect(
+      renderHtml(() => <NotFoundRouteState path="/missing" />),
+    ).toContain("/missing");
+    expect(
+      renderHtml(() => (
+        <AuthRequiredRouteState
+          description="Sign in to view your inbox."
+          title="Inbox"
+        />
+      )),
+    ).toContain("Inbox");
+  });
+
+  it("renders StatusCard and StackPageShell without browser APIs", () => {
+    expect(
+      renderHtml(() => <StatusCard title="All set" description="Done." tone="success" />),
+    ).toContain("All set");
+    expect(
+      renderHtml(() => (
+        <StackPageShell title="Settings">
+          <div>Body</div>
+        </StackPageShell>
+      )),
+    ).toContain("Settings");
   });
 
   it("renders Batch 3 form controls without browser APIs", () => {

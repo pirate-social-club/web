@@ -319,7 +319,7 @@ describe("SSR smoke", () => {
 
   it("renders MobileFooterNav without browser APIs", () => {
     expect(
-      renderHtml(() => <MobileFooterNav activeItem="inbox" forceMobile />),
+      renderHtml(() => <MobileFooterNav activeItem="inbox" />),
     ).toContain("Inbox");
   });
 

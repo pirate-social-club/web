@@ -104,6 +104,22 @@ describe("Tabs", () => {
     );
   });
 
+  it("provides the underline visual variant used by FlatTabs shims", () => {
+    const container = render(() => (
+      <Tabs defaultValue="account">
+        <TabsList columns={2} variant="underline">
+          <TabsTrigger value="account" variant="underline">Account</TabsTrigger>
+          <TabsTrigger value="password" variant="underline">Password</TabsTrigger>
+        </TabsList>
+      </Tabs>
+    ));
+
+    const list = within(container).getByRole("tablist");
+    expect(list).toHaveClass("border-b", "grid");
+    expect(list.style.gridTemplateColumns).toBe("repeat(2, minmax(0, 1fr))");
+    expect(within(container).getByRole("tab", { name: "Account" })).toHaveClass("border-b-2", "border-primary");
+  });
+
   it("has no axe violations", async () => {
     render(() => <TabsFixture />);
 

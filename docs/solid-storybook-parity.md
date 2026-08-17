@@ -7,9 +7,9 @@ state, timers, or random data); reusable UI in `packages/solid-ui`, product UI i
 `solid/src/features/`. No original story state may silently disappear; consolidation
 or splitting is allowed when noted in the Disposition/Notes column.
 
-Current source disposition: 47 covered primitive files plus 71 done
-product/composition files, or 118/177 total. 59 product/composition sources remain
-not done (58 pending, one moved to B12). Counts are by React source file, not by
+Current source disposition: 47 covered primitive files plus 72 done
+product/composition files, or 119/177 total. 58 product/composition sources remain
+not done (57 pending, one moved to B12). Counts are by React source file, not by
 Solid story export or catalog file.
 
 ## A. Primitives — covered by the existing Solid catalog (47)
@@ -78,7 +78,7 @@ Notes: React `sonner.stories.tsx` maps to the Solid `overlays/toast` implementat
 | patterns/overlays/confirm-dialog | Solid-only pattern |
 | patterns/engagement/vertical-feed | engagement lane (owned, do not edit) |
 
-## C. Product/composition source disposition (130; 71 done, 59 not done)
+## C. Product/composition source disposition (130; 72 done, 58 not done)
 
 | # | React story file | Planned Solid target | Batch | Status |
 | --- | --- | --- | --- | --- |
@@ -123,7 +123,7 @@ Notes: React `sonner.stories.tsx` maps to the Solid `overlays/toast` implementat
 | 39 | `components/compositions/community/handle-policy-editor/stories/handle-policy-editor.stories.tsx` | solid/src/features/community | B10 | pending |
 | 40 | `components/compositions/community/integrations/stories/community-integrations.stories.tsx` | solid/src/features/community | B10 | pending |
 | 41 | `components/compositions/community/interaction-gate-modal/stories/interaction-gate-modal.stories.tsx` | solid/src/features/community | B10 | pending |
-| 42 | `components/compositions/community/join-request-modal/stories/join-request-modal.stories.tsx` | solid/src/features/community | B10 | pending |
+| 42 | `components/compositions/community/join-request-modal/stories/join-request-modal.stories.tsx` | solid/src/features/community | B10 | done — solid/src/features/community/join-request-modal/join-request-modal.stories.tsx |
 | 43 | `components/compositions/community/labels-editor/stories/labels-editor.stories.tsx` | solid/src/features/community | B10 | pending |
 | 44 | `components/compositions/community/links-editor/stories/links-editor.stories.tsx` | solid/src/features/community | B10 | done — solid/src/features/community/links-editor/links-editor.stories.tsx |
 | 45 | `components/compositions/community/machine-access/stories/machine-access.stories.tsx` | solid/src/features/community | B10 | pending |

@@ -70,8 +70,12 @@ function OptionDetail(props: { option: ResponsiveOptionSelectOption }) {
  * selection is reported through onValueChange. The host controls the value.
  *
  * `mobileTrigger` remains as a compatibility alias for `mobileTriggerContent`.
- * Removal gate: delete the alias at the next breaking API window after all
- * Web consumers have migrated to `mobileTriggerContent`.
+ * Custom mobile triggers are rendered as the SheetTrigger's child, so they
+ * must be content-only or a single interactive control; the wrapper does not
+ * add pill styling or triggerClass to custom content.
+ * Removal gate: migrate `solid/src/features/posts/post-thread/mobile-flows.stories.tsx`
+ * to `mobileTriggerContent`, verify `rg 'mobileTrigger=' solid packages/solid-ui/src`
+ * returns no call sites, then remove the alias at the next breaking API release.
  */
 export function ResponsiveOptionSelect(props: ResponsiveOptionSelectProps) {
   const [drawerOpen, setDrawerOpen] = createSignal(false);
@@ -98,26 +102,29 @@ export function ResponsiveOptionSelect(props: ResponsiveOptionSelectProps) {
       <div class={cn("flex w-full", props.class)}>
         <div class="w-full md:hidden">
           <Sheet open={drawerOpen()} onOpenChange={setDrawerOpen}>
-            <SheetTrigger
-              aria-label={props.ariaLabel}
-              class={
-                props.mobileTriggerContent ?? props.mobileTrigger
-                  ? undefined
-                  : cn(
-                      pillButtonVariants({ tone: "default" }),
-                      triggerSizeClass(),
-                      "w-full max-w-none cursor-pointer gap-1.5 px-4",
-                      props.triggerClass,
-                    )
-              }
-            >
-              {props.mobileTriggerContent ?? props.mobileTrigger ?? (
-                <>
+            <Show
+              when={props.mobileTriggerContent ?? props.mobileTrigger}
+              fallback={
+                <SheetTrigger
+                  aria-label={props.ariaLabel}
+                  class={cn(
+                    pillButtonVariants({ tone: "default" }),
+                    triggerSizeClass(),
+                    "w-full max-w-none cursor-pointer gap-1.5 px-4",
+                    props.triggerClass,
+                  )}
+                >
                   {props.triggerContent ?? <span class="truncate">{activeLabel()}</span>}
                   <IconCaretDown class="size-4 shrink-0" />
-                </>
+                </SheetTrigger>
+              }
+            >
+              {(customTrigger) => (
+                <SheetTrigger as="span" role="presentation" tabindex={-1}>
+                  {customTrigger()}
+                </SheetTrigger>
               )}
-            </SheetTrigger>
+            </Show>
             <SheetContent
               class="max-h-[75dvh] rounded-t-[var(--radius-3xl)] px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-4"
               side="bottom"

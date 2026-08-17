@@ -79,13 +79,14 @@ describe("ResponsiveOptionSelect", () => {
       <ResponsiveOptionSelect
         ariaLabel="Sort"
         drawerTitle="Sort"
-        mobileTrigger={<span>Custom trigger</span>}
+        mobileTrigger={<button type="button">Custom trigger</button>}
         options={options}
         value="best"
       />
     ));
 
     expect(within(container).getByText("Custom trigger")).toBeVisible();
+    expect(container.querySelector("button > button")).toBeNull();
   });
 
   it("keeps the desktop hidden select as the only named form owner", () => {

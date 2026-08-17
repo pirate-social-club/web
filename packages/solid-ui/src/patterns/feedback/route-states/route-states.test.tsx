@@ -29,8 +29,8 @@ describe("route states", () => {
     expect(status).toHaveClass("min-h-[40vh]");
     expect(within(status).queryByLabelText("Loading")).toBeNull();
 
-    const publicRoute = render(() => <PublicRouteLoadingState />);
-    expect(within(publicRoute).getByRole("status")).toHaveClass("min-h-[60vh]");
+    const publicRoute = render(() => <PublicRouteLoadingState label="Loading public" />);
+    expect(within(publicRoute).getByRole("status", { name: "Loading public" })).toHaveClass("min-h-[60vh]");
   });
 
   it("provides a route-neutral message state", () => {

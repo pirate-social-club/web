@@ -6,7 +6,7 @@ import { Type } from "@/components/data-display/type/type";
 import { AvatarBadge } from "./avatar-badge";
 
 // Offline, deterministic flag fixtures: colored circle SVGs keyed by country
-// code, standing in for the circle-flags CDN the default resolver points at.
+// code, standing in for the deterministic local default artwork.
 const fixtureFlag = (code: string) => {
   const colors: Record<string, string> = {
     ar: "#006c35",

@@ -64,9 +64,8 @@ export interface AvatarBadgeProps {
   fallbackSeed?: string;
   fallbackSrc?: string;
   /**
-   * Resolve a normalized two-letter country code to a flag image URL.
-   * Defaults to the circle-flags CDN (network). Pass a local fixture resolver
-   * for offline or deterministic surfaces such as stories and tests.
+   * Optional override for the deterministic local badge artwork. Remote URLs
+   * are supported only when explicitly returned by this resolver.
    */
   flagUrlForCountryCode?: (countryCode: string) => string;
   size?: AvatarBadgeSize;

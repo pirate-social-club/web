@@ -49,6 +49,7 @@ export interface SheetContentProps
   extends KDialogContentProps,
     VariantProps<typeof sheetContentVariants> {
   class?: string;
+  dir?: "ltr" | "rtl" | "auto";
   hideCloseButton?: boolean;
 }
 

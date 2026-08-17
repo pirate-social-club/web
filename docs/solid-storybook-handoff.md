@@ -44,6 +44,16 @@ parity manifest. Per the coordinator brief:
 - `app-shell-chrome` story: covered by DS AppHeader/MobileFooterNav stories +
   AppShell adapter stories (stated in manifest).
 
+## Reconciliation notes (2026-08-17)
+
+- `MobileFooterNav` now uses the CSS-first DS API; `forceMobile` was removed
+  from this surface only. The prop remains live on `AppHeader`, `Modal`, and
+  `MobilePageHeader` (including wallet feature callers), so do not copy it back
+  into the footer API.
+- Replacing `MobilePageHeader` with the DS callback-driven implementation is a
+  separate follow-up: it currently composes the Web-owned `AppHeader` and
+  passes `forceMobile` through that boundary.
+
 ## Gates (run per batch, in the worktree)
 
 - DS: `cd packages/solid-ui && bun run typecheck && bun run test` (376 green)

@@ -65,6 +65,14 @@ export function IconTrash(props: IconProps) {
   );
 }
 
+export function IconPencil(props: IconProps) {
+  return (
+    <svg aria-hidden="true" class={props.class} fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+      <path d="m14 5 5 5M4 20l3.5-.7L19 7.8a2.1 2.1 0 0 0-3-3L4.7 16.5 4 20Z" stroke-linecap="round" stroke-linejoin="round" />
+    </svg>
+  );
+}
+
 export function IconUploadSimple(props: IconProps) {
   return (
     <svg aria-hidden="true" class={props.class} fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">

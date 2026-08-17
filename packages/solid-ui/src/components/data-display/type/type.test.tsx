@@ -42,6 +42,18 @@ describe("Type", () => {
     );
   });
 
+  it("applies a typed desktop heading size override", () => {
+    const container = render(() => (
+      <Type responsiveSize="desktop4xl" variant="h1">
+        Responsive heading
+      </Type>
+    ));
+
+    expect(within(container).getByText("Responsive heading")).toHaveClass(
+      "md:text-4xl",
+    );
+  });
+
   it("has no axe violations", async () => {
     render(() => (
       <div>

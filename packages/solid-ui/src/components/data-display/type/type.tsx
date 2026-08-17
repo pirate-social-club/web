@@ -23,6 +23,9 @@ export const typeVariants = cva("", {
       roomy: "leading-8",
       tight: "leading-tight",
     },
+    responsiveSize: {
+      desktop4xl: "md:text-4xl",
+    },
   },
   defaultVariants: {
     variant: "body",
@@ -39,11 +42,23 @@ export interface TypeProps
 export function Type(props: ParentProps<TypeProps>) {
   const className = createMemo(() =>
     cn(
-      typeVariants({ leading: props.leading, variant: props.variant }),
+      typeVariants({
+        leading: props.leading,
+        responsiveSize: props.responsiveSize,
+        variant: props.variant,
+      }),
       props.class,
     ),
   );
-  const rest = omit(props, "class", "leading", "variant", "as", "children");
+  const rest = omit(
+    props,
+    "class",
+    "leading",
+    "responsiveSize",
+    "variant",
+    "as",
+    "children",
+  );
 
   return (
     <Dynamic component={props.as ?? "span"} class={className()} {...rest}>

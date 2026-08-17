@@ -223,6 +223,7 @@ export {
   IconMicrophone,
   IconMusicNote,
   IconPause,
+  IconPencil,
   IconPlay,
   IconPlus,
   IconRobot,

@@ -205,6 +205,8 @@ export {
 } from "@pirate/web-solid-ui";
 
 // Primitives and icons used by the wallet Storybook feature (B8b).
+export { IconPencil } from "@pirate/web-solid-ui";
+
 export {
   BadgedCircle,
   CopyField,

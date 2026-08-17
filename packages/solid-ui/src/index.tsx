@@ -405,6 +405,8 @@ export {
 
 export {
   AvatarBadge,
+  buildDefaultAvatarBadgeSrc,
+  resolveAvatarBadgeSrc,
   type AvatarBadgeProps,
   type AvatarBadgeSize,
 } from "./patterns/identity/avatar-badge/avatar-badge";

@@ -51,6 +51,23 @@ describe("AvatarBadge", () => {
     expect(within(container).queryByRole("img", { name: "Verified" })).toBeNull();
   });
 
+  it("uses deterministic local artwork when no resolver is supplied", () => {
+    const container = render(() => (
+      <AvatarBadge
+        badgeCountryCode="US"
+        badgeLabel="Verified United States nationality"
+        fallback="Ada Lovelace"
+      />
+    ));
+
+    const badge = within(container).getByRole("img", {
+      name: "Verified United States nationality",
+    });
+    const flag = badge.querySelector("img");
+    expect(flag?.getAttribute("src")).toMatch(/^data:image\/svg\+xml/);
+    expect(flag?.getAttribute("src")).not.toContain("https://");
+  });
+
   it("has no automated a11y violations", async () => {
     render(() => (
       <AvatarBadge

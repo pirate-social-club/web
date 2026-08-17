@@ -29,7 +29,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "Avatar with a corner verification badge. A valid two-letter badgeCountryCode renders the badge as a circular flag through the flagUrlForCountryCode resolver (CDN by default; stories use local fixtures); anything else renders the plain Avatar. Badge size, ring, and offset follow the avatar size unless overridden.",
+          "Avatar with a corner verification badge. A valid two-letter badgeCountryCode renders deterministic local artwork by default; flagUrlForCountryCode and badgeSrc remain explicit overrides for supplied artwork. Anything else renders the plain Avatar. Badge size, ring, and offset follow the avatar size unless overridden.",
       },
     },
   },

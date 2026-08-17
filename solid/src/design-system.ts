@@ -82,6 +82,7 @@ export {
 export {
   ActionMenu,
   AvatarBadge,
+  buildDefaultAvatarBadgeSrc,
   CommentPill,
   FormattedText,
   MediaControlButton,
@@ -90,6 +91,7 @@ export {
   Skeleton,
   VerticalFeed,
   VotePill,
+  resolveAvatarBadgeSrc,
   type ActionMenuItem,
   type AvatarBadgeProps,
   type CommentPillProps,

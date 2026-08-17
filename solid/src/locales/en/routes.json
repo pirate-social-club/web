@@ -61,6 +61,16 @@
       "savingNote": "Saving…"
     }
   },
+  "joinRequest": {
+    "title": "Request to join",
+    "description": "Tell the moderators why you want to join. Include links or proof that show you are eligible.",
+    "submittedTitle": "Request submitted",
+    "submittedDescription": "The moderators will review your request.",
+    "messageOptional": "Message (Optional)",
+    "whyJoinPlaceholder": "Why {communityName}?",
+    "submit": "Submit",
+    "done": "Done"
+  },
   "moderation": {
     "rules": {
       "title": "Rules",

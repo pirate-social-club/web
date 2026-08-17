@@ -61,6 +61,16 @@
       "savingNote": "جارٍ الحفظ…"
     }
   },
+  "joinRequest": {
+    "title": "طلب الانضمام",
+    "description": "أخبر المشرفين لماذا تريد الانضمام.",
+    "submittedTitle": "تم إرسال الطلب",
+    "submittedDescription": "سيراجع المشرفون طلبك.",
+    "messageOptional": "الرسالة (اختيارية)",
+    "whyJoinPlaceholder": "لماذا {communityName}؟",
+    "submit": "إرسال",
+    "done": "تم"
+  },
   "moderation": {
     "rules": {
       "title": "القواعد",

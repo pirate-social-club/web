@@ -25,6 +25,16 @@ export const GENERATED_LOCALE_CATALOGS = {
         "heading": "واجهة بايرت ويب",
         "title": "الرئيسية · بايرت ويب"
       },
+      "joinRequest": {
+        "description": "أخبر المشرفين لماذا تريد الانضمام.",
+        "done": "تم",
+        "messageOptional": "الرسالة (اختيارية)",
+        "submit": "إرسال",
+        "submittedDescription": "سيراجع المشرفون طلبك.",
+        "submittedTitle": "تم إرسال الطلب",
+        "title": "طلب الانضمام",
+        "whyJoinPlaceholder": "لماذا {communityName}؟"
+      },
       "moderation": {
         "links": {
           "addLink": "أضف رابطًا",
@@ -158,6 +168,16 @@ export const GENERATED_LOCALE_CATALOGS = {
         "heading": "Pirate Web Solid shell",
         "title": "Home · Pirate Web"
       },
+      "joinRequest": {
+        "description": "Tell the moderators why you want to join. Include links or proof that show you are eligible.",
+        "done": "Done",
+        "messageOptional": "Message (Optional)",
+        "submit": "Submit",
+        "submittedDescription": "The moderators will review your request.",
+        "submittedTitle": "Request submitted",
+        "title": "Request to join",
+        "whyJoinPlaceholder": "Why {communityName}?"
+      },
       "moderation": {
         "links": {
           "addLink": "Add link",
@@ -290,6 +310,16 @@ export const GENERATED_LOCALE_CATALOGS = {
         "description": "Pirate Web 视频动态",
         "heading": "Pirate Web Solid 界面",
         "title": "首页 · Pirate Web"
+      },
+      "joinRequest": {
+        "description": "告诉版主你为什么想加入。",
+        "done": "完成",
+        "messageOptional": "留言（可选）",
+        "submit": "提交",
+        "submittedDescription": "版主将审核你的申请。",
+        "submittedTitle": "申请已提交",
+        "title": "申请加入",
+        "whyJoinPlaceholder": "为什么想加入 {communityName}？"
       },
       "moderation": {
         "links": {

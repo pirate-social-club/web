@@ -61,6 +61,16 @@
       "savingNote": "正在保存…"
     }
   },
+  "joinRequest": {
+    "title": "申请加入",
+    "description": "告诉版主你为什么想加入。",
+    "submittedTitle": "申请已提交",
+    "submittedDescription": "版主将审核你的申请。",
+    "messageOptional": "留言（可选）",
+    "whyJoinPlaceholder": "为什么想加入 {communityName}？",
+    "submit": "提交",
+    "done": "完成"
+  },
   "moderation": {
     "rules": {
       "title": "规则",

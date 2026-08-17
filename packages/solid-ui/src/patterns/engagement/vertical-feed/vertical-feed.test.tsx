@@ -1,6 +1,6 @@
 import { fireEvent, screen, within } from "@testing-library/dom";
 import { userEvent } from "@testing-library/user-event";
-import { flush } from "solid-js";
+import { createSignal, flush } from "solid-js";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { expectNoA11yViolations, render } from "@/test/test-utils";
@@ -242,6 +242,76 @@ describe("VerticalFeed", () => {
     expect(onMuteToggle).toHaveBeenCalledWith("post-1", true);
   });
 
+  it("applies controlled mute state to the active media post", () => {
+    const container = render(() => <VerticalFeed posts={testPosts} muted />);
+    flush();
+
+    expect(
+      within(container).getAllByRole("button", { name: "Unmute video" })[0],
+    ).toBeInTheDocument();
+    expect(container.querySelector("video")?.muted).toBe(true);
+  });
+
+  it("reports an implicit unmute when play is pressed on controlled muted media", async () => {
+    const user = userEvent.setup();
+    const onMuteToggle = vi.fn();
+    const [muted, setMuted] = createSignal(true);
+    const container = render(() => (
+      <VerticalFeed
+        posts={testPosts}
+        muted={muted()}
+        onMuteToggle={(id, nextMuted) => {
+          onMuteToggle(id, nextMuted);
+          setMuted(nextMuted);
+        }}
+      />
+    ));
+    flush();
+
+    const activeVideo = container.querySelector("video")!;
+    fireEvent(activeVideo, new Event("loadedmetadata"));
+    flush();
+    await user.click(
+      within(container).getAllByRole("button", { name: "Play video" })[0],
+    );
+    flush();
+
+    expect(onMuteToggle).toHaveBeenCalledWith("post-1", false);
+    expect(container.querySelector("video")?.muted).toBe(false);
+  });
+
+  it("pauses an active post while a host panel is open", async () => {
+    const user = userEvent.setup();
+    const [pausedPostId, setPausedPostId] = createSignal<string>();
+    const container = render(() => (
+      <VerticalFeed posts={testPosts} pausedPostId={pausedPostId()} />
+    ));
+    flush();
+
+    const activeVideo = container.querySelector("video")!;
+    fireEvent(activeVideo, new Event("loadedmetadata"));
+    flush();
+    await user.click(
+      within(container).getAllByRole("button", { name: "Play video" })[0],
+    );
+    flush();
+    expect(
+      within(container).getAllByRole("button", { name: "Pause video" })[0],
+    ).toBeInTheDocument();
+
+    Object.defineProperty(activeVideo, "paused", {
+      configurable: true,
+      value: false,
+    });
+    const pauseCallsBefore = pauseMock.mock.calls.length;
+    setPausedPostId("post-1");
+    flush();
+    expect(pauseMock.mock.calls.length).toBeGreaterThan(pauseCallsBefore);
+    expect(
+      within(container).getAllByRole("button", { name: "Play video" })[0],
+    ).toBeInTheDocument();
+  });
+
   it("emits onViewed once after three seconds of cumulative watch time", async () => {
     const user = userEvent.setup();
     const onViewed = vi.fn();
@@ -266,6 +336,36 @@ describe("VerticalFeed", () => {
 
     expect(onViewed).toHaveBeenCalledTimes(1);
     expect(onViewed).toHaveBeenCalledWith("post-1");
+  });
+
+  it("reports playback progress for the media post that emitted it", () => {
+    const onTimeUpdate = vi.fn();
+    const container = render(() => (
+      <VerticalFeed posts={testPosts} onTimeUpdate={onTimeUpdate} />
+    ));
+    flush();
+
+    const video = container.querySelector("video")!;
+    Object.defineProperties(video, {
+      currentTime: { configurable: true, value: 12.5 },
+      duration: { configurable: true, value: 40 },
+    });
+    fireEvent(video, new Event("timeupdate"));
+
+    expect(onTimeUpdate).toHaveBeenCalledWith("post-1", 12.5, 40);
+  });
+
+  it("can hide shared media chrome for a product-owned overlay", () => {
+    const container = render(() => (
+      <VerticalFeed posts={testPosts.slice(0, 1)} showChrome={false} />
+    ));
+    flush();
+
+    expect(container.querySelector("video")).toBeInTheDocument();
+    expect(within(container).queryByText("@wavemaker")).not.toBeInTheDocument();
+    expect(
+      within(container).queryByRole("button", { name: "Like" }),
+    ).not.toBeInTheDocument();
   });
 
   it("renders the empty state when there are no posts", () => {

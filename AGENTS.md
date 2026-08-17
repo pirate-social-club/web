@@ -136,7 +136,11 @@ re-running the workflow. In particular:
 - Form/control: default, disabled, error, and mobile where layout can change.
 - Composition/flow: default, loading, error or empty, and mobile.
 - RTL stories are required only when text direction can change layout.
-- Every exported primitive must have a same-name `.stories.tsx`; `bun run ui:audit` enforces this.
+- Migration batches are counted by distinct rendered states, not export-name
+  parity. Do not satisfy coverage by aliasing one `Story` object to another;
+  each exported story must render a distinct state or interaction.
+- Every exported primitive must have a same-name `.stories.tsx`; `bun run ui:audit` enforces this for React primitives and Solid design-system entry modules.
+- `bun run ui:audit` ratchets raw typography utilities in the Solid roots by file; refresh the committed baseline only after an intentional burn-down with `bun run ui:audit:typography-baseline`.
 
 ## Code Quality
 

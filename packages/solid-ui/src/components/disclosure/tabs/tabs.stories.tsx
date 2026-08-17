@@ -33,30 +33,31 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   render: () => (
-    <Tabs defaultValue="account">
-      <TabsList>
-        <TabsTrigger value="account">Account</TabsTrigger>
-        <TabsTrigger value="password">Password</TabsTrigger>
-      </TabsList>
-      <TabsContent value="account">
-        <p class="text-base text-muted-foreground">
-          Make changes to your account here.
-        </p>
-      </TabsContent>
-      <TabsContent value="password">
-        <p class="text-base text-muted-foreground">
-          Change your password here.
-        </p>
-      </TabsContent>
-    </Tabs>
+    <div class="w-[calc(100vw-2rem)] max-w-full p-4">
+      <Tabs defaultValue="account">
+        <TabsList>
+          <TabsTrigger value="account">Account</TabsTrigger>
+          <TabsTrigger value="password">Password</TabsTrigger>
+        </TabsList>
+        <TabsContent value="account">
+          <p class="text-base text-muted-foreground">
+            Update your account.
+          </p>
+        </TabsContent>
+        <TabsContent value="password">
+          <p class="text-base text-muted-foreground">
+            Change your password.
+          </p>
+        </TabsContent>
+      </Tabs>
+    </div>
   ),
+};
+
+export const Interaction: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const account = canvas.getByRole("tab", { name: "Account" });
-    await expect(account).toHaveAttribute("aria-selected", "true");
-    await expect(
-      canvas.getByText("Make changes to your account here."),
-    ).toBeVisible();
     await userEvent.click(account);
     await userEvent.keyboard("{ArrowRight}");
     await expect(

@@ -110,6 +110,14 @@ function firstHeaderValue(value: string | null): string {
   return value?.split(",")[0]?.trim() ?? "";
 }
 
+function singleHeaderValue(value: string | null): string {
+  const trimmed = value?.trim() ?? "";
+  // Headers.get() joins repeated field-lines with a comma. Forwarder auth
+  // metadata is single-valued; never choose the first value from an
+  // attacker-controlled duplicate envelope.
+  return trimmed.includes(",") ? "" : trimmed;
+}
+
 function canonicalizeForwarderContext(input: {
   request: Request;
   host: string;
@@ -187,12 +195,12 @@ export async function authenticateHnsForwarderRequest(
   const headers = new Headers(request.headers);
   const rawForwardedHost = headers.get("x-pirate-hns-host");
   const forwardedHost = normalizeHost(rawForwardedHost);
-  const signature = signatureBytes(firstHeaderValue(headers.get(FORWARDER_SIGNATURE_HEADER)));
-  const timestamp = firstHeaderValue(headers.get(FORWARDER_TIMESTAMP_HEADER));
-  const pathAndQuery = firstHeaderValue(headers.get(FORWARDER_PATH_HEADER));
+  const signature = signatureBytes(singleHeaderValue(headers.get(FORWARDER_SIGNATURE_HEADER)));
+  const timestamp = singleHeaderValue(headers.get(FORWARDER_TIMESTAMP_HEADER));
+  const pathAndQuery = singleHeaderValue(headers.get(FORWARDER_PATH_HEADER));
   const requestUrl = new URL(request.url);
   const actualPathAndQuery = `${requestUrl.pathname}${requestUrl.search}`;
-  const forwardedToken = firstHeaderValue(headers.get(FORWARDER_TOKEN_HEADER));
+  const forwardedToken = singleHeaderValue(headers.get(FORWARDER_TOKEN_HEADER));
   const signedEnvelopePresent = headers.has(FORWARDER_SIGNATURE_HEADER)
     || headers.has(FORWARDER_TIMESTAMP_HEADER)
     || headers.has(FORWARDER_PATH_HEADER);

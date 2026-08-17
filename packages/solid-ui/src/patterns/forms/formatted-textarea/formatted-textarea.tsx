@@ -15,7 +15,7 @@ import {
   IconQuote,
 } from "./toolbar-icons";
 
-type ToolbarAction =
+export type FormattedTextareaToolbarAction =
   | "bold"
   | "italic"
   | "strike"
@@ -24,7 +24,15 @@ type ToolbarAction =
   | "bulletList"
   | "orderedList";
 
-const toolbar: Array<{ action: ToolbarAction; label: () => JSX.Element; title: string }> = [
+export type FormattedTextareaToolbarLabels = Partial<
+  Readonly<Record<FormattedTextareaToolbarAction, string>>
+>;
+
+const toolbar: Array<{
+  action: FormattedTextareaToolbarAction;
+  label: () => JSX.Element;
+  title: string;
+}> = [
   { action: "bold", label: () => "B", title: "Bold" },
   { action: "italic", label: () => "I", title: "Italic" },
   { action: "strike", label: () => "S", title: "Strikethrough" },
@@ -48,6 +56,8 @@ export interface FormattedTextareaProps
   focusOnMount?: boolean;
   /** Called with the next string value after typing or a toolbar action. */
   onChange?: (value: string) => void;
+  /** Optional localized accessible names and tooltips for toolbar actions. */
+  toolbarLabels?: FormattedTextareaToolbarLabels;
   value: string;
 }
 
@@ -74,6 +84,7 @@ export function FormattedTextarea(props: FormattedTextareaProps) {
     "containerClass",
     "focusOnMount",
     "onChange",
+    "toolbarLabels",
     "value",
   );
 
@@ -147,7 +158,7 @@ export function FormattedTextarea(props: FormattedTextareaProps) {
     updateSelection(urlStart, urlEnd);
   };
 
-  const handleToolbarAction = (action: ToolbarAction) => {
+  const handleToolbarAction = (action: FormattedTextareaToolbarAction) => {
     switch (action) {
       case "bold":
         applyWrap("**", "bold text");
@@ -177,19 +188,22 @@ export function FormattedTextarea(props: FormattedTextareaProps) {
     <div class={containerClassName()}>
       <div class="flex flex-wrap items-center gap-2 border-b border-border-soft p-3">
         <For each={toolbar}>
-          {(item) => (
-            <Tooltip openDelay={100}>
-              <TooltipTrigger
-                aria-label={item.title}
-                class={toolbarButtonClass}
-                disabled={props.disabled}
-                onClick={() => handleToolbarAction(item.action)}
-              >
-                {item.label()}
-              </TooltipTrigger>
-              <TooltipContent>{item.title}</TooltipContent>
-            </Tooltip>
-          )}
+          {(item) => {
+            const title = () => props.toolbarLabels?.[item.action] ?? item.title;
+            return (
+              <Tooltip openDelay={100}>
+                <TooltipTrigger
+                  aria-label={title()}
+                  class={toolbarButtonClass}
+                  disabled={props.disabled}
+                  onClick={() => handleToolbarAction(item.action)}
+                >
+                  {item.label()}
+                </TooltipTrigger>
+                <TooltipContent>{title()}</TooltipContent>
+              </Tooltip>
+            );
+          }}
         </For>
       </div>
       <Textarea

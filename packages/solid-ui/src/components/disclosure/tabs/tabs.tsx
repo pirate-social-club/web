@@ -37,7 +37,7 @@ function TabsList(props: ParentProps<KTabsListProps & { class?: string }>) {
 function TabsTrigger(props: ParentProps<KTabsTriggerProps & { class?: string }>) {
   const className = createMemo(() =>
     cn(
-      "inline-flex cursor-pointer items-center justify-center whitespace-nowrap rounded-full px-4 py-2 text-base font-medium transition-all motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background disabled:pointer-events-none disabled:opacity-50 data-[selected]:bg-card data-[selected]:text-foreground data-[selected]:shadow-sm",
+      "inline-flex cursor-pointer items-center justify-center whitespace-nowrap rounded-full px-4 py-2 text-base font-medium transition-[color,background-color,box-shadow] motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border focus-visible:ring-offset-2 ring-offset-background disabled:pointer-events-none disabled:opacity-50 data-[selected]:bg-card data-[selected]:text-foreground data-[selected]:shadow-sm",
       props.class,
     ),
   );
@@ -53,7 +53,7 @@ function TabsTrigger(props: ParentProps<KTabsTriggerProps & { class?: string }>)
 function TabsContent(props: ParentProps<TabsContentProps>) {
   const className = createMemo(() =>
     cn(
-      "mt-4 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+      "mt-4 min-h-12 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
       props.class,
     ),
   );

@@ -3,6 +3,7 @@ import { createSignal } from "solid-js";
 import type { Meta, StoryObj } from "storybook-solidjs-vite";
 import { expect, fn, userEvent, waitFor, within } from "storybook/test";
 
+import { Type } from "@/components/data-display/type/type";
 import { brokenPost, fixturePosts, longCaptionPost } from "./fixtures";
 import type { MediaPostData } from "./types";
 import { VerticalFeed, type VerticalFeedProps } from "./vertical-feed";
@@ -168,10 +169,10 @@ export const Mobile: Story = {
       <InteractiveFeed {...args} />
       {/* Simulated host-app tab bar the overlays must clear */}
       <div class="fixed bottom-0 left-0 right-0 z-50 flex h-16 items-center justify-around border-t border-border bg-background/90">
-        <span class="text-xs text-muted-foreground">Home</span>
-        <span class="text-xs text-muted-foreground">Search</span>
-        <span class="text-xs text-muted-foreground">Activity</span>
-        <span class="text-xs text-muted-foreground">Profile</span>
+        <Type as="span" variant="caption">Home</Type>
+        <Type as="span" variant="caption">Search</Type>
+        <Type as="span" variant="caption">Activity</Type>
+        <Type as="span" variant="caption">Profile</Type>
       </div>
     </div>
   ),

@@ -15,6 +15,12 @@ export interface VerticalFeedProps {
   hasMore?: boolean;
   /** Scroll to this post on mount. */
   initialPostId?: string;
+  /** Controlled feed-wide audio state. */
+  muted?: boolean;
+  /** Temporarily pause this post while a host panel obscures playback. */
+  pausedPostId?: string;
+  /** Hide shared author/action chrome when the product host renders its own. */
+  showChrome?: boolean;
   /** Lift per-post overlays above a host app's mobile tab bar. */
   hasMobileFooter?: boolean;
   /** Message shown when there are no posts and nothing is loading. */
@@ -31,6 +37,8 @@ export interface VerticalFeedProps {
   onAuthorClick?: (postId: string) => void;
   onSoundtrackClick?: (postId: string) => void;
   onMuteToggle?: (postId: string, muted: boolean) => void;
+  /** Reports playback progress for the exact post that emitted it. */
+  onTimeUpdate?: (postId: string, currentTime: number, duration: number) => void;
   /** Called once per post after 3 seconds of cumulative watch time. */
   onViewed?: (postId: string) => void;
   /** Haptic hints (scroll snap, like) for the host app to map to vibration. */
@@ -152,7 +160,11 @@ export function VerticalFeed(props: VerticalFeedProps) {
                   likeCount={post().likeCount}
                   isLiked={post().isLiked}
                   isFollowing={post().isFollowing}
-                  autoplay={index() === activeIndex()}
+                  autoplay={
+                    index() === activeIndex() && props.pausedPostId !== post().id
+                  }
+                  muted={props.muted}
+                  showChrome={props.showChrome}
                   priorityLoad={Math.abs(index() - activeIndex()) <= 1}
                   hasMobileFooter={props.hasMobileFooter}
                   onLikeClick={
@@ -181,6 +193,7 @@ export function VerticalFeed(props: VerticalFeedProps) {
                       : undefined
                   }
                   onMuteToggle={(muted) => props.onMuteToggle?.(post().id, muted)}
+                  onTimeUpdate={props.onTimeUpdate}
                   onViewed={props.onViewed}
                   onHaptic={props.onHaptic}
                 />

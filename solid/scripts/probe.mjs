@@ -1,6 +1,9 @@
 import http from "node:http";
+import { startSolidBoundaryHarness } from "./local-boundary-harness.mjs";
 
-const base = process.env.SEAM_BASE_URL ?? "http://localhost:8787";
+const externalBase = process.env.SOLID_BOUNDARY_BASE_URL;
+const harness = externalBase ? null : await startSolidBoundaryHarness();
+const base = externalBase ?? harness.baseUrl;
 const seamsEnabled = process.env.SOLID_SEAMS_ENABLED === "1";
 
 function get(path, init = {}) {
@@ -76,6 +79,13 @@ function assertHead(name, body, expected) {
   check(`${name} og:type metadata is correct`, sameSequence(actual.ogTypes, ogTypes), actual.ogTypes.join(", ") || "missing");
 }
 
+try {
+if (harness) {
+  const unsigned = await harness.unsigned("/");
+  check("unsigned direct Worker request is denied", unsigned.status === 404, String(unsigned.status));
+  check("unsigned direct Worker denial is private", unsigned.headers["cache-control"] === "no-store"
+    && String(unsigned.headers["content-type"] ?? "").includes("text/plain"));
+}
 const root = await get("/", { headers: { host: "app.example.hns" } });
 const html = await root.text();
 const csp = root.headers.get("content-security-policy") ?? "";
@@ -130,7 +140,6 @@ const htmlRoutes = [
   ["community route", "/c/demo", 'data-route-path="/c/:slug"', 'data-layout="app-shell"', { title: "Community demo · Pirate Web", canonical: "/c/demo", description: null, ogTitle: "Community demo", ogType: "website" }],
   ["community threads route", "/c/demo/threads", 'data-route-path="/c/:slug/threads"', 'data-layout="app-shell"', { title: "Threads · demo", canonical: "/c/demo/threads", description: "Threads for community demo", ogTitle: "Threads · demo", ogType: null }],
   ["post route", "/p/demo-post", 'data-route-path="/p/:id"', 'data-layout="app-shell"', { title: "Post demo-post · Pirate Web", canonical: "/p/demo-post", description: null, ogTitle: "Post demo-post", ogType: null }],
-  ["profile route", "/u/demo-user", 'data-route-path="/u/:handle"', 'data-layout="app-shell"', { title: "@demo-user · Pirate Web", canonical: "/u/demo-user", description: null, ogTitle: "@demo-user · Pirate Web", ogType: null }],
   ["settings route", "/settings", 'data-route-path="/settings"', 'data-layout="app-shell"', { title: "Settings · Pirate Web", canonical: null, description: null, ogTitle: null, ogType: null }],
   ["settings child route", "/settings/profile", 'data-route-path="/settings/profile"', 'data-layout="app-shell"', { title: "Profile settings · Pirate Web", canonical: null, description: null, ogTitle: null, ogType: null }],
   ["auth bare route", "/auth", 'data-route-path="/auth"', 'data-layout="bare"', { title: "Pirate Web", canonical: null, description: null, ogTitle: null, ogType: null }],
@@ -147,6 +156,25 @@ for (const [name, path, marker, layout, head] of htmlRoutes) {
   check(`${name} serves SSR`, response.status === 200 && body.includes(marker), `${response.status}`);
   if (layout) check(`${name} uses expected layout`, body.includes(layout));
   assertHead(`${name} SSR head`, body, head);
+}
+
+const profileHandle = process.env.SOLID_PROFILE_PROBE_HANDLE ?? "demo-user";
+const profileResponse = await get(`/u/${encodeURIComponent(profileHandle)}`, { headers: { host: "app.example.hns" } });
+const profileBody = await profileResponse.text();
+const profileStatus = profileResponse.status;
+check("public profile route never returns 401", profileStatus !== 401, String(profileStatus));
+check("public profile route returns a declared status", [200, 302, 400, 404, 502].includes(profileStatus), String(profileStatus));
+if (profileStatus === 200) {
+  check("public profile route serves SSR", profileBody.includes('data-route-path="/u/:handle"'));
+  check("public profile metadata uses profile type", profileBody.includes('property="og:type" content="profile"'));
+  check("public profile success cache policy is exact", profileResponse.headers.get("cache-control") === "public, max-age=60, s-maxage=300");
+  check("public profile success varies by language", profileResponse.headers.get("vary") === "Accept-Language");
+} else if (profileStatus === 302) {
+  check("public profile alias redirects to a canonical path", /^\/u\/[^/]+$/.test(profileResponse.headers.get("location") ?? ""));
+  check("public profile alias cache policy is exact", profileResponse.headers.get("cache-control") === "public, max-age=60, s-maxage=300");
+  check("public profile alias varies by language", profileResponse.headers.get("vary") === "Accept-Language");
+} else {
+  check("public profile failure is private", profileResponse.headers.get("cache-control") === "no-store");
 }
 
 const api = await get("/api/health", { headers: { host: "app.example.hns", accept: "application/json" } });
@@ -173,7 +201,7 @@ check("catch-all route renders not-found marker", notFoundBody.includes('data-ro
 
 const importedRoot = await get("/c/demo/threads", { headers: { host: "example.hns" } });
 check("imported sovereign root without forwarding metadata is deliberate 404", importedRoot.status === 404);
-check("imported sovereign root exposes route outcome", importedRoot.headers.get("x-solid-route-outcome") === "forwarding-metadata-required");
+check("imported sovereign root does not expose private route outcome", importedRoot.headers.get("x-solid-route-outcome") === null);
 if (seamsEnabled) {
   const forwardedHost = await get("/seam/host", {
     headers: {
@@ -196,4 +224,7 @@ if (failures.length) {
   process.exitCode = 1;
 } else {
   console.log(`${checks.length}/${checks.length} checks passed`);
+}
+} finally {
+  await harness?.close();
 }

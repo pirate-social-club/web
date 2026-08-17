@@ -9,6 +9,12 @@ import solid from "@solidjs/vite-plugin";
 const appRoot = fileURLToPath(new URL(".", import.meta.url));
 
 export default defineConfig({
+  // Keep Solid's emitted browser modules in its private namespace. React
+  // continues to own the public /assets/* path at the outer Worker.
+  base: "/_solid/",
+  // Public share cards are part of the Web surface contract and live in the
+  // repository-level public catalog shared by the React and Solid hosts.
+  publicDir: path.resolve(appRoot, "../public"),
   plugins: [
     tailwindcss(),
     fileRoutes({ httpMethods: true }),

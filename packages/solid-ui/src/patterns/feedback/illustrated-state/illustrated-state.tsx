@@ -55,9 +55,9 @@ export function IllustratedState(props: IllustratedStateProps) {
       </Show>
       <Show when={props.description}>
         {(description) => (
-          <p class="m-0 max-w-xs text-base leading-7 text-muted-foreground">
+          <Type as="p" class="m-0 max-w-xs text-muted-foreground" variant="body">
             {description()}
-          </p>
+          </Type>
         )}
       </Show>
       <Show when={props.action}>

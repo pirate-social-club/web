@@ -7,9 +7,9 @@ state, timers, or random data); reusable UI in `packages/solid-ui`, product UI i
 `solid/src/features/`. No original story state may silently disappear; consolidation
 or splitting is allowed when noted in the Disposition/Notes column.
 
-Current source disposition: 47 covered primitive files plus 65 done
-product/composition files, or 112/177 total. 65 product/composition sources remain
-not done (64 pending, one moved to B12). Counts are by React source file, not by
+Current source disposition: 47 covered primitive files plus 66 done
+product/composition files, or 113/177 total. 64 product/composition sources remain
+not done (63 pending, one moved to B12). Counts are by React source file, not by
 Solid story export or catalog file.
 
 ## A. Primitives — covered by the existing Solid catalog (47)
@@ -78,7 +78,7 @@ Notes: React `sonner.stories.tsx` maps to the Solid `overlays/toast` implementat
 | patterns/overlays/confirm-dialog | Solid-only pattern |
 | patterns/engagement/vertical-feed | engagement lane (owned, do not edit) |
 
-## C. Product/composition source disposition (130; 65 done, 65 not done)
+## C. Product/composition source disposition (130; 66 done, 64 not done)
 
 | # | React story file | Planned Solid target | Batch | Status |
 | --- | --- | --- | --- | --- |
@@ -107,7 +107,7 @@ Notes: React `sonner.stories.tsx` maps to the Solid `overlays/toast` implementat
 | 23 | `components/compositions/bookings/feed-booking-sheet/stories/feed-booking-sheet.stories.tsx` | solid/src/features/bookings | B9 | done — solid/src/features/bookings/feed-booking-sheet/feed-booking-sheet.stories.tsx |
 | 24 | `components/compositions/bookings/host-availability-editor/host-availability-editor.stories.tsx` | solid/src/features/bookings | B9 | done — solid/src/features/bookings/host-availability-editor/host-availability-editor.stories.tsx |
 | 25 | `components/compositions/bookings/host-booking-page/host-booking-page.stories.tsx` | solid/src/features/bookings | B9 | done — solid/src/features/bookings/host-booking-page/host-booking-page.stories.tsx |
-| 26 | `components/compositions/bookings/profile-bookings-section/stories/profile-bookings-section.stories.tsx` | solid/src/features/bookings | B9 | pending |
+| 26 | `components/compositions/bookings/profile-bookings-section/stories/profile-bookings-section.stories.tsx` | solid/src/features/bookings | B9 | done — solid/src/features/bookings/profile-bookings-section/profile-bookings-section.stories.tsx |
 | 27 | `components/compositions/bookings/profile-book-panel/stories/profile-book-panel.stories.tsx` | solid/src/features/bookings | B9 | done — solid/src/features/bookings/profile-book-panel/profile-book-panel.stories.tsx |
 | 28 | `components/compositions/bookings/slot-picker/slot-picker.stories.tsx` | solid/src/features/bookings | B9 | done — solid/src/features/bookings/slot-picker/slot-picker.stories.tsx |
 | 29 | `components/compositions/chat/stories/chat-route-views.stories.tsx` | solid/src/features/chat | B12 | pending |

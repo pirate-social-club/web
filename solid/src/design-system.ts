@@ -62,6 +62,7 @@ export {
 export {
   RootAppErrorState,
   RouteLoadingState,
+  RouteMessageState,
 } from "@pirate/web-solid-ui";
 
 // Primitives used by the shell features and their stories.

@@ -35,35 +35,48 @@ export function FullPageSpinner() {
   );
 }
 
-export function RouteLoadingState() {
+export interface RouteLoadingStateProps {
+  height?: "route" | "public";
+  label?: string;
+}
+
+export function RouteLoadingState(props: RouteLoadingStateProps) {
+  const isPublic = () => props.height === "public";
   return (
-    <div class="flex min-h-[40vh] w-full flex-1 items-center justify-center" aria-busy="true">
-      <Spinner class="size-6" />
+    <div
+      aria-busy="true"
+      aria-label={props.label ?? "Loading"}
+      class={`flex ${isPublic() ? "min-h-[60vh]" : "min-h-[40vh]"} w-full flex-1 items-center justify-center`}
+      role="status"
+    >
+      <Spinner class="size-6" decorative />
     </div>
   );
 }
 
 export function PublicRouteLoadingState() {
+  return <RouteLoadingState height="public" />;
+}
+
+export interface RouteMessageStateProps {
+  description: string;
+  title: string;
+}
+
+export function RouteMessageState(props: RouteMessageStateProps) {
   return (
-    <div class="flex min-h-[60vh] w-full flex-1 items-center justify-center">
-      <Spinner class="size-6" />
+    <div class="flex min-h-[60vh] w-full flex-1 items-start justify-start px-1 py-8 md:px-6 md:py-12">
+      <div class="w-full max-w-2xl">
+        <Type as="h1" variant="h2">{props.title}</Type>
+        <Type as="p" class="mt-3 leading-7 text-muted-foreground" variant="body">{props.description}</Type>
+      </div>
     </div>
   );
 }
 
-export function PublicRouteMessageState(props: { description: string; title: string }) {
-  return (
-    <div class="flex min-h-[60vh] w-full flex-1 items-start justify-start px-1 py-8 md:px-6 md:py-12">
-      <div class="w-full max-w-2xl">
-        <Type as="h1" variant="h2">
-          {props.title}
-        </Type>
-        <Type as="p" variant="body" class="mt-3 max-w-3xl text-muted-foreground">
-          {props.description}
-        </Type>
-      </div>
-    </div>
-  );
+/** @deprecated Use the route-neutral RouteMessageState export. */
+export function PublicRouteMessageState(props: RouteMessageStateProps) {
+  return <RouteMessageState {...props} />;
 }
 
 export function EmptyFeedState(props: { message: string }) {

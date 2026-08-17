@@ -53,6 +53,12 @@ parity manifest. Per the coordinator brief:
 - Replacing `MobilePageHeader` with the DS callback-driven implementation is a
   separate follow-up: it currently composes the Web-owned `AppHeader` and
   passes `forceMobile` through that boundary.
+- `ResponsiveOptionSelect` is being reconciled against the DS implementation.
+  It affects live B8d wallet consumers and wallet SSR tests because the mobile
+  branch changes to an `aria-pressed` button group and the desktop branch owns
+  the single named form control. B8d should flag new prop/call-site changes to
+  the reconciliation lane while this tranche is open. The legacy `mobileTrigger`
+  prop remains an explicit alias for `mobileTriggerContent` with a removal gate.
 
 ## Gates (run per batch, in the worktree)
 

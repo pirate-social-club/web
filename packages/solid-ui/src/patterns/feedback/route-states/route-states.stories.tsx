@@ -14,6 +14,7 @@ import {
   RouteLoadingState,
   PublicRouteLoadingState,
   PublicRouteMessageState,
+  RouteMessageState,
 } from "./route-states";
 
 // Offline mascot fixture: a simple ghost glyph in place of the app mascot
@@ -46,7 +47,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const RouteLoading: Story = {
-  render: () => <RouteLoadingState />,
+  render: () => <RouteLoadingState label="Loading route" />,
 };
 
 export const PublicRouteLoading: Story = {
@@ -60,6 +61,10 @@ export const PublicRouteMessage: Story = {
       description="This static page renders a plain message state."
     />
   ),
+};
+
+export const RouteMessage: Story = {
+  render: () => <RouteMessageState title="Privacy" description="This route-neutral state is context-free." />,
 };
 
 export const EmptyFeed: Story = {

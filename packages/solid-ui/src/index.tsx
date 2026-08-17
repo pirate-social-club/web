@@ -99,6 +99,9 @@ export {
   TabsList,
   TabsTrigger,
   type TabsContentProps,
+  type TabsListProps,
+  type TabsTriggerProps,
+  type TabsVisualVariant,
 } from "./components/disclosure/tabs/tabs";
 
 export {
@@ -468,6 +471,7 @@ export {
 export {
   MobileFooterNav,
   type FooterNavItemId,
+  type MobileFooterNavIcons,
   type MobileFooterNavLabels,
   type MobileFooterNavProps,
 } from "./patterns/navigation/mobile-footer-nav/mobile-footer-nav";

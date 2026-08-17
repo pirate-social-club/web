@@ -4,6 +4,13 @@ import type { JSX } from "@solidjs/web";
 import { TabsList, TabsTrigger } from "@/components/disclosure/tabs/tabs";
 import { cn } from "@/lib/cn";
 
+/**
+ * Compatibility layer for consumers migrating to TabsList/TabsTrigger with
+ * variant="underline". Remove after all Web consumers and SSR mocks stop
+ * importing FlatTabsList/FlatTabsTrigger, then release the old names in the
+ * next breaking API window.
+ */
+
 function columnsStyle(columns?: number): string | undefined {
   return columns
     ? `grid-template-columns: repeat(${columns}, minmax(0, 1fr))`
@@ -21,7 +28,6 @@ export function FlatTabsList(props: ParentProps<FlatTabsListProps>) {
     cn(
       "h-auto w-full rounded-none border-b border-border-soft bg-transparent p-0",
       props.columns ? "grid gap-0 overflow-visible" : "overflow-x-auto",
-      props.isRtl ? "justify-end" : "justify-start",
       props.class,
     ),
   );
@@ -35,7 +41,7 @@ export function FlatTabsList(props: ParentProps<FlatTabsListProps>) {
       : {};
 
   return (
-    <TabsList class={className()} {...columnProps()}>
+    <TabsList variant="underline" class={className()} {...columnProps()}>
       {props.children}
     </TabsList>
   );
@@ -57,7 +63,7 @@ export function FlatTabsTrigger(props: ParentProps<FlatTabsTriggerProps>) {
   const rest = omit(props, "class", "children");
 
   return (
-    <TabsTrigger class={className()} {...rest}>
+    <TabsTrigger variant="underline" class={className()} {...rest}>
       {props.children}
     </TabsTrigger>
   );

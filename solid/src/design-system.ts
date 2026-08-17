@@ -55,6 +55,7 @@ export {
   createSidebar,
   createSidebarSide,
   type FooterNavItemId,
+  type MobileFooterNavIcons,
 } from "@pirate/web-solid-ui";
 
 // Route states (Batch 5 feedback patterns used by the shell).

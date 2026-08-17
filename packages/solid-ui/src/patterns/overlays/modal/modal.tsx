@@ -77,6 +77,7 @@ export function Modal(props: ParentProps<ModalProps>) {
 export interface ModalContentProps {
   children?: JSX.Element;
   class?: string;
+  dir?: "ltr" | "rtl" | "auto";
   hideCloseButton?: boolean;
   hideCloseButtonOnMobile?: boolean;
   mobileSide?: "top" | "bottom" | "left" | "right";
@@ -91,12 +92,13 @@ export function ModalContent(props: ParentProps<ModalContentProps>) {
     <Show
       when={isMobile()}
       fallback={
-        <DialogContent class={props.class} hideCloseButton={shouldHideCloseButton()}>
+        <DialogContent dir={props.dir} class={props.class} hideCloseButton={shouldHideCloseButton()}>
           {props.children}
         </DialogContent>
       }
     >
       <SheetContent
+        dir={props.dir}
         class={props.class}
         hideCloseButton={shouldHideCloseButton()}
         side={props.mobileSide ?? "bottom"}

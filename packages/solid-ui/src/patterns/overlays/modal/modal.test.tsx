@@ -76,6 +76,30 @@ describe("Modal", () => {
     );
   });
 
+  it("forwards direction to the portaled desktop content", async () => {
+    render(() => (
+      <Modal forceMobile={false} open>
+        <ModalContent dir="rtl">
+          <ModalTitle>RTL content</ModalTitle>
+        </ModalContent>
+      </Modal>
+    ));
+
+    expect(await screen.findByRole("dialog")).toHaveAttribute("dir", "rtl");
+  });
+
+  it("forwards direction to the portaled mobile content", async () => {
+    render(() => (
+      <Modal forceMobile open>
+        <ModalContent dir="rtl">
+          <ModalTitle>RTL sheet</ModalTitle>
+        </ModalContent>
+      </Modal>
+    ));
+
+    expect(await screen.findByRole("dialog")).toHaveAttribute("dir", "rtl");
+  });
+
   it("closes on Escape and reports through onOpenChange", async () => {
     const user = userEvent.setup();
     let openState = true;

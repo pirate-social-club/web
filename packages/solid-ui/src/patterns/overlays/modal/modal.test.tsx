@@ -49,6 +49,33 @@ describe("Modal", () => {
     expect(document.querySelector('[class*="bottom-0"]')).not.toBeNull();
   });
 
+  it("supports typed title and description typography", async () => {
+    render(() => (
+      <Modal forceMobile={false} open>
+        <ModalContent>
+          <ModalHeader>
+            <ModalTitle leading="tight" variant="h1">
+              Unlock this song
+            </ModalTitle>
+            <ModalDescription leading="roomy" variant="body">
+              Buy full access to this song.
+            </ModalDescription>
+          </ModalHeader>
+        </ModalContent>
+      </Modal>
+    ));
+
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByRole("heading", { name: "Unlock this song" })).toHaveClass(
+      "text-3xl",
+      "leading-tight",
+    );
+    expect(within(dialog).getByText("Buy full access to this song.")).toHaveClass(
+      "text-base",
+      "leading-8",
+    );
+  });
+
   it("closes on Escape and reports through onOpenChange", async () => {
     const user = userEvent.setup();
     let openState = true;

@@ -26,7 +26,10 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/overlays/sheet/sheet";
-import { typeVariants } from "@/components/data-display/type/type";
+import {
+  type TypeProps,
+  typeVariants,
+} from "@/components/data-display/type/type";
 
 const ModalResponsiveContext = createContext<Accessor<boolean>>();
 
@@ -128,9 +131,21 @@ export function ModalFooter(props: ParentProps<{ class?: string }>) {
   );
 }
 
-export function ModalTitle(props: ParentProps<{ class?: string }>) {
+export interface ModalTypographyProps
+  extends Pick<TypeProps, "leading" | "variant"> {
+  class?: string;
+}
+
+export function ModalTitle(props: ParentProps<ModalTypographyProps>) {
   const isMobile = createModalIsMobile();
-  const className = () => cn(typeVariants({ variant: "h3" }), props.class);
+  const className = () =>
+    cn(
+      typeVariants({
+        leading: props.leading,
+        variant: props.variant ?? "h3",
+      }),
+      props.class,
+    );
   return (
     <Show
       when={isMobile()}
@@ -141,14 +156,24 @@ export function ModalTitle(props: ParentProps<{ class?: string }>) {
   );
 }
 
-export function ModalDescription(props: ParentProps<{ class?: string }>) {
+export function ModalDescription(props: ParentProps<ModalTypographyProps>) {
   const isMobile = createModalIsMobile();
+  const className = () =>
+    cn(
+      props.variant || props.leading
+        ? typeVariants({
+            leading: props.leading,
+            variant: props.variant,
+          })
+        : undefined,
+      props.class,
+    );
   return (
     <Show
       when={isMobile()}
-      fallback={<DialogDescription class={props.class}>{props.children}</DialogDescription>}
+      fallback={<DialogDescription class={className()}>{props.children}</DialogDescription>}
     >
-      <SheetDescription class={props.class}>{props.children}</SheetDescription>
+      <SheetDescription class={className()}>{props.children}</SheetDescription>
     </Show>
   );
 }

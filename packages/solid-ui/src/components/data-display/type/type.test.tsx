@@ -30,6 +30,18 @@ describe("Type", () => {
     expect(within(container).getByText("Eyebrow")).toHaveClass("uppercase");
   });
 
+  it("applies a typed line-height override", () => {
+    const container = render(() => (
+      <Type leading="roomy" variant="body">
+        Roomy body copy
+      </Type>
+    ));
+
+    expect(within(container).getByText("Roomy body copy")).toHaveClass(
+      "leading-8",
+    );
+  });
+
   it("has no axe violations", async () => {
     render(() => (
       <div>

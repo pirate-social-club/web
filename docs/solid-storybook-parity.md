@@ -7,9 +7,9 @@ state, timers, or random data); reusable UI in `packages/solid-ui`, product UI i
 `solid/src/features/`. No original story state may silently disappear; consolidation
 or splitting is allowed when noted in the Disposition/Notes column.
 
-Current source disposition: 47 covered primitive files plus 66 done
-product/composition files, or 113/177 total. 64 product/composition sources remain
-not done (63 pending, one moved to B12). Counts are by React source file, not by
+Current source disposition: 47 covered primitive files plus 68 done
+product/composition files, or 115/177 total. 62 product/composition sources remain
+not done (61 pending, one moved to B12). Counts are by React source file, not by
 Solid story export or catalog file.
 
 ## A. Primitives — covered by the existing Solid catalog (47)
@@ -78,7 +78,7 @@ Notes: React `sonner.stories.tsx` maps to the Solid `overlays/toast` implementat
 | patterns/overlays/confirm-dialog | Solid-only pattern |
 | patterns/engagement/vertical-feed | engagement lane (owned, do not edit) |
 
-## C. Product/composition source disposition (130; 66 done, 64 not done)
+## C. Product/composition source disposition (130; 68 done, 62 not done)
 
 | # | React story file | Planned Solid target | Batch | Status |
 | --- | --- | --- | --- | --- |
@@ -125,7 +125,7 @@ Notes: React `sonner.stories.tsx` maps to the Solid `overlays/toast` implementat
 | 41 | `components/compositions/community/interaction-gate-modal/stories/interaction-gate-modal.stories.tsx` | solid/src/features/community | B10 | pending |
 | 42 | `components/compositions/community/join-request-modal/stories/join-request-modal.stories.tsx` | solid/src/features/community | B10 | pending |
 | 43 | `components/compositions/community/labels-editor/stories/labels-editor.stories.tsx` | solid/src/features/community | B10 | pending |
-| 44 | `components/compositions/community/links-editor/stories/links-editor.stories.tsx` | solid/src/features/community | B10 | pending |
+| 44 | `components/compositions/community/links-editor/stories/links-editor.stories.tsx` | solid/src/features/community | B10 | done — solid/src/features/community/links-editor/links-editor.stories.tsx |
 | 45 | `components/compositions/community/machine-access/stories/machine-access.stories.tsx` | solid/src/features/community | B10 | pending |
 | 46 | `components/compositions/community/membership-gate-panel/stories/membership-gate-panel.stories.tsx` | solid/src/features/community | B10 | pending |
 | 47 | `components/compositions/community/membership-requests-page/stories/membership-requests-page.stories.tsx` | solid/src/features/community | B10 | pending |
@@ -139,7 +139,7 @@ Notes: React `sonner.stories.tsx` maps to the Solid `overlays/toast` implementat
 | 55 | `components/compositions/community/pricing-editor/stories/pricing-editor.stories.tsx` | solid/src/features/community | B10 | pending |
 | 56 | `components/compositions/community/profile-editor/stories/profile-editor.stories.tsx` | solid/src/features/community | B10 | pending |
 | 57 | `components/compositions/community/proof-of-work-modal/stories/proof-of-work-modal.stories.tsx` | solid/src/features/community | B10 | pending |
-| 58 | `components/compositions/community/rules-editor/stories/rules-editor.stories.tsx` | solid/src/features/community | B10 | pending |
+| 58 | `components/compositions/community/rules-editor/stories/rules-editor.stories.tsx` | solid/src/features/community | B10 | done — solid/src/features/community/rules-editor/rules-editor.stories.tsx |
 | 59 | `components/compositions/community/safety-page/stories/safety-page.stories.tsx` | solid/src/features/community | B10 | pending |
 | 60 | `components/compositions/community/sidebar/stories/sidebar.stories.tsx` | solid/src/features/community | B10 | done — solid/src/features/community/sidebar/sidebar.stories.tsx |
 | 61 | `components/compositions/community/telegram-integration/stories/telegram-integration.stories.tsx` | solid/src/features/community | B10 | pending |

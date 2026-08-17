@@ -12,8 +12,6 @@ import {
   RootAppErrorState,
   RouteLoadFailureState,
   RouteLoadingState,
-  PublicRouteLoadingState,
-  PublicRouteMessageState,
   RouteMessageState,
 } from "./route-states";
 
@@ -51,12 +49,12 @@ export const RouteLoading: Story = {
 };
 
 export const PublicRouteLoading: Story = {
-  render: () => <PublicRouteLoadingState />,
+  render: () => <RouteLoadingState height="public" />,
 };
 
 export const PublicRouteMessage: Story = {
   render: () => (
-    <PublicRouteMessageState
+    <RouteMessageState
       title="Privacy"
       description="This static page renders a plain message state."
     />

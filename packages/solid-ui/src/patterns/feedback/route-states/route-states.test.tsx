@@ -9,7 +9,6 @@ import {
   EmptyInboxState,
   FullPageSpinner,
   NotFoundRouteState,
-  PublicRouteLoadingState,
   RouteLoadingState,
   RouteMessageState,
   RouteLoadFailureState,
@@ -29,7 +28,7 @@ describe("route states", () => {
     expect(status).toHaveClass("min-h-[40vh]");
     expect(within(status).queryByLabelText("Loading")).toBeNull();
 
-    const publicRoute = render(() => <PublicRouteLoadingState label="Loading public" />);
+    const publicRoute = render(() => <RouteLoadingState height="public" label="Loading public" />);
     expect(within(publicRoute).getByRole("status", { name: "Loading public" })).toHaveClass("min-h-[60vh]");
   });
 

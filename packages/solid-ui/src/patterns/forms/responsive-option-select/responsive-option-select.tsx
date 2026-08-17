@@ -28,8 +28,6 @@ export interface ResponsiveOptionSelectProps {
   ariaLabel: string;
   class?: string;
   drawerTitle: string;
-  /** @deprecated Use mobileTriggerContent. */
-  mobileTrigger?: JSX.Element;
   mobileTriggerContent?: JSX.Element;
   name?: string;
   onValueChange?: (value: string) => void;
@@ -69,13 +67,9 @@ function OptionDetail(props: { option: ResponsiveOptionSelectOption }) {
  * data-driven — options carry label, description, icon, and disabled reason;
  * selection is reported through onValueChange. The host controls the value.
  *
- * `mobileTrigger` remains as a compatibility alias for `mobileTriggerContent`.
  * Custom mobile triggers are rendered as the SheetTrigger's child, so they
  * must be content-only or a single interactive control; the wrapper does not
  * add pill styling or triggerClass to custom content.
- * Removal gate: migrate `solid/src/features/posts/post-thread/mobile-flows.stories.tsx`
- * to `mobileTriggerContent`, verify `rg 'mobileTrigger=' solid packages/solid-ui/src`
- * returns no call sites, then remove the alias at the next breaking API release.
  */
 export function ResponsiveOptionSelect(props: ResponsiveOptionSelectProps) {
   const [drawerOpen, setDrawerOpen] = createSignal(false);
@@ -103,7 +97,7 @@ export function ResponsiveOptionSelect(props: ResponsiveOptionSelectProps) {
         <div class="w-full md:hidden">
           <Sheet open={drawerOpen()} onOpenChange={setDrawerOpen}>
             <Show
-              when={props.mobileTriggerContent ?? props.mobileTrigger}
+              when={props.mobileTriggerContent}
               fallback={
                 <SheetTrigger
                   aria-label={props.ariaLabel}

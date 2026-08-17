@@ -74,12 +74,12 @@ describe("ResponsiveOptionSelect", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
-  it("accepts the legacy mobileTrigger alias", () => {
+  it("accepts a custom mobile trigger", () => {
     const container = render(() => (
       <ResponsiveOptionSelect
         ariaLabel="Sort"
         drawerTitle="Sort"
-        mobileTrigger={<button type="button">Custom trigger</button>}
+        mobileTriggerContent={<button type="button">Custom trigger</button>}
         options={options}
         value="best"
       />

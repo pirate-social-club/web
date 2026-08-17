@@ -353,8 +353,6 @@ export {
   ErrorState,
   FullPageSpinner,
   NotFoundRouteState,
-  PublicRouteLoadingState,
-  PublicRouteMessageState,
   RouteMessageState,
   RootAppErrorState,
   RouteLoadFailureState,

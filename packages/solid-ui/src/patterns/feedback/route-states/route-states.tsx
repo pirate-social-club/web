@@ -54,15 +54,6 @@ export function RouteLoadingState(props: RouteLoadingStateProps) {
   );
 }
 
-/**
- * @deprecated Use RouteLoadingState with height="public". Removal gate:
- * migrate route-state stories/tests, then remove this alias and its export at
- * the next breaking API release.
- */
-export function PublicRouteLoadingState(props: { label?: string }) {
-  return <RouteLoadingState height="public" label={props.label} />;
-}
-
 export interface RouteMessageStateProps {
   description: string;
   title: string;
@@ -77,11 +68,6 @@ export function RouteMessageState(props: RouteMessageStateProps) {
       </div>
     </div>
   );
-}
-
-/** @deprecated Use the route-neutral RouteMessageState export. */
-export function PublicRouteMessageState(props: RouteMessageStateProps) {
-  return <RouteMessageState {...props} />;
 }
 
 export function EmptyFeedState(props: { message: string }) {

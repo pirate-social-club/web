@@ -117,7 +117,9 @@ describe("Tabs", () => {
     const list = within(container).getByRole("tablist");
     expect(list).toHaveClass("border-b", "grid");
     expect(list.style.gridTemplateColumns).toBe("repeat(2, minmax(0, 1fr))");
-    expect(within(container).getByRole("tab", { name: "Account" })).toHaveClass("border-b-2", "border-primary");
+    const account = within(container).getByRole("tab", { name: "Account" });
+    expect(account).toHaveAttribute("data-selected");
+    expect(account).toHaveClass("border-b-2", "border-transparent");
   });
 
   it("has no axe violations", async () => {

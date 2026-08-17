@@ -25,6 +25,39 @@ export const GENERATED_LOCALE_CATALOGS = {
         "heading": "واجهة بايرت ويب",
         "title": "الرئيسية · بايرت ويب"
       },
+      "moderation": {
+        "links": {
+          "addLink": "أضف رابطًا",
+          "displayNamePlaceholder": "اسم العرض",
+          "emptyState": "لا توجد روابط بعد.",
+          "labelLabel": "التسمية",
+          "platformLabel": "المنصة",
+          "title": "الروابط",
+          "urlLabel": "الرابط",
+          "urlPlaceholder": "https://"
+        },
+        "rules": {
+          "addRule": "إضافة قاعدة",
+          "defaultRule1Body": "لا تحرش ولا خطاب كراهية ولا سلوك سامي. عامل جميع المساهمين والأعضاء بلطف.",
+          "defaultRule1Title": "احترام الآخرين والالتزام بالأدب",
+          "defaultRule2Body": "الإفراط في الترويج والرسائل المزعجة والإعلانات غير مسموح به بأي شكل.",
+          "defaultRule2Title": "لا رسائل مزعجة",
+          "description": "تحدد القواعد التوقعات للأعضاء والزوار في مجتمعك.",
+          "descriptionPlaceholder": "الوصف",
+          "emptyState": "لا توجد قواعد بعد.",
+          "maxChars100": "الحد الأقصى 100 حرف",
+          "maxChars500": "الحد الأقصى 500 حرف",
+          "namePlaceholder": "اسم القاعدة",
+          "reportReasonHint": "افتراضيًا، هذا هو نفس اسم قاعدتك.",
+          "reportReasonPlaceholder": "سبب الإبلاغ",
+          "reportingDescription": "يمكن للمستخدمين أو المشرفين اختيار سبب إبلاغ عند الإبلاغ عن محتوى.",
+          "reportingTitle": "الإبلاغ",
+          "title": "القواعد"
+        },
+        "saveFooter": {
+          "defaultSaveLabel": "حفظ"
+        }
+      },
       "notFound": {
         "description": "المسار المطلوب غير موجود.",
         "returnHome": "العودة إلى الرئيسية",
@@ -125,6 +158,39 @@ export const GENERATED_LOCALE_CATALOGS = {
         "heading": "Pirate Web Solid shell",
         "title": "Home · Pirate Web"
       },
+      "moderation": {
+        "links": {
+          "addLink": "Add link",
+          "displayNamePlaceholder": "Display name",
+          "emptyState": "No links yet.",
+          "labelLabel": "Label",
+          "platformLabel": "Platform",
+          "title": "Links",
+          "urlLabel": "URL",
+          "urlPlaceholder": "https://"
+        },
+        "rules": {
+          "addRule": "Add rule",
+          "defaultRule1Body": "No harassment, hate speech, or toxic behavior. Treat all contributors and members with kindness.",
+          "defaultRule1Title": "Respect others and be civil",
+          "defaultRule2Body": "Excessive promotion, spam, or advertising of any kind is not allowed.",
+          "defaultRule2Title": "No spam",
+          "description": "Rules set the expectations for members and visitors in your community.",
+          "descriptionPlaceholder": "Description",
+          "emptyState": "No rules yet.",
+          "maxChars100": "Max characters 100",
+          "maxChars500": "Max characters 500",
+          "namePlaceholder": "Rule name",
+          "reportReasonHint": "By default, this is the same as your rule name.",
+          "reportReasonPlaceholder": "Report reason",
+          "reportingDescription": "Users or mods can select a report reason when reporting content.",
+          "reportingTitle": "Reporting",
+          "title": "Rules"
+        },
+        "saveFooter": {
+          "defaultSaveLabel": "Save"
+        }
+      },
       "notFound": {
         "description": "The requested route does not exist.",
         "returnHome": "Return home",
@@ -224,6 +290,39 @@ export const GENERATED_LOCALE_CATALOGS = {
         "description": "Pirate Web 视频动态",
         "heading": "Pirate Web Solid 界面",
         "title": "首页 · Pirate Web"
+      },
+      "moderation": {
+        "links": {
+          "addLink": "添加链接",
+          "displayNamePlaceholder": "显示名称",
+          "emptyState": "还没有链接。",
+          "labelLabel": "标签",
+          "platformLabel": "平台",
+          "title": "链接",
+          "urlLabel": "链接",
+          "urlPlaceholder": "https://"
+        },
+        "rules": {
+          "addRule": "添加规则",
+          "defaultRule1Body": "禁止骚扰、仇恨言论或任何有害行为。请友善对待所有贡献者和成员。",
+          "defaultRule1Title": "尊重他人，文明交流",
+          "defaultRule2Body": "不允许任何形式的过度推广、垃圾信息或广告。",
+          "defaultRule2Title": "禁止垃圾信息",
+          "description": "规则为社区中的成员和访客设定期望。",
+          "descriptionPlaceholder": "描述",
+          "emptyState": "还没有规则。",
+          "maxChars100": "最多 100 个字符",
+          "maxChars500": "最多 500 个字符",
+          "namePlaceholder": "规则名称",
+          "reportReasonHint": "默认情况下，这与你的规则名称相同。",
+          "reportReasonPlaceholder": "举报原因",
+          "reportingDescription": "用户或版主在举报内容时可以选择举报原因。",
+          "reportingTitle": "举报",
+          "title": "规则"
+        },
+        "saveFooter": {
+          "defaultSaveLabel": "保存"
+        }
       },
       "notFound": {
         "description": "请求的页面不存在。",

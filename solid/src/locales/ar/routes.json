@@ -61,6 +61,39 @@
       "savingNote": "جارٍ الحفظ…"
     }
   },
+  "moderation": {
+    "rules": {
+      "title": "القواعد",
+      "description": "تحدد القواعد التوقعات للأعضاء والزوار في مجتمعك.",
+      "addRule": "إضافة قاعدة",
+      "namePlaceholder": "اسم القاعدة",
+      "maxChars100": "الحد الأقصى 100 حرف",
+      "descriptionPlaceholder": "الوصف",
+      "maxChars500": "الحد الأقصى 500 حرف",
+      "reportingTitle": "الإبلاغ",
+      "reportingDescription": "يمكن للمستخدمين أو المشرفين اختيار سبب إبلاغ عند الإبلاغ عن محتوى.",
+      "reportReasonPlaceholder": "سبب الإبلاغ",
+      "reportReasonHint": "افتراضيًا، هذا هو نفس اسم قاعدتك.",
+      "emptyState": "لا توجد قواعد بعد.",
+      "defaultRule1Title": "احترام الآخرين والالتزام بالأدب",
+      "defaultRule1Body": "لا تحرش ولا خطاب كراهية ولا سلوك سامي. عامل جميع المساهمين والأعضاء بلطف.",
+      "defaultRule2Title": "لا رسائل مزعجة",
+      "defaultRule2Body": "الإفراط في الترويج والرسائل المزعجة والإعلانات غير مسموح به بأي شكل."
+    },
+    "links": {
+      "title": "الروابط",
+      "addLink": "أضف رابطًا",
+      "platformLabel": "المنصة",
+      "labelLabel": "التسمية",
+      "displayNamePlaceholder": "اسم العرض",
+      "urlLabel": "الرابط",
+      "urlPlaceholder": "https://",
+      "emptyState": "لا توجد روابط بعد."
+    },
+    "saveFooter": {
+      "defaultSaveLabel": "حفظ"
+    }
+  },
   "notFound": {
     "title": "غير موجود",
     "description": "المسار المطلوب غير موجود.",

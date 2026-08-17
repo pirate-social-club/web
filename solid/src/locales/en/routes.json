@@ -61,6 +61,39 @@
       "savingNote": "Saving…"
     }
   },
+  "moderation": {
+    "rules": {
+      "title": "Rules",
+      "description": "Rules set the expectations for members and visitors in your community.",
+      "addRule": "Add rule",
+      "namePlaceholder": "Rule name",
+      "maxChars100": "Max characters 100",
+      "descriptionPlaceholder": "Description",
+      "maxChars500": "Max characters 500",
+      "reportingTitle": "Reporting",
+      "reportingDescription": "Users or mods can select a report reason when reporting content.",
+      "reportReasonPlaceholder": "Report reason",
+      "reportReasonHint": "By default, this is the same as your rule name.",
+      "emptyState": "No rules yet.",
+      "defaultRule1Title": "Respect others and be civil",
+      "defaultRule1Body": "No harassment, hate speech, or toxic behavior. Treat all contributors and members with kindness.",
+      "defaultRule2Title": "No spam",
+      "defaultRule2Body": "Excessive promotion, spam, or advertising of any kind is not allowed."
+    },
+    "links": {
+      "title": "Links",
+      "addLink": "Add link",
+      "platformLabel": "Platform",
+      "labelLabel": "Label",
+      "displayNamePlaceholder": "Display name",
+      "urlLabel": "URL",
+      "urlPlaceholder": "https://",
+      "emptyState": "No links yet."
+    },
+    "saveFooter": {
+      "defaultSaveLabel": "Save"
+    }
+  },
   "notFound": {
     "title": "Not found",
     "description": "The requested route does not exist.",

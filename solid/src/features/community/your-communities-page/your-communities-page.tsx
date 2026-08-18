@@ -3,11 +3,11 @@ import { For, Show, createSignal } from "solid-js";
 import {
   Button,
   CommunityAvatar,
-  FlatTabsList,
-  FlatTabsTrigger,
   PageContainer,
   Tabs,
   TabsContent,
+  TabsList,
+  TabsTrigger,
   Type,
 } from "../../../design-system";
 import { formatCommunityRouteLabel, type YourCommunitySummary } from "./your-communities-page-model";
@@ -104,10 +104,10 @@ export function YourCommunitiesPageView(props: YourCommunitiesPageProps) {
 
       <div class="md:hidden">
         <Tabs class="flex flex-col gap-4" onChange={selectTab} value={activeTab()}>
-          <FlatTabsList columns={2}>
-            <FlatTabsTrigger title={followingLabel()} value="following">{followingLabel()}</FlatTabsTrigger>
-            <FlatTabsTrigger title={joinedLabel()} value="joined">{joinedLabel()}</FlatTabsTrigger>
-          </FlatTabsList>
+          <TabsList columns={2} variant="underline">
+            <TabsTrigger value="following" variant="underline">{followingLabel()}</TabsTrigger>
+            <TabsTrigger value="joined" variant="underline">{joinedLabel()}</TabsTrigger>
+          </TabsList>
           <TabsContent class="mt-0" value="following">
             <YourCommunitySection communities={followingCommunities()} emptyLabel={emptyFollowingLabel()} onSelectCommunity={onSelectCommunity()} title={followingLabel()} />
           </TabsContent>

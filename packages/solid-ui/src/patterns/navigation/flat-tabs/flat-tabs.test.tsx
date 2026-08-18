@@ -2,10 +2,10 @@ import { within } from "@testing-library/dom";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
-import { Tabs } from "@/components/disclosure/tabs/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/disclosure/tabs/tabs";
 import { expectNoA11yViolations, render } from "@/test/test-utils";
 
-import { FlatTabBar, FlatTabButton, FlatTabsList, FlatTabsTrigger } from "./flat-tabs";
+import { FlatTabBar, FlatTabButton } from "./flat-tabs";
 
 describe("FlatTabs", () => {
   it("renders tab buttons with the active underline on the active tab", () => {
@@ -51,11 +51,11 @@ describe("FlatTabs", () => {
   it("forwards the computed grid columns style to the tab list", () => {
     const container = render(() => (
       <Tabs value="tab1">
-        <FlatTabsList columns={3}>
-          <FlatTabsTrigger value="tab1">Posts</FlatTabsTrigger>
-          <FlatTabsTrigger value="tab2">Comments</FlatTabsTrigger>
-          <FlatTabsTrigger value="tab3">Saved</FlatTabsTrigger>
-        </FlatTabsList>
+        <TabsList columns={3} variant="underline">
+          <TabsTrigger variant="underline" value="tab1">Posts</TabsTrigger>
+          <TabsTrigger variant="underline" value="tab2">Comments</TabsTrigger>
+          <TabsTrigger variant="underline" value="tab3">Saved</TabsTrigger>
+        </TabsList>
       </Tabs>
     ));
 

@@ -6,8 +6,6 @@ import { For, Show, createEffect, createMemo, createSignal, onCleanup } from "so
 import {
   Button,
   Card,
-  FlatTabsList,
-  FlatTabsTrigger,
   IconChatCircle,
   IconFileText,
   IconList,
@@ -15,6 +13,8 @@ import {
   Separator,
   Tabs,
   TabsContent,
+  TabsList,
+  TabsTrigger,
   Type,
   cn,
   createIsMobile,
@@ -382,17 +382,17 @@ export function ProfilePage(props: ProfilePageProps) {
         rail={isMobile() ? undefined : <ProfileRail rightRail={props.rightRail} />}
       >
         <Tabs onChange={selectTab} value={activeTab()}>
-          <FlatTabsList columns={tabColumns()}>
-            <FlatTabsTrigger class="px-2 md:px-5" title="Overview" value="overview"><TabLabel icon="overview" label="Overview" mobile={isMobile()} /></FlatTabsTrigger>
-            <FlatTabsTrigger class="px-2 md:px-5" title="Posts" value="posts"><TabLabel icon="posts" label="Posts" mobile={isMobile()} /></FlatTabsTrigger>
-            <FlatTabsTrigger class="px-2 md:px-5" title="Comments" value="comments"><TabLabel icon="comments" label="Comments" mobile={isMobile()} /></FlatTabsTrigger>
+          <TabsList columns={tabColumns()} variant="underline">
+            <TabsTrigger class="px-2 md:px-5" value="overview" variant="underline"><TabLabel icon="overview" label="Overview" mobile={isMobile()} /></TabsTrigger>
+            <TabsTrigger class="px-2 md:px-5" value="posts" variant="underline"><TabLabel icon="posts" label="Posts" mobile={isMobile()} /></TabsTrigger>
+            <TabsTrigger class="px-2 md:px-5" value="comments" variant="underline"><TabLabel icon="comments" label="Comments" mobile={isMobile()} /></TabsTrigger>
             <Show when={hasWallet()}>
-              <FlatTabsTrigger class="px-2 md:px-5" title="Wallet" value="wallet"><TabLabel icon="wallet" label="Wallet" mobile={isMobile()} /></FlatTabsTrigger>
+              <TabsTrigger class="px-2 md:px-5" value="wallet" variant="underline"><TabLabel icon="wallet" label="Wallet" mobile={isMobile()} /></TabsTrigger>
             </Show>
             <Show when={hasBook()}>
-              <FlatTabsTrigger class="px-2 md:px-5" title="Book" value="book"><TabLabel icon="book" label="Book" mobile={isMobile()} /></FlatTabsTrigger>
+              <TabsTrigger class="px-2 md:px-5" value="book" variant="underline"><TabLabel icon="book" label="Book" mobile={isMobile()} /></TabsTrigger>
             </Show>
-          </FlatTabsList>
+          </TabsList>
           <TabsContent class="mt-4" value="overview"><ActivityPanel error={props.activityError} items={overview()} loading={props.activityLoading} /></TabsContent>
           <TabsContent class="mt-4" value="posts"><PostsPanel error={props.activityError} loading={props.activityLoading} posts={posts()} /></TabsContent>
           <TabsContent class="mt-4" value="comments"><CommentsPanel comments={comments()} error={props.activityError} loading={props.activityLoading} /></TabsContent>

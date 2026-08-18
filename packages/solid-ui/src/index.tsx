@@ -430,12 +430,8 @@ export {
 export {
   FlatTabBar,
   FlatTabButton,
-  FlatTabsList,
-  FlatTabsTrigger,
   type FlatTabBarProps,
   type FlatTabButtonProps,
-  type FlatTabsListProps,
-  type FlatTabsTriggerProps,
 } from "./patterns/navigation/flat-tabs/flat-tabs";
 export {
   StackedSectionNav,

@@ -1,72 +1,12 @@
 import { createMemo, omit, type ParentProps } from "solid-js";
 import type { JSX } from "@solidjs/web";
 
-import { TabsList, TabsTrigger } from "@/components/disclosure/tabs/tabs";
 import { cn } from "@/lib/cn";
-
-/**
- * Compatibility layer for consumers migrating to TabsList/TabsTrigger with
- * variant="underline". Remove after all Web consumers and SSR mocks stop
- * importing FlatTabsList/FlatTabsTrigger, then release the old names in the
- * next breaking API window.
- */
 
 function columnsStyle(columns?: number): string | undefined {
   return columns
     ? `grid-template-columns: repeat(${columns}, minmax(0, 1fr))`
     : undefined;
-}
-
-export interface FlatTabsListProps {
-  class?: string;
-  columns?: number;
-  isRtl?: boolean;
-}
-
-export function FlatTabsList(props: ParentProps<FlatTabsListProps>) {
-  const className = createMemo(() =>
-    cn(
-      "h-auto w-full rounded-none border-b border-border-soft bg-transparent p-0",
-      props.columns ? "grid gap-0 overflow-visible" : "overflow-x-auto",
-      props.class,
-    ),
-  );
-  // Kobalte's TabsList props do not type `style`; forward the computed grid
-  // columns through a non-fresh spread so the attribute still reaches the DOM.
-  const columnProps = () =>
-    props.columns
-      ? {
-          style: `grid-template-columns: repeat(${props.columns}, minmax(0, 1fr))`,
-        }
-      : {};
-
-  return (
-    <TabsList variant="underline" class={className()} {...columnProps()}>
-      {props.children}
-    </TabsList>
-  );
-}
-
-export interface FlatTabsTriggerProps {
-  class?: string;
-  title?: string;
-  value: string;
-}
-
-export function FlatTabsTrigger(props: ParentProps<FlatTabsTriggerProps>) {
-  const className = createMemo(() =>
-    cn(
-      "min-w-0 rounded-none border-b-2 border-transparent px-1 py-4 text-base font-semibold data-[selected]:border-primary data-[selected]:bg-transparent data-[selected]:shadow-none",
-      props.class,
-    ),
-  );
-  const rest = omit(props, "class", "children");
-
-  return (
-    <TabsTrigger variant="underline" class={className()} {...rest}>
-      {props.children}
-    </TabsTrigger>
-  );
 }
 
 export interface FlatTabBarProps {

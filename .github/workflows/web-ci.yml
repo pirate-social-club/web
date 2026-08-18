@@ -119,6 +119,13 @@ jobs:
         working-directory: api/services/efp-shared
         run: bun install --frozen-lockfile
 
+      - name: Install Solid browser dependencies
+        run: bun install --cwd solid --frozen-lockfile
+
+      - name: Install Chromium for the Solid hydration gate
+        working-directory: web/solid
+        run: bunx playwright install --with-deps chromium
+
       - name: Run Solid P1 clean-checkout gate
         run: bun run solid:clean-checkout
 

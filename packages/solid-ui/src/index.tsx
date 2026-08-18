@@ -99,6 +99,9 @@ export {
   TabsList,
   TabsTrigger,
   type TabsContentProps,
+  type TabsListProps,
+  type TabsTriggerProps,
+  type TabsVisualVariant,
 } from "./components/disclosure/tabs/tabs";
 
 export {
@@ -350,8 +353,7 @@ export {
   ErrorState,
   FullPageSpinner,
   NotFoundRouteState,
-  PublicRouteLoadingState,
-  PublicRouteMessageState,
+  RouteMessageState,
   RootAppErrorState,
   RouteLoadFailureState,
   RouteLoadingState,
@@ -361,6 +363,8 @@ export {
   type NotFoundRouteStateProps,
   type RootAppErrorStateProps,
   type RouteLoadFailureStateProps,
+  type RouteLoadingStateProps,
+  type RouteMessageStateProps,
 } from "./patterns/feedback/route-states/route-states";
 export {
   StatusCard,
@@ -402,6 +406,8 @@ export {
 
 export {
   AvatarBadge,
+  buildDefaultAvatarBadgeSrc,
+  resolveAvatarBadgeSrc,
   type AvatarBadgeProps,
   type AvatarBadgeSize,
 } from "./patterns/identity/avatar-badge/avatar-badge";
@@ -424,12 +430,8 @@ export {
 export {
   FlatTabBar,
   FlatTabButton,
-  FlatTabsList,
-  FlatTabsTrigger,
   type FlatTabBarProps,
   type FlatTabButtonProps,
-  type FlatTabsListProps,
-  type FlatTabsTriggerProps,
 } from "./patterns/navigation/flat-tabs/flat-tabs";
 export {
   StackedSectionNav,
@@ -469,6 +471,7 @@ export {
 export {
   MobileFooterNav,
   type FooterNavItemId,
+  type MobileFooterNavIcons,
   type MobileFooterNavLabels,
   type MobileFooterNavProps,
 } from "./patterns/navigation/mobile-footer-nav/mobile-footer-nav";

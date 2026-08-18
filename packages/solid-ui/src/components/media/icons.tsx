@@ -1,5 +1,6 @@
 interface IconProps {
   class?: string;
+  filled?: boolean;
 }
 
 export function IconX(props: IconProps) {
@@ -359,13 +360,13 @@ export function IconChatCircle(props: IconProps) {
     <svg
       aria-hidden="true"
       class={props.class}
-      fill="none"
+      fill={props.filled ? "currentColor" : "none"}
       stroke="currentColor"
       stroke-width="2"
       viewBox="0 0 24 24"
       xmlns="http://www.w3.org/2000/svg"
     >
-      <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" stroke-linecap="round" stroke-linejoin="round" />
+      <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" stroke={props.filled ? "none" : "currentColor"} stroke-linecap="round" stroke-linejoin="round" />
     </svg>
   );
 }
@@ -512,52 +513,24 @@ export function IconArrowRight(props: IconProps) {
 
 export function IconHouse(props: IconProps) {
   return (
-    <svg
-      aria-hidden="true"
-      class={props.class}
-      fill="none"
-      stroke="currentColor"
-      stroke-width="2"
-      viewBox="0 0 24 24"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <path d="M3 10.5 12 3l9 7.5" stroke-linecap="round" stroke-linejoin="round" />
-      <path d="M5 9.5V21h14V9.5" stroke-linecap="round" stroke-linejoin="round" />
-      <path d="M9 21v-6h6v6" stroke-linecap="round" stroke-linejoin="round" />
+    <svg aria-hidden="true" class={props.class} fill={props.filled ? "currentColor" : "none"} stroke={props.filled ? "none" : "currentColor"} stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+      <path d="m3 10.5 9-7.5 9 7.5V21H3zM9 21v-6h6v6z" fill-rule={props.filled ? "evenodd" : undefined} />
     </svg>
   );
 }
 
 export function IconBell(props: IconProps) {
   return (
-    <svg
-      aria-hidden="true"
-      class={props.class}
-      fill="none"
-      stroke="currentColor"
-      stroke-width="2"
-      viewBox="0 0 24 24"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <path d="M18 8a6 6 0 1 0-12 0c0 7-3 8-3 8h18s-3-1-3-8" stroke-linecap="round" stroke-linejoin="round" />
-      <path d="M13.7 20a2 2 0 0 1-3.4 0" stroke-linecap="round" stroke-linejoin="round" />
+    <svg aria-hidden="true" class={props.class} fill={props.filled ? "currentColor" : "none"} stroke={props.filled ? "none" : "currentColor"} stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+      <path d="M18 8a6 6 0 1 0-12 0c0 7-3 8-3 8h18s-3-1-3-8M13.7 20a2 2 0 0 1-3.4 0" />
     </svg>
   );
 }
 
 export function IconWallet(props: IconProps) {
   return (
-    <svg
-      aria-hidden="true"
-      class={props.class}
-      fill="none"
-      stroke="currentColor"
-      stroke-width="2"
-      viewBox="0 0 24 24"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <path d="M19 7V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2H5" stroke-linecap="round" stroke-linejoin="round" />
-      <circle cx="16" cy="14" r="1" fill="currentColor" stroke="none" />
+    <svg aria-hidden="true" class={props.class} fill={props.filled ? "currentColor" : "none"} stroke={props.filled ? "none" : "currentColor"} stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+      <path d="M5 4h12a2 2 0 0 1 2 2v1H6a3 3 0 0 0-3 3V6a2 2 0 0 1 2-2ZM3 10a3 3 0 0 1 3-3h13a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V10Zm13 3a1 1 0 1 0 0 2h2a1 1 0 1 0 0-2h-2Z" fill-rule={props.filled ? "evenodd" : undefined} />
     </svg>
   );
 }

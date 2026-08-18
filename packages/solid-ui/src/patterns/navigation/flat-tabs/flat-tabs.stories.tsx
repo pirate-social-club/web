@@ -3,13 +3,11 @@ import type { Meta, StoryObj } from "storybook-solidjs-vite";
 import { expect, userEvent, within } from "storybook/test";
 
 import { PillButton } from "@/components/actions/pill-button/pill-button";
-import { Tabs } from "@/components/disclosure/tabs/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/disclosure/tabs/tabs";
 
 import {
   FlatTabBar,
   FlatTabButton,
-  FlatTabsList,
-  FlatTabsTrigger,
 } from "./flat-tabs";
 
 const meta = {
@@ -19,7 +17,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "Flat underline tab chrome for profile and feed surfaces. FlatTabBar with FlatTabButton covers callback-driven switching without a tabs provider; FlatTabsList with FlatTabsTrigger flattens the Tabs primitives for controlled tab state. Both variants keep the active underline on the primary color and stay scrollable when columns are not fixed.",
+          "Flat underline tab chrome for profile and feed surfaces. FlatTabBar with FlatTabButton covers callback-driven switching without a tabs provider; the shared Tabs primitives provide controlled underline tabs. Both variants keep the active underline on the primary color and stay scrollable when columns are not fixed.",
       },
     },
   },
@@ -99,11 +97,11 @@ export const TabsListWithTriggers: Story = {
     return (
       <div class="p-4">
         <Tabs value={value()} onChange={setValue}>
-          <FlatTabsList>
-            <FlatTabsTrigger value="tab1">Posts</FlatTabsTrigger>
-            <FlatTabsTrigger value="tab2">Comments</FlatTabsTrigger>
-            <FlatTabsTrigger value="tab3">Saved</FlatTabsTrigger>
-          </FlatTabsList>
+          <TabsList variant="underline">
+            <TabsTrigger variant="underline" value="tab1">Posts</TabsTrigger>
+            <TabsTrigger variant="underline" value="tab2">Comments</TabsTrigger>
+            <TabsTrigger variant="underline" value="tab3">Saved</TabsTrigger>
+          </TabsList>
         </Tabs>
       </div>
     );

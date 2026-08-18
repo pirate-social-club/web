@@ -13,7 +13,7 @@ const options = [
 ];
 
 describe("ResponsiveOptionSelect", () => {
-  it("renders nothing without a value or options", () => {
+  it("renders the placeholder without a value and nothing without options", () => {
     const container = render(() => (
       <ResponsiveOptionSelect
         ariaLabel="Sort"
@@ -22,7 +22,12 @@ describe("ResponsiveOptionSelect", () => {
       />
     ));
 
-    expect(container.innerHTML).toBe("");
+    expect(within(container).getAllByRole("button", { name: "Sort" })[0]).toBeVisible();
+
+    const empty = render(() => (
+      <ResponsiveOptionSelect ariaLabel="Sort" drawerTitle="Sort" options={[]} />
+    ));
+    expect(empty.innerHTML).toBe("");
   });
 
   it("shows the active option label in the triggers", () => {
@@ -60,9 +65,42 @@ describe("ResponsiveOptionSelect", () => {
     const dialog = await screen.findByRole("dialog");
     expect(within(dialog).getByText("Sort feed")).toBeVisible();
     expect(within(dialog).getByText("Requires login")).toBeVisible();
+    expect(within(dialog).getByRole("group", { name: "Sort feed" })).toBeVisible();
+    expect(within(dialog).getByRole("button", { name: /Best/ })).toHaveAttribute("aria-pressed", "true");
+    expect(within(dialog).getByRole("button", { name: /New/ })).toHaveAttribute("aria-pressed", "false");
 
     await user.click(within(dialog).getByRole("button", { name: /New/ }));
     expect(selected).toBe("new");
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("accepts a custom mobile trigger", () => {
+    const container = render(() => (
+      <ResponsiveOptionSelect
+        ariaLabel="Sort"
+        drawerTitle="Sort"
+        mobileTriggerContent={<button type="button">Custom trigger</button>}
+        options={options}
+        value="best"
+      />
+    ));
+
+    expect(within(container).getByText("Custom trigger")).toBeVisible();
+    expect(container.querySelector("button > button")).toBeNull();
+  });
+
+  it("keeps the desktop hidden select as the only named form owner", () => {
+    const container = render(() => (
+      <ResponsiveOptionSelect
+        ariaLabel="Sort"
+        drawerTitle="Sort"
+        name="sort"
+        options={options}
+        value="best"
+      />
+    ));
+
+    expect(container.querySelectorAll('select[name="sort"]').length).toBe(1);
   });
 
   it("has no automated a11y violations", async () => {

@@ -1,96 +1,44 @@
 import type { Meta, StoryObj } from "storybook-solidjs-vite";
-import { expect, userEvent, within } from "storybook/test";
-
-import { Type } from "@/components/data-display/type/type";
+import { expect, fn, within } from "storybook/test";
 
 import { MobileFooterNav } from "./mobile-footer-nav";
 
 const meta = {
   title: "Patterns/Navigation/MobileFooterNav",
   component: MobileFooterNav,
+  tags: ["autodocs"],
+  args: { activeItem: "home", onHomeClick: fn(), onProfileClick: fn() },
+  argTypes: { class: { table: { disable: true } }, icons: { table: { disable: true } }, labels: { table: { disable: true } } },
   parameters: {
-    layout: "fullscreen",
-    docs: {
-      description: {
-        component:
-          "Fixed mobile bottom navigation: home, wallet, chat, inbox (with unread badges), and profile avatar. Item presses report through callbacks, tap haptics arrive via onTapHaptic, and copy via labels. Renders nothing on desktop unless forceMobile is set.",
-      },
-    },
+    viewport: { defaultViewport: "mobile1" },
+    docs: { description: { component: "Callback-driven bottom navigation. The component owns presentation and mobile CSS; the host owns routing, active-item resolution, labels, and haptic feedback. Injected icons receive an optional `filled` prop for active-state rendering; custom icons may ignore it." } },
   },
-  decorators: [
-    (Story) => (
-      <div style={{ "min-height": "100vh", width: "100%" }}>
-        <Story />
-      </div>
-    ),
-  ],
 } satisfies Meta<typeof MobileFooterNav>;
 
 export default meta;
-
 type Story = StoryObj<typeof meta>;
 
-function FooterOnlyStory(props: { unreadInboxCount?: number }) {
-  return (
-    <div class="min-h-screen bg-background px-3 pb-28 pt-6">
-      <Type
-        as="div"
-        variant="caption"
-        class="rounded-[var(--radius-xl)] border border-border-soft bg-card p-5"
-      >
-        Content body clearing the fixed footer.
-      </Type>
-      <MobileFooterNav
-        activeItem="inbox"
-        forceMobile
-        unreadInboxCount={props.unreadInboxCount ?? 0}
-      />
-    </div>
-  );
-}
-
-const mobileGlobals = {
-  viewport: { value: "mobile1", isRotated: false },
-};
-
-export const MobileFooter: Story = {
-  globals: mobileGlobals,
-  render: () => <FooterOnlyStory />,
-  play: async ({ canvasElement }) => {
+export const Default: Story = {
+  play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(canvas.getByRole("button", { name: "Home" }));
-    await expect(
-      canvas.getByRole("button", { name: "Inbox" }),
-    ).toHaveAttribute("aria-current", "page");
+    await canvas.getByRole("button", { name: "Profile" }).click();
+    await expect(args.onProfileClick).toHaveBeenCalledTimes(1);
   },
 };
 
-export const MobileFooterRtl: Story = {
-  globals: { ...mobileGlobals, direction: "rtl" },
-  render: () => <FooterOnlyStory />,
-};
-
-export const MobileFooterWithSingleNotification: Story = {
-  globals: mobileGlobals,
-  render: () => <FooterOnlyStory unreadInboxCount={1} />,
-};
-
-export const MobileFooterWithNotifications: Story = {
-  globals: mobileGlobals,
-  render: () => <FooterOnlyStory unreadInboxCount={12} />,
+export const Notifications: Story = {
+  args: { activeItem: "inbox", unreadChatCount: 4, unreadInboxCount: 128 },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(
-      canvas.getByRole("button", { name: "Inbox, 12" }),
-    ).toBeVisible();
+    await expect(canvas.getByRole("button", { name: "Chat, 4" })).toBeVisible();
+    await expect(canvas.getByRole("button", { name: "Inbox, 128" })).toBeVisible();
   },
 };
 
-export const MobileFooterOverflowNotifications: Story = {
-  globals: mobileGlobals,
-  render: () => <FooterOnlyStory unreadInboxCount={120} />,
-  play: async ({ canvasElement }) => {
-    const badge = canvasElement.querySelector(".notification-count-badge");
-    await expect(badge).toHaveTextContent("99+");
+export const RTL: Story = {
+  args: { labels: { home: "الرئيسية", wallet: "المحفظة", chat: "الدردشة", inbox: "الوارد", profile: "الملف الشخصي", primaryNavAriaLabel: "التنقل الأساسي" }, unreadChatCount: 4, unreadInboxCount: 128 },
+  globals: { direction: "rtl", locale: "ar" },
+  play: async () => {
+    await expect(document.documentElement).toHaveAttribute("dir", "rtl");
   },
 };

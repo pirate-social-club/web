@@ -98,7 +98,7 @@ export const ThreadRead: Story = {
           <ResponsiveOptionSelect
             ariaLabel="Sort comments"
             drawerTitle="Comments"
-            mobileTrigger={<IconButton aria-label="Sort comments" variant="ghost"><IconCaretDown class="size-6" /></IconButton>}
+            mobileTriggerContent={<IconButton aria-label="Sort comments" variant="ghost"><IconCaretDown class="size-6" /></IconButton>}
             onValueChange={(value) => setSort(value as "best" | "new" | "top")}
             options={sortOptions}
             value={sort()}

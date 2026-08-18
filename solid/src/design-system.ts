@@ -55,12 +55,14 @@ export {
   createSidebar,
   createSidebarSide,
   type FooterNavItemId,
+  type MobileFooterNavIcons,
 } from "@pirate/web-solid-ui";
 
 // Route states (Batch 5 feedback patterns used by the shell).
 export {
   RootAppErrorState,
   RouteLoadingState,
+  RouteMessageState,
 } from "@pirate/web-solid-ui";
 
 // Primitives used by the shell features and their stories.
@@ -81,6 +83,7 @@ export {
 export {
   ActionMenu,
   AvatarBadge,
+  buildDefaultAvatarBadgeSrc,
   CommentPill,
   FormattedText,
   MediaControlButton,
@@ -89,6 +92,7 @@ export {
   Skeleton,
   VerticalFeed,
   VotePill,
+  resolveAvatarBadgeSrc,
   type ActionMenuItem,
   type AvatarBadgeProps,
   type CommentPillProps,
@@ -164,8 +168,6 @@ export {
   DropdownMenuTrigger,
   FormFieldLabel,
   FormattedTextarea,
-  FlatTabsList,
-  FlatTabsTrigger,
   FormNote,
   FormSectionHeading,
   Label,

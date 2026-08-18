@@ -44,6 +44,21 @@ parity manifest. Per the coordinator brief:
 - `app-shell-chrome` story: covered by DS AppHeader/MobileFooterNav stories +
   AppShell adapter stories (stated in manifest).
 
+## Reconciliation notes (2026-08-17)
+
+- `MobileFooterNav` now uses the CSS-first DS API; `forceMobile` was removed
+  from this surface only. The prop remains live on `AppHeader`, `Modal`, and
+  `MobilePageHeader` (including wallet feature callers), so do not copy it back
+  into the footer API.
+- Replacing `MobilePageHeader` with the DS callback-driven implementation is a
+  separate follow-up: it currently composes the Web-owned `AppHeader` and
+  passes `forceMobile` through that boundary.
+- `ResponsiveOptionSelect` is reconciled against the DS implementation. It
+  affects live B8d wallet consumers and wallet SSR tests because the mobile
+  branch changes to an `aria-pressed` button group and the desktop branch owns
+  the single named form control. Custom mobile triggers use
+  `mobileTriggerContent` and must be a single control or content-only element.
+
 ## Gates (run per batch, in the worktree)
 
 - DS: `cd packages/solid-ui && bun run typecheck && bun run test` (376 green)

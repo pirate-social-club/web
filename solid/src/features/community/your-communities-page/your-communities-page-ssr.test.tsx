@@ -14,11 +14,11 @@ const primitive = (tag: string) => (props: Record<string, unknown>) => element(t
 mock.module(designSystemPath, () => ({
   Button: primitive("button"),
   CommunityAvatar: primitive("span"),
-  FlatTabsList: primitive("div"),
-  FlatTabsTrigger: primitive("button"),
   PageContainer: primitive("div"),
   Tabs: primitive("div"),
   TabsContent: primitive("section"),
+  TabsList: primitive("div"),
+  TabsTrigger: primitive("button"),
   Type: (props: Record<string, unknown>) => element(String(props.as ?? "span"), props),
 }));
 mock.module(jsxRuntimePath, () => ({

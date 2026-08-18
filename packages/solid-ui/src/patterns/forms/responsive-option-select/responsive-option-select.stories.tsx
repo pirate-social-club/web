@@ -20,7 +20,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "Responsive option picker: bottom sheet on small viewports, pill select on desktop. Options carry label, description, icon, and disabled reason; selection reports through onValueChange. The React selectAlign prop is not ported: Kobalte 2.0.0-alpha.0 exposes no popup placement control.",
+          "Responsive option picker: bottom sheet on small viewports, pill select on desktop. Options carry label, description, icon, and disabled reason; selection reports through onValueChange. Custom mobile triggers are supplied through mobileTriggerContent and must be a single control or content-only element.",
       },
     },
   },

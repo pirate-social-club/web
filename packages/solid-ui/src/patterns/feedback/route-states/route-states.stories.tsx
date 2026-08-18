@@ -12,8 +12,7 @@ import {
   RootAppErrorState,
   RouteLoadFailureState,
   RouteLoadingState,
-  PublicRouteLoadingState,
-  PublicRouteMessageState,
+  RouteMessageState,
 } from "./route-states";
 
 // Offline mascot fixture: a simple ghost glyph in place of the app mascot
@@ -46,20 +45,24 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const RouteLoading: Story = {
-  render: () => <RouteLoadingState />,
+  render: () => <RouteLoadingState label="Loading route" />,
 };
 
 export const PublicRouteLoading: Story = {
-  render: () => <PublicRouteLoadingState />,
+  render: () => <RouteLoadingState height="public" />,
 };
 
 export const PublicRouteMessage: Story = {
   render: () => (
-    <PublicRouteMessageState
+    <RouteMessageState
       title="Privacy"
       description="This static page renders a plain message state."
     />
   ),
+};
+
+export const RouteMessage: Story = {
+  render: () => <RouteMessageState title="Privacy" description="This route-neutral state is context-free." />,
 };
 
 export const EmptyFeed: Story = {

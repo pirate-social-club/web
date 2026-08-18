@@ -6,7 +6,7 @@ import { Type } from "@/components/data-display/type/type";
 import { AvatarBadge } from "./avatar-badge";
 
 // Offline, deterministic flag fixtures: colored circle SVGs keyed by country
-// code, standing in for the circle-flags CDN the default resolver points at.
+// code, standing in for the deterministic local default artwork.
 const fixtureFlag = (code: string) => {
   const colors: Record<string, string> = {
     ar: "#006c35",
@@ -29,7 +29,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "Avatar with a corner verification badge. A valid two-letter badgeCountryCode renders the badge as a circular flag through the flagUrlForCountryCode resolver (CDN by default; stories use local fixtures); anything else renders the plain Avatar. Badge size, ring, and offset follow the avatar size unless overridden.",
+          "Avatar with a corner verification badge. A valid two-letter badgeCountryCode renders deterministic local artwork by default; flagUrlForCountryCode and badgeSrc remain explicit overrides for supplied artwork. Anything else renders the plain Avatar. Badge size, ring, and offset follow the avatar size unless overridden.",
       },
     },
   },

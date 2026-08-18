@@ -3,7 +3,7 @@ import {
   type SelectRootItemComponentProps,
 } from "@kobalte/core/select";
 import type { JSX } from "@solidjs/web";
-import { createMemo } from "solid-js";
+import { createMemo, type Component } from "solid-js";
 
 import { IconArrowDown, IconCheck } from "@/components/media/icons";
 import { cn } from "@/lib/cn";
@@ -31,11 +31,23 @@ export interface SelectProps<Option> {
   triggerClass?: string;
   /** Extra classes for the popup content. */
   contentClass?: string;
+  /** Preferred popper placement for the option list. */
+  placement?: "top" | "top-start" | "top-end" | "bottom" | "bottom-start" | "bottom-end" | "left" | "left-start" | "left-end" | "right" | "right-start" | "right-end";
+  /** Provider-neutral rendering for an option's visible label content. */
+  renderOption?: (option: Option) => JSX.Element;
+  /** Provider-neutral rendering for the selected trigger value. */
+  renderValue?: (option: Option | null) => JSX.Element;
+  /** Native form name for the hidden select control. */
+  name?: string;
   /** Accessible name for the select trigger. */
   "aria-label"?: string;
 }
 
-function SelectItem(props: SelectRootItemComponentProps<unknown>) {
+function SelectItem(
+  props: SelectRootItemComponentProps<unknown> & {
+    renderOption?: (option: unknown) => JSX.Element;
+  },
+) {
   const item = props.item;
 
   return (
@@ -46,7 +58,9 @@ function SelectItem(props: SelectRootItemComponentProps<unknown>) {
       <KSelect.ItemIndicator class="absolute start-2.5 flex size-5 items-center justify-center text-primary">
         <IconCheck class="size-4" />
       </KSelect.ItemIndicator>
-      <KSelect.ItemLabel class="truncate">{item.textValue}</KSelect.ItemLabel>
+      <KSelect.ItemLabel class="min-w-0 truncate">
+        {props.renderOption ? props.renderOption(item.rawValue) : item.textValue}
+      </KSelect.ItemLabel>
     </KSelect.Item>
   );
 }
@@ -87,8 +101,15 @@ export function Select<Option>(props: SelectProps<Option>) {
       },
       placeholder: props.placeholder,
       disabled: props.disabled,
+      name: props.name,
+      placement: props.placement,
       multiple: false,
-      itemComponent: SelectItem,
+      itemComponent: ((itemProps: SelectRootItemComponentProps<Option>) => (
+        <SelectItem
+          {...itemProps}
+          renderOption={props.renderOption as ((option: unknown) => JSX.Element) | undefined}
+        />
+      )) as Component<SelectRootItemComponentProps<Option>>,
     }) as const;
 
   return (
@@ -102,9 +123,11 @@ export function Select<Option>(props: SelectProps<Option>) {
       >
         <KSelect.Value<Option> class="truncate">
           {(state) =>
-            state.selectedOption() != null
-              ? props.optionLabel(state.selectedOption()!)
-              : undefined
+            props.renderValue
+              ? props.renderValue(state.selectedOption())
+              : state.selectedOption() != null
+                ? props.optionLabel(state.selectedOption()!)
+                : undefined
           }
         </KSelect.Value>
         <KSelect.Icon class="group ms-2 shrink-0 text-muted-foreground">
@@ -121,7 +144,7 @@ export function Select<Option>(props: SelectProps<Option>) {
           <KSelect.Listbox class="max-h-80 overflow-y-auto py-0 outline-none" />
         </KSelect.Content>
       </KSelect.Portal>
-      <KSelect.HiddenSelect />
+      <KSelect.HiddenSelect name={props.name} />
     </KSelect>
   );
 }

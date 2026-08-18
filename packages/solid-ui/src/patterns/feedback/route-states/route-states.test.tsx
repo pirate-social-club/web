@@ -9,6 +9,8 @@ import {
   EmptyInboxState,
   FullPageSpinner,
   NotFoundRouteState,
+  RouteLoadingState,
+  RouteMessageState,
   RouteLoadFailureState,
 } from "./route-states";
 
@@ -19,6 +21,23 @@ const fixtureGhostImage = {
 };
 
 describe("route states", () => {
+  it("exposes accessible route loading states and retained public aliases", () => {
+    const route = render(() => <RouteLoadingState label="Loading inbox" />);
+    const status = within(route).getByRole("status", { name: "Loading inbox" });
+    expect(status).toHaveAttribute("aria-busy", "true");
+    expect(status).toHaveClass("min-h-[40vh]");
+    expect(within(status).queryByLabelText("Loading")).toBeNull();
+
+    const publicRoute = render(() => <RouteLoadingState height="public" label="Loading public" />);
+    expect(within(publicRoute).getByRole("status", { name: "Loading public" })).toHaveClass("min-h-[60vh]");
+  });
+
+  it("provides a route-neutral message state", () => {
+    const container = render(() => <RouteMessageState title="Privacy" description="Static page" />);
+    expect(within(container).getByRole("heading", { name: "Privacy" })).toBeVisible();
+    expect(within(container).getByText("Static page")).toBeVisible();
+  });
+
   it("renders the not-found state with the interpolated path", () => {
     const container = render(() => <NotFoundRouteState path="/missing" />);
 

@@ -104,6 +104,24 @@ describe("Tabs", () => {
     );
   });
 
+  it("provides the underline visual variant", () => {
+    const container = render(() => (
+      <Tabs defaultValue="account">
+        <TabsList columns={2} variant="underline">
+          <TabsTrigger value="account" variant="underline">Account</TabsTrigger>
+          <TabsTrigger value="password" variant="underline">Password</TabsTrigger>
+        </TabsList>
+      </Tabs>
+    ));
+
+    const list = within(container).getByRole("tablist");
+    expect(list).toHaveClass("border-b", "grid");
+    expect(list.style.gridTemplateColumns).toBe("repeat(2, minmax(0, 1fr))");
+    const account = within(container).getByRole("tab", { name: "Account" });
+    expect(account).toHaveAttribute("data-selected");
+    expect(account).toHaveClass("border-b-2", "border-transparent");
+  });
+
   it("has no axe violations", async () => {
     render(() => <TabsFixture />);
 

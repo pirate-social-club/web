@@ -7,58 +7,39 @@ import { expectNoA11yViolations, render } from "@/test/test-utils";
 import { MobileFooterNav } from "./mobile-footer-nav";
 
 describe("MobileFooterNav", () => {
-  it("renders nothing without forceMobile on a non-mobile viewport", () => {
-    const container = render(() => <MobileFooterNav />);
-
-    expect(container.querySelector("nav")).toBeNull();
+  it("renders all five destinations in SSR-friendly markup", () => {
+    const container = render(() => <MobileFooterNav activeItem="profile" />);
+    expect(within(container).getAllByRole("button")).toHaveLength(5);
+    expect(within(container).getByRole("button", { name: "Profile" })).toHaveAttribute("aria-current", "page");
   });
 
-  it("renders all five destinations with the active item marked", () => {
-    const container = render(() => (
-      <MobileFooterNav activeItem="inbox" forceMobile />
-    ));
-
-    const nav = within(container).getByRole("navigation", {
-      name: "Primary navigation",
-    });
-    expect(within(nav).getByRole("button", { name: "Home" })).toBeVisible();
-    expect(within(nav).getByRole("button", { name: "Wallet" })).toBeVisible();
-    expect(within(nav).getByRole("button", { name: "Chat" })).toBeVisible();
-    expect(within(nav).getByRole("button", { name: "Inbox" })).toHaveAttribute(
-      "aria-current",
-      "page",
-    );
-    expect(within(nav).getByRole("button", { name: "Profile" })).toBeVisible();
-  });
-
-  it("fires the haptic callback before the item action", async () => {
+  it("fires haptic feedback before an item callback", async () => {
     const user = userEvent.setup();
     const order: string[] = [];
-    const container = render(() => (
-      <MobileFooterNav
-        forceMobile
-        onTapHaptic={() => order.push("haptic")}
-        onHomeClick={() => order.push("home")}
-      />
-    ));
-
+    const container = render(() => <MobileFooterNav onTapHaptic={() => order.push("haptic")} onHomeClick={() => order.push("home")} />);
     await user.click(within(container).getByRole("button", { name: "Home" }));
     expect(order).toEqual(["haptic", "home"]);
   });
 
-  it("shows unread badges with accessible counts", () => {
-    const container = render(() => (
-      <MobileFooterNav forceMobile unreadChatCount={3} unreadInboxCount={120} />
-    ));
+  it("normalizes and exposes unread counts accessibly", () => {
+    const container = render(() => <MobileFooterNav unreadChatCount={4.9} unreadInboxCount={128} />);
+    expect(within(container).getByRole("button", { name: "Chat, 4" })).toBeInTheDocument();
+    expect(within(container).getByRole("button", { name: "Inbox, 128" })).toBeInTheDocument();
+    expect(within(container).getByText("99+")).toHaveClass("notification-count-badge");
+    expect(within(container).getByRole("button", { name: "Home" })).toHaveClass("h-full", "w-full", "text-foreground");
+    expect(within(container).getByRole("button", { name: "Home" }).querySelector('svg[fill="currentColor"]')).toBeInTheDocument();
+  });
 
-    expect(within(container).getByRole("button", { name: "Chat, 3" })).toBeVisible();
-    const inbox = within(container).getByRole("button", { name: "Inbox, 120" });
-    expect(inbox.querySelector(".notification-count-badge")).toHaveTextContent("99+");
+  it("supports injected icon factories", () => {
+    const container = render(() => <MobileFooterNav icons={{ home: () => <span data-testid="home-icon" /> }} />);
+    expect(within(container).getByTestId("home-icon")).toBeInTheDocument();
   });
 
   it("has no automated a11y violations", async () => {
-    render(() => <MobileFooterNav forceMobile />);
-
+    render(() => <MobileFooterNav />);
     await expectNoA11yViolations();
+    document.documentElement.classList.add("light");
+    await expectNoA11yViolations();
+    document.documentElement.classList.remove("light");
   });
 });

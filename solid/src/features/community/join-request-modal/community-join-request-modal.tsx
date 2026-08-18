@@ -55,18 +55,24 @@ export function CommunityJoinRequestModal(props: CommunityJoinRequestModalProps)
   const [note, setNote] = createSignal(limitJoinRequestNote(props.initialNote));
   let noteInput: HTMLTextAreaElement | undefined;
 
-  createEffect(() => {
-    if (props.open) setNote(limitJoinRequestNote(props.initialNote));
-  });
+  createEffect(
+    () => ({ open: props.open, initialNote: props.initialNote }),
+    ({ open, initialNote }) => {
+      if (open) setNote(limitJoinRequestNote(initialNote));
+    },
+  );
 
   const focusNote = () => {
     if (typeof document === "undefined") return;
     queueMicrotask(() => noteInput?.focus());
   };
 
-  createEffect(() => {
-    if (props.open && !props.submitted) focusNote();
-  });
+  createEffect(
+    () => ({ open: props.open, submitted: props.submitted }),
+    ({ open, submitted }) => {
+      if (open && !submitted) focusNote();
+    },
+  );
 
   const submit = (event: SubmitEvent) => {
     event.preventDefault();

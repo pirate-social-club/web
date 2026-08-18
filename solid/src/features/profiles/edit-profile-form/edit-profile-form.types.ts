@@ -10,7 +10,7 @@ export interface EditProfileFieldError {
   message: string;
 }
 
-export type EditProfileSubmitState =
+type EditProfileSubmitState =
   | { kind: "idle" }
   | { kind: "saving" }
   | { kind: "error"; message: string }

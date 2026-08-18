@@ -1,7 +1,7 @@
 import type { ProfilePageRightRail, ProfilePageTab, ProfileWalletAsset } from "./profile-page.types";
 import type { WalletHubChainSection } from "../../wallet/wallet-hub.types";
 
-export const PROFILE_ACTIVITY_TABS: readonly ProfilePageTab[] = ["overview", "posts", "comments", "wallet", "book"];
+const PROFILE_ACTIVITY_TABS: readonly ProfilePageTab[] = ["overview", "posts", "comments", "wallet", "book"];
 
 export function hasProfileWallet(rightRail: ProfilePageRightRail): boolean {
   return Boolean(rightRail.walletAddress || rightRail.walletAssets?.length || rightRail.walletChainSections?.length);

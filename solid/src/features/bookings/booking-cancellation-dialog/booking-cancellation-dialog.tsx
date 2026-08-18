@@ -26,7 +26,7 @@ import {
   type BookingCancellationDialogCopy,
 } from "./booking-cancellation-dialog-model";
 
-export type BookingCancellationDialogState = "ready" | "submitting" | "terms-changed" | "error";
+type BookingCancellationDialogState = "ready" | "submitting" | "terms-changed" | "error";
 
 export interface BookingCancellationDialogProps {
   open: boolean;

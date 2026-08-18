@@ -31,8 +31,8 @@ import type {
   HandleRenameState,
 } from "./edit-profile-form.types";
 
-export const DISPLAY_NAME_MAX = 50;
-export const BIO_MAX = 300;
+const DISPLAY_NAME_MAX = 50;
+const BIO_MAX = 300;
 
 function fieldError(errors: EditProfileFieldError[], field: EditProfileFieldError["field"]): string | undefined {
   return errors.find((error) => error.field === field)?.message;

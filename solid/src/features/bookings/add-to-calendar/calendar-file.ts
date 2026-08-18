@@ -9,7 +9,7 @@ export interface CalendarEventData {
 }
 
 /** Format an ISO UTC instant using the iCalendar UTC date-time form. */
-export function formatIcsTimestamp(utcIso: IsoInstant): string {
+function formatIcsTimestamp(utcIso: IsoInstant): string {
   return utcIso.replace(/\.\d{3}Z$/, "Z").replace(/[-:]/g, "");
 }
 

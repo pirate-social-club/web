@@ -4,8 +4,6 @@ import { Show, createEffect, createSignal, onCleanup } from "solid-js";
 import { IconButton, IconX, Sheet, SheetContent, Type, cn } from "../../../design-system";
 import { FEED_DOCK_QUERY } from "./feed-side-panel-model";
 
-export { FEED_DOCK_QUERY } from "./feed-side-panel-model";
-
 export function FeedPanelLayout(props: {
   children: JSX.Element;
   class?: string;

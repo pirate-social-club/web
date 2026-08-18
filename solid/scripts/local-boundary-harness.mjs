@@ -296,14 +296,17 @@ export async function startSolidBoundaryHarness(options = {}) {
   const workerConfig = path.join(repoRoot, "solid/dist/ssr/wrangler.json");
   const output = [];
   const worker = spawn("bunx", [
-    "wrangler", "dev", "--config", workerConfig, "--local", "--port", String(workerPort),
+    "wrangler@4.123.0", "dev", "--config", workerConfig, "--local", "--port", String(workerPort),
     "--compatibility-date", LOCAL_COMPATIBILITY_DATE,
     "--var", "SOLID_ENV:local",
     "--var", `SOLID_EDGE_HMAC_KEY:${LOCAL_SOLID_EDGE_HMAC_KEY}`,
     "--var", "SOLID_EDGE_MAX_CLOCK_SKEW_SECONDS:300",
     "--no-show-interactive-dev-session",
   ], {
-    cwd: repoRoot,
+    // Resolve Wrangler from the Solid package install. The root Web install
+    // pins a different undici/Miniflare graph for the React Worker; using it
+    // here can bundle an incompatible webidl implementation into workerd.
+    cwd: path.resolve(repoRoot, "solid"),
     env: { ...process.env, WRANGLER_SEND_METRICS: "false" },
     stdio: ["ignore", "pipe", "pipe"],
   });

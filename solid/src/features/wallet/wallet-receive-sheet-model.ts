@@ -1,6 +1,6 @@
 import type { WalletHubChainId, WalletHubChainSection } from "./wallet-hub.types";
 
-export function parseFiatValue(value: string | null | undefined): number {
+function parseFiatValue(value: string | null | undefined): number {
   if (!value) return 0;
   const parsed = Number(value.replace(/[^0-9.-]/gu, ""));
   return Number.isFinite(parsed) ? parsed : 0;

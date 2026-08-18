@@ -3,8 +3,8 @@ import type {
   EditProfileFormValues,
 } from "./edit-profile-form.types";
 
-export const DISPLAY_NAME_LIMIT = 50;
-export const BIO_LIMIT = 300;
+const DISPLAY_NAME_LIMIT = 50;
+const BIO_LIMIT = 300;
 
 export function trimDisplayName(value: string): string {
   return value.trim();

@@ -90,7 +90,7 @@ export const profileComments: ProfileCommentItem[] = [
   },
 ];
 
-export const overviewItems: ProfileActivityItem[] = [
+const overviewItems: ProfileActivityItem[] = [
   { kind: "post", id: "overview-post-1", post: profilePosts[0]! },
   { kind: "comment", id: "overview-comment-1", comment: profileComments[0]! },
   { kind: "post", id: "overview-post-2", post: profilePosts[1]! },

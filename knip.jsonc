@@ -33,9 +33,16 @@
     "scripts/deploy-staging.sh"
   ],
   "ignoreDependencies": [
+    // These are resolved from nested Solid sources/configs while the root audit
+    // runs from the Web package; keep the root install explicit for CI.
+    "@pirate/api-client",
+    "@solidjs/web",
     "@fontsource/anton",
+    "remark-gfm",
     "tailwindcss",
-    "tw-animate-css"
+    "tw-animate-css",
+    "vitest",
+    "vite-plugin-solid"
   ],
   "ignoreIssues": {
     // Mock modules expose reusable fixture types even when the app does not import every type.

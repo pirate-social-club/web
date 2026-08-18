@@ -62,7 +62,7 @@ function qrCells(value: string): QrCell[] {
   return cells;
 }
 
-export function WalletQrCode(props: { value: string }) {
+function WalletQrCode(props: { value: string }) {
   const cells = () => qrCells(props.value);
   return (
     <div

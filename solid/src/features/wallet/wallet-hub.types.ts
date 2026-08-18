@@ -8,7 +8,7 @@ export type WalletHubChainId =
   | "bitcoin"
   | "cosmos";
 
-export type WalletHubChainAvailability = "ready" | "later";
+type WalletHubChainAvailability = "ready" | "later";
 
 export interface WalletHubToken {
   id: string;

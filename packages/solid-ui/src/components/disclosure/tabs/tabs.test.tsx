@@ -104,7 +104,7 @@ describe("Tabs", () => {
     );
   });
 
-  it("provides the underline visual variant used by FlatTabs shims", () => {
+  it("provides the underline visual variant", () => {
     const container = render(() => (
       <Tabs defaultValue="account">
         <TabsList columns={2} variant="underline">

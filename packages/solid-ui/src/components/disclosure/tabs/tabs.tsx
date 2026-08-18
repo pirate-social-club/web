@@ -10,6 +10,7 @@ import {
   type ParentProps,
 } from "solid-js";
 
+import { typeVariants } from "@/components/data-display/type/type";
 import { cn } from "@/lib/cn";
 
 const Tabs = KTabs;
@@ -53,10 +54,12 @@ export interface TabsTriggerProps extends Omit<KTabsTriggerProps, "class"> {
 function TabsTrigger(props: ParentProps<TabsTriggerProps>) {
   const className = createMemo(() =>
     cn(
-      "inline-flex cursor-pointer items-center justify-center whitespace-nowrap text-base transition-all motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background disabled:pointer-events-none disabled:opacity-50",
+      "inline-flex cursor-pointer items-center justify-center whitespace-nowrap transition-all motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background disabled:pointer-events-none disabled:opacity-50",
+      typeVariants({ variant: props.variant === "underline" ? "body-strong" : "label" }),
+      "text-muted-foreground",
       props.variant === "underline"
-        ? "min-w-0 rounded-none border-b-2 border-transparent px-1 py-4 font-semibold data-[selected]:border-primary data-[selected]:bg-transparent data-[selected]:shadow-none"
-        : "rounded-full px-4 py-2 font-medium data-[selected]:bg-card data-[selected]:text-foreground data-[selected]:shadow-sm",
+        ? "min-w-0 rounded-none border-b-2 border-transparent px-1 py-4 data-[selected]:border-primary data-[selected]:bg-transparent data-[selected]:shadow-none"
+        : "rounded-full px-4 py-2 data-[selected]:bg-card data-[selected]:text-foreground data-[selected]:shadow-sm",
       props.class,
     ),
   );

@@ -25,7 +25,7 @@ describe("MobileFooterNav", () => {
     const container = render(() => <MobileFooterNav unreadChatCount={4.9} unreadInboxCount={128} />);
     expect(within(container).getByRole("button", { name: "Chat, 4" })).toBeInTheDocument();
     expect(within(container).getByRole("button", { name: "Inbox, 128" })).toBeInTheDocument();
-    expect(within(container).getByText("99+")).toHaveClass("bg-destructive");
+    expect(within(container).getByText("99+")).toHaveClass("notification-count-badge");
     expect(within(container).getByRole("button", { name: "Home" })).toHaveClass("h-full", "w-full", "text-foreground");
     expect(within(container).getByRole("button", { name: "Home" }).querySelector('svg[fill="currentColor"]')).toBeInTheDocument();
   });

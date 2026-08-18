@@ -113,7 +113,7 @@ export function MobileFooterNav(props: MobileFooterNavProps) {
                 <span class="relative inline-flex size-6">
                   <Dynamic component={item.icon} class="size-6" filled={active()} />
                   <Show when={unread() > 0}>
-                    <span aria-hidden="true" class="absolute -end-2 -top-2 inline-flex min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[0.625rem] font-semibold leading-4 text-destructive-foreground">
+                    <span aria-hidden="true" class="notification-count-badge absolute -end-2 -top-2">
                       {formatUnreadCount(unread())}
                     </span>
                   </Show>
@@ -134,7 +134,7 @@ export function MobileFooterNav(props: MobileFooterNavProps) {
           type="button"
         >
           <Avatar
-            class="size-9 bg-card text-base"
+            class="size-9 bg-card"
             fallback={props.avatarFallback ?? "Pirate User"}
             fallbackSeed={props.userAvatarSeed ?? undefined}
             size="sm"

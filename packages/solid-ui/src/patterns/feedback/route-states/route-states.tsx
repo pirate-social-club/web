@@ -64,7 +64,7 @@ export function RouteMessageState(props: RouteMessageStateProps) {
     <div class="flex min-h-[60vh] w-full flex-1 items-start justify-start px-1 py-8 md:px-6 md:py-12">
       <div class="w-full max-w-2xl">
         <Type as="h1" variant="h2">{props.title}</Type>
-        <Type as="p" class="mt-3 leading-7 text-muted-foreground" variant="body">{props.description}</Type>
+        <Type as="p" class="mt-3 text-muted-foreground" variant="body">{props.description}</Type>
       </div>
     </div>
   );

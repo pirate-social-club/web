@@ -16,4 +16,10 @@ describe("Solid route contract schema", () => {
     expect(routeContractFor("/privacy")?.migration).toBe("migrating");
     expect(routeContractFor("/robots.txt")?.migration).toBe("migrating");
   });
+
+  test("does not allow prototype-only routes into the Solid migration set", () => {
+    for (const path of ["/", "/auth", "/api/health", "/seam/host"]) {
+      expect(routeContractFor(path)?.migration).toBe("react");
+    }
+  });
 });

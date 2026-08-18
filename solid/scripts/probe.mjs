@@ -1,6 +1,7 @@
 import http from "node:http";
 
 const base = process.env.SEAM_BASE_URL ?? "http://localhost:8787";
+const seamsEnabled = process.env.SOLID_SEAMS_ENABLED === "1";
 
 function get(path, init = {}) {
   const url = new URL(path, base);
@@ -107,14 +108,21 @@ check("SSR deferred content is revealed", html.includes('id="stream-result">stre
 const apex = await get("/", { redirect: "manual", headers: { host: "example.hns" } });
 check("HNS apex redirects", apex.status === 307, String(apex.status));
 check("HNS redirect targets app host", (apex.headers.get("location") ?? "").includes("app.example.hns"));
-const host = await get("/seam/host", { headers: { host: "app.example.hns" } });
-check("app host serves", host.status === 200, String(host.status));
-check("host surface header is sovereign app", host.headers.get("x-seam-host-surface") === "sovereign-app");
-const binding = await get("/seam/binding", { headers: { host: "app.example.hns" } });
-const bindingText = await binding.text();
-check("service-binding route serves", binding.status === 200, String(binding.status));
-check("service-binding round trip identifies public worker", bindingText.includes("pirate-web-solid-public"));
-check("service-binding route returns JSON payload", binding.headers.get("content-type")?.includes("text/html") === false || bindingText.includes("upstream"));
+if (seamsEnabled) {
+  const host = await get("/seam/host", { headers: { host: "app.example.hns" } });
+  check("app host serves", host.status === 200, String(host.status));
+  check("host surface header is sovereign app", host.headers.get("x-seam-host-surface") === "sovereign-app");
+  const binding = await get("/seam/binding", { headers: { host: "app.example.hns" } });
+  const bindingText = await binding.text();
+  check("service-binding route serves", binding.status === 200, String(binding.status));
+  check("service-binding round trip identifies public worker", bindingText.includes("pirate-web-solid-public"));
+  check("service-binding route returns JSON payload", binding.headers.get("content-type")?.includes("text/html") === false || bindingText.includes("upstream"));
+} else {
+  for (const path of ["/seam/host", "/seam/api", "/seam/binding"]) {
+    const seam = await get(path, { headers: { host: "app.example.hns" } });
+    check(`${path} is denied outside local development`, seam.status === 404, String(seam.status));
+  }
+}
 check("adapter returns streamed-capable response", root.body.length > 0);
 
 const htmlRoutes = [
@@ -128,8 +136,10 @@ const htmlRoutes = [
   ["auth bare route", "/auth", 'data-route-path="/auth"', 'data-layout="bare"', { title: "Pirate Web", canonical: null, description: null, ogTitle: null, ogType: null }],
   ["embed bare route", "/embed", 'data-route-path="/embed"', 'data-layout="bare"', { title: "Pirate Web", canonical: null, description: null, ogTitle: null, ogType: null }],
   ["telegram bare route", "/telegram", 'data-route-path="/telegram"', 'data-layout="bare"', { title: "Pirate Web", canonical: null, description: null, ogTitle: null, ogType: null }],
-  ["host seam route", "/seam/host", 'data-route-path="/seam/host"', undefined, { title: "Pirate Web", canonical: null, description: null, ogTitle: null, ogType: null }],
-  ["binding seam route", "/seam/binding", 'data-route-path="/seam/binding"', undefined, { title: "Pirate Web", canonical: null, description: null, ogTitle: null, ogType: null }],
+  ...(seamsEnabled ? [
+    ["host seam route", "/seam/host", 'data-route-path="/seam/host"', undefined, { title: "Pirate Web", canonical: null, description: null, ogTitle: null, ogType: null }],
+    ["binding seam route", "/seam/binding", 'data-route-path="/seam/binding"', undefined, { title: "Pirate Web", canonical: null, description: null, ogTitle: null, ogType: null }],
+  ] : []),
 ];
 for (const [name, path, marker, layout, head] of htmlRoutes) {
   const response = await get(path, { headers: { host: "app.example.hns" } });
@@ -144,15 +154,17 @@ const apiBody = await api.text();
 check("API route serves JSON", api.status === 200 && api.headers.get("content-type")?.includes("application/json") === true, `${api.status}`);
 check("API route returns health payload", apiBody.includes('"route":"health"'));
 
-const api404 = await get("/seam/api?status=404", { headers: { host: "app.example.hns" } });
-const api404Body = await api404.text();
-check("API 404 maps to SSR route 404", api404.status === 404 && api404Body.includes('data-api-error="404"'));
-const api500 = await get("/seam/api?status=500", { headers: { host: "app.example.hns" } });
-const api500Body = await api500.text();
-check("API 5xx maps to error boundary", api500.status === 500 && api500Body.includes('data-api-error="boundary"'));
-const apiFeed = await get("/seam/api?feed=1", { headers: { host: "app.example.hns" } });
-const apiFeedBody = await apiFeed.text();
-check("Worker SSR fetches public feed endpoint", apiFeed.status === 200 && apiFeedBody.includes('data-api-feed="success"'));
+if (seamsEnabled) {
+  const api404 = await get("/seam/api?status=404", { headers: { host: "app.example.hns" } });
+  const api404Body = await api404.text();
+  check("API 404 maps to SSR route 404", api404.status === 404 && api404Body.includes('data-api-error="404"'));
+  const api500 = await get("/seam/api?status=500", { headers: { host: "app.example.hns" } });
+  const api500Body = await api500.text();
+  check("API 5xx maps to error boundary", api500.status === 500 && api500Body.includes('data-api-error="boundary"'));
+  const apiFeed = await get("/seam/api?feed=1", { headers: { host: "app.example.hns" } });
+  const apiFeedBody = await apiFeed.text();
+  check("Worker SSR fetches public feed endpoint", apiFeed.status === 200 && apiFeedBody.includes('data-api-feed="success"'));
+}
 
 const notFound = await get("/route-that-does-not-exist", { headers: { host: "app.example.hns" } });
 const notFoundBody = await notFound.text();
@@ -161,19 +173,21 @@ check("catch-all route renders not-found marker", notFoundBody.includes('data-ro
 
 const importedRoot = await get("/c/demo/threads", { headers: { host: "example.hns" } });
 check("imported sovereign root without forwarding metadata is deliberate 404", importedRoot.status === 404);
-check("imported sovereign root exposes route outcome", importedRoot.headers.get("x-solid-route-outcome") === "sovereign-forwarding-metadata-required");
-const forwardedHost = await get("/seam/host", {
-  headers: {
-    host: "example.hns",
-    "x-pirate-hns-trusted-forwarder": "1",
-    "x-pirate-hns-community-id": "demo",
-    "x-pirate-hns-community-route": "demo",
-  },
-});
-const forwardedHostBody = await forwardedHost.text();
-check("forwarded sovereign route serves", forwardedHost.status === 200, String(forwardedHost.status));
-check("forwarded host context reaches routes", forwardedHostBody.includes('data-host-surface="sovereign-apex"') && forwardedHostBody.includes("host-community-slug: <!--$-->demo"));
-check("forwarded metadata is exposed", forwardedHostBody.includes('data-forwarding-metadata="1"') && forwardedHostBody.includes("forwarding-metadata: <!--$-->present"));
+check("imported sovereign root exposes route outcome", importedRoot.headers.get("x-solid-route-outcome") === "forwarding-metadata-required");
+if (seamsEnabled) {
+  const forwardedHost = await get("/seam/host", {
+    headers: {
+      host: "example.hns",
+      "x-pirate-hns-trusted-forwarder": "1",
+      "x-pirate-hns-community-id": "demo",
+      "x-pirate-hns-community-route": "demo",
+    },
+  });
+  const forwardedHostBody = await forwardedHost.text();
+  check("forwarded sovereign route serves", forwardedHost.status === 200, String(forwardedHost.status));
+  check("forwarded host context reaches routes", forwardedHostBody.includes('data-host-surface="sovereign-apex"') && forwardedHostBody.includes("host-community-slug: <!--$-->demo"));
+  check("forwarded metadata is exposed", forwardedHostBody.includes('data-forwarding-metadata="1"') && forwardedHostBody.includes("forwarding-metadata: <!--$-->present"));
+}
 
 for (const result of checks) console.log(`${result.ok ? "PASS" : "FAIL"} ${result.name}${result.detail ? ` (${result.detail})` : ""}`);
 const failures = checks.filter(result => !result.ok);

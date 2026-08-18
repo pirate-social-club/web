@@ -372,16 +372,23 @@ try {
   });
   await logApiVersionPhase(page, "back navigation", violations);
 
-  await page.locator('a[href="/seam/host"]').first().click();
-  await page.waitForURL(url => url.pathname === "/seam/host");
-  await page.locator('[data-route-path="/seam/host"]').waitFor({ state: "attached" });
-  await assertHead(page, "route disposal restores fallback head", {
-    title: "Pirate Web",
-    canonical: null,
-    description: null,
-    ogTitle: null,
-    ogType: null,
-  });
+  if (process.env.SOLID_SEAMS_ENABLED === "1") {
+    await page.locator('a[href="/seam/host"]').first().click();
+    await page.waitForURL(url => url.pathname === "/seam/host");
+    await page.locator('[data-route-path="/seam/host"]').waitFor({ state: "attached" });
+    await assertHead(page, "route disposal restores fallback head", {
+      title: "Pirate Web",
+      canonical: null,
+      description: null,
+      ogTitle: null,
+      ogType: null,
+    });
+  } else {
+    const seamResponse = await page.request.get(new URL("/seam/host", base).toString());
+    if (seamResponse.status() !== 404) {
+      throw new Error(`Production/staging seam route returned HTTP ${seamResponse.status()}`);
+    }
+  }
 
   await page.goBack({ waitUntil: "networkidle" });
   await page.waitForURL(url => url.pathname === "/");

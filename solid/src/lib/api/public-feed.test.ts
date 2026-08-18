@@ -4,6 +4,7 @@ import {
   normalizeKeysetCursor,
   normalizePublicVideoFeed,
   publicVideoFeedKey,
+  requestForFeed,
 } from "./public-feed";
 
 describe("public video feed normalization", () => {
@@ -35,5 +36,18 @@ describe("public video feed normalization", () => {
       "best",
       "next_1",
     ]);
+  });
+
+  test("does not rewrite a local preview request to the production API host", () => {
+    const previousWindow = globalThis.window;
+    Object.defineProperty(globalThis, "window", {
+      configurable: true,
+      value: { location: { href: "http://localhost:4173/" } },
+    });
+    try {
+      expect(requestForFeed()?.url).toBe("http://localhost:4173/");
+    } finally {
+      Object.defineProperty(globalThis, "window", { configurable: true, value: previousWindow });
+    }
   });
 });

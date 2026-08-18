@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { resolveApiOriginFromHostname } from "./origin";
+import { resolveApiOriginFromExecution, resolveApiOriginFromHostname } from "./origin";
 import { resolveApiUrl } from "./request-origin";
 
 describe("API origin resolution", () => {
@@ -18,6 +18,11 @@ describe("API origin resolution", () => {
   test("request URLs preserve the selected origin", () => {
     const request = new Request("https://example.hns/seam/api");
     expect(resolveApiUrl("/__version", request)).toBe("https://api.pirate.sc/__version");
+  });
+
+  test("local and staging execution never fall through to production for HNS hosts", () => {
+    expect(resolveApiOriginFromExecution("app.example.hns", "local")).toBe("http://127.0.0.1:8787");
+    expect(resolveApiOriginFromExecution("app.example.hns", "staging")).toBe("https://api-staging.pirate.sc");
   });
 
 });

@@ -173,6 +173,28 @@ References: [KV consistency][kv], [Worker versions and deployments][versions].
 [kv]: https://developers.cloudflare.com/kv/concepts/how-kv-works/
 [versions]: https://developers.cloudflare.com/workers/versions-and-deployments/
 
+### ADR-007 — Public feed precedes public profile
+
+**Decision.** After Slice 0, the first product routes are the signed-out public
+home feed and community preview. The canonical `/u/:handle` profile route is
+deferred until api-next has a reviewed public-profile-by-handle contract; the
+existing `/profiles/me` contract is authenticated self-profile only and must
+not be treated as an equivalent API.
+
+**Because.** `GetPublicHomeFeed` and `GetCommunityPreview` already exist in the
+frozen v1 contract and support a read-only, signed-out strangler slice. Shipping
+`/u/:handle` first would either bind Solid to the legacy API or make the Web
+lane invent a public-profile contract that api-next does not expose.
+
+**Consequences.** The feed and community-preview slices establish the shared
+`solid-ui` product spine, public API adapter, PostCard/feed behavior, route
+dispatch, and rollback evidence. Profile work may prepare fixture-driven UI,
+but it cannot enter a traffic ramp until the missing contract is frozen and
+wired. Sovereign-profile and public-agent host slices remain later work.
+
+**Revisit.** Promote `/u/:handle` when api-next publishes and composes a public
+profile lookup with the required not-found, cache, privacy, and SEO semantics.
+
 ## Workspace topology
 
 ```
@@ -298,7 +320,7 @@ meaningful.
 
 One to two working days. A signature step, not an engineering step.
 
-1. ADR-001 through ADR-006 reviewed and merged.
+1. ADR-001 through ADR-007 reviewed and merged.
 2. Web Platform DRI and Design System DRI named, with ADR-003's abort triggers
    explicitly accepted by both.
 3. Dates and staffing agreed for steps 2 through 4. Later steps sized only.
@@ -309,8 +331,9 @@ One to two working days. A signature step, not an engineering step.
 
 ### Step 2 — Reproducible workspace, closed perimeter
 
-Estimate 2–3 weeks, two engineers. Scope is bounded to what Slice 0 and Slice 1a
-need; anything proving a future route belongs to that route's slice.
+Estimate 2–3 weeks, two engineers. Scope is bounded to what Slice 0 and the
+first product sub-slice need; anything proving a future route belongs to that
+route's slice.
 
 1. A clean clone with no environment variables set installs, typechecks,
    builds, and passes tests. Enforced by a `solid-clean-checkout` job in
@@ -382,9 +405,12 @@ sub-slices. Each clears the checkpoint and the parity criteria before its ramp.
 
 | Sub-slice | Scope | Brings with it |
 | --- | --- | --- |
-| 1a | canonical `/u/:handle` | the `solid-ui` dependency spine |
-| 1b | sovereign profile host | the HNS host path under real traffic |
-| 1c | `public-agent` — `/a/:agent` and its host | `agent-discovery` extraction |
+| 1a | canonical `/` public home feed | the `solid-ui` product spine, public API adapter, PostCard, and feed behavior |
+| 1b | canonical `/c/:slug` community preview | community identity, membership-state presentation, and community-route parity |
+| 1c | canonical `/u/:handle`, after its api-next contract is frozen | public profile UI and profile-route parity |
+
+The sovereign-profile host and `public-agent` host slices follow these
+canonical routes. They do not hold up the first signed-out product ramp.
 
 Per sub-slice:
 
@@ -413,7 +439,7 @@ Non-blocking. Produces evidence and a work list; authorizes nothing.
 committee.**
 
 - **Owner:** Web Platform DRI.
-- **Timing:** after Slice 1a reaches full traffic and has accumulated
+- **Timing:** after the first product sub-slice reaches full traffic and has accumulated
   representative data.
 - **Required disposition:** exactly one of `accept`, `optimize`, or
   `architecture reassessment`.
@@ -502,7 +528,7 @@ Known work deliberately not being done yet, with the step that claims it.
 | `agent-discovery` extraction | Slice 1c | Arrives with the route that needs it. |
 | Sitemap, remaining `.well-known`, API-doc routes | After Slice 0 | Slice 0 only needs enough to prove dispatch and rollback. |
 | Telegram framing and embed CSP proof | Their slices | ADR-004 scopes CSP proof to the shipped surface. |
-| Automatic rollback | After Slice 1a | Alert plus rehearsed manual rollback first; automate once signals are trustworthy. |
+| Automatic rollback | After the first product sub-slice | Alert plus rehearsed manual rollback first; automate once signals are trustworthy. |
 | Public video feed defects — observer misses paginated cards; pagination failure is unrecoverable because `cursor` is never cleared; play/pause label tracks `activeId` rather than playback state; caption track has no source; arrow keys stolen from `<video controls>`; card and video maps grow unbounded; `data-feed-status` ignores pagination errors; hardcoded colors and radii | Step 7 | `home` is an authenticated route kind. It will be rewritten on `solid-ui`, not repaired. |
 | `pirate-web-solid` documentation contradictions | Step 2 | Docs are rewritten during absorption. |
 | `style-src 'unsafe-inline'` tightening | Scheduled separately | Out of scope per ADR-004. |
@@ -702,8 +728,8 @@ From P1 onward:
 | --- | --- |
 | P1 skeleton | `solid-clean-checkout` green on `main`; the six criteria above satisfied |
 | P perimeter | Step 2's thirteen criteria and blockers B1–B13 red-to-green |
-| U | Slice 1a's component spine exported, with Storybook, interaction tests, axe, SSR tests, and the app hydration fixture green as one gate |
-| R | `/privacy` at semantic, status, and header parity; `robots.txt` byte-identical; Slice 1a meeting all eight parity criteria; `route-contracts` entries flipped |
+| U | The first product sub-slice's component spine exported, with Storybook, interaction tests, axe, SSR tests, and the app hydration fixture green as one gate |
+| R | `/privacy` at semantic, status, and header parity; `robots.txt` byte-identical; the first product sub-slice meeting all eight parity criteria; `route-contracts` entries flipped |
 
 ### Cross-lane defects
 

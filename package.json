@@ -71,6 +71,7 @@
     "@pirate-social-club/karaoke-runtime": "file:./packages/karaoke-runtime",
     "@pirate/api-client": "file:./solid/vendor/api-next",
     "@pirate/api-contracts": "file:../api/services/contracts",
+    "@solidjs/web": "2.0.0-rc.0",
     "@pirate/bookings-domain": "file:./packages/bookings-domain",
     "@privy-io/react-auth": "^3.33.1",
     "@radix-ui/react-accordion": "^1.2.12",
@@ -141,6 +142,7 @@
     "typescript": "^5.9.3",
     "undici": "^8.5.0",
     "vitest": "3.2.4",
+    "vite-plugin-solid": "3.0.0-next.27",
     "vite": "^8.0.16",
     "wrangler": "4.81.1"
   },

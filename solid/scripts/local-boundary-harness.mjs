@@ -296,7 +296,7 @@ export async function startSolidBoundaryHarness(options = {}) {
   const workerConfig = path.join(repoRoot, "solid/dist/ssr/wrangler.json");
   const output = [];
   const worker = spawn("bunx", [
-    "wrangler", "dev", "--config", workerConfig, "--local", "--port", String(workerPort),
+    "wrangler@4.123.0", "dev", "--config", workerConfig, "--local", "--port", String(workerPort),
     "--compatibility-date", LOCAL_COMPATIBILITY_DATE,
     "--var", "SOLID_ENV:local",
     "--var", `SOLID_EDGE_HMAC_KEY:${LOCAL_SOLID_EDGE_HMAC_KEY}`,

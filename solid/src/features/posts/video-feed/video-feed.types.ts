@@ -1,4 +1,4 @@
-export type VideoFeedCapability = "unknown" | "ready" | "locked" | "processing" | "failed" | "unavailable";
+type VideoFeedCapability = "unknown" | "ready" | "locked" | "processing" | "failed" | "unavailable";
 
 export interface VideoFeedItem {
   booking?: {

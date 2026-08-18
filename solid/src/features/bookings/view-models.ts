@@ -18,7 +18,7 @@ export type BookingState =
   | "refunded"
   | "disputed";
 
-export interface BookingAllocation {
+interface BookingAllocation {
   legs: Array<{
     recipientType: "host" | "platform_fee";
     shareBps: number;

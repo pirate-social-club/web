@@ -303,7 +303,10 @@ export async function startSolidBoundaryHarness(options = {}) {
     "--var", "SOLID_EDGE_MAX_CLOCK_SKEW_SECONDS:300",
     "--no-show-interactive-dev-session",
   ], {
-    cwd: repoRoot,
+    // Resolve Wrangler from the Solid package install. The root Web install
+    // pins a different undici/Miniflare graph for the React Worker; using it
+    // here can bundle an incompatible webidl implementation into workerd.
+    cwd: path.resolve(repoRoot, "solid"),
     env: { ...process.env, WRANGLER_SEND_METRICS: "false" },
     stdio: ["ignore", "pipe", "pipe"],
   });

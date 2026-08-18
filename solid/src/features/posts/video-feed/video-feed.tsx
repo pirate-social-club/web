@@ -5,7 +5,7 @@ import { fetchPublicVideoFeedPage } from "../../../lib/api/public-feed";
 import type { VideoFeedItem } from "./video-feed.types";
 import { canPlayVideo, getMediaWindowIds, getVideoFeedActionLabel, narrowVideoFeedItems, toVerticalFeedPost } from "./video-feed-model";
 
-export type PublicVideoFeedPageLoader = typeof fetchPublicVideoFeedPage;
+type PublicVideoFeedPageLoader = typeof fetchPublicVideoFeedPage;
 
 export interface VideoFeedProps {
   items: VideoFeedItem[];

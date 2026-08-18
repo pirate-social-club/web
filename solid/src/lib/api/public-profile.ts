@@ -7,7 +7,7 @@ import { resolveApiUrl } from "./request-origin";
 
 export type PublicProfileResponse = GetPublicProfilesHandleResponse;
 
-export interface PublicProfileCommunity {
+interface PublicProfileCommunity {
   readonly community: string;
   readonly displayName: string;
   readonly created: number | string;
@@ -34,7 +34,7 @@ export type PublicProfileLoadResult =
   | { readonly kind: "not-found"; readonly status: 404 }
   | { readonly kind: "upstream-error"; readonly status: 502 };
 
-export const PUBLIC_PROFILE_CACHE_CONTROL = "public, max-age=60, s-maxage=300";
+const PUBLIC_PROFILE_CACHE_CONTROL = "public, max-age=60, s-maxage=300";
 
 export interface PublicProfileResponsePolicy {
   readonly status: 200 | 302 | 400 | 404 | 502;
@@ -138,7 +138,7 @@ export function profileResponsePolicy(
   };
 }
 
-export function classifyPublicProfileError(error: unknown): Exclude<PublicProfileLoadResult, { kind: "success" }> {
+function classifyPublicProfileError(error: unknown): Exclude<PublicProfileLoadResult, { kind: "success" }> {
   if (error && typeof error === "object" && "status" in error && typeof error.status === "number") {
     if (error.status === 400) return { kind: "invalid", status: 400 };
     if (error.status === 404) return { kind: "not-found", status: 404 };

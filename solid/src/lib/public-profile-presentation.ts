@@ -6,8 +6,8 @@ export interface PublicProfileCopy {
   readonly defaultDescription: string;
 }
 
-export const PUBLIC_PROFILE_DEFAULT_SHARE_IMAGE_PATH = "/og/pirate-share-card.jpg";
-export const PUBLIC_PROFILE_META_DESCRIPTION_MAX_LENGTH = 180;
+const PUBLIC_PROFILE_DEFAULT_SHARE_IMAGE_PATH = "/og/pirate-share-card.jpg";
+const PUBLIC_PROFILE_META_DESCRIPTION_MAX_LENGTH = 180;
 
 function interpolate(message: string, values: Readonly<Record<string, string | number>>): string {
   return message.replace(/\{([a-zA-Z][a-zA-Z0-9_]*)\}/g, (token, key: string) =>
@@ -34,7 +34,7 @@ export function publicProfileDescription(data: PublicProfileView, copy: PublicPr
   return truncatePublicProfileDescription(interpolate(copy.defaultDescription, { name }));
 }
 
-export function truncatePublicProfileDescription(value: string): string {
+function truncatePublicProfileDescription(value: string): string {
   const normalized = value.replace(/\s+/g, " ").trim();
   if (normalized.length <= PUBLIC_PROFILE_META_DESCRIPTION_MAX_LENGTH) return normalized;
   return `${normalized.slice(0, PUBLIC_PROFILE_META_DESCRIPTION_MAX_LENGTH - 3).trimEnd()}...`;

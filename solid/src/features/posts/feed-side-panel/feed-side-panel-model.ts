@@ -3,7 +3,7 @@ export type FeedPanelState =
   | { kind: "comments"; itemId: string; postId: string }
   | { kind: "booking"; itemId: string; handle: string; startingPriceCents: number };
 
-export const FEED_DOCK_MIN_WIDTH = 1280;
+const FEED_DOCK_MIN_WIDTH = 1280;
 export const FEED_DOCK_QUERY = `(min-width: ${FEED_DOCK_MIN_WIDTH}px)`;
 
 export function isFeedDockViewport(width: number): boolean {

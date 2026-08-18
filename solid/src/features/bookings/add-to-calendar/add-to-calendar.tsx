@@ -2,8 +2,6 @@ import { Button, cn } from "../../../design-system";
 import type { IanaTz, IsoInstant } from "../view-models";
 import { buildIcs, triggerDownload } from "./calendar-file";
 
-export { buildIcs, formatIcsTimestamp, triggerDownload } from "./calendar-file";
-
 export interface AddToCalendarProps {
   bookingTitle: string;
   hostName: string;

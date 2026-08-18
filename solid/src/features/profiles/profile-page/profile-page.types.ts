@@ -11,7 +11,7 @@ export interface ProfileSidebarStat {
   note?: string;
 }
 
-export interface ProfileVerificationItem {
+interface ProfileVerificationItem {
   label: string;
   value: string;
   note?: string;

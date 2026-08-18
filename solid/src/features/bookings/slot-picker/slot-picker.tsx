@@ -8,13 +8,6 @@ import {
   getSlotOptionState,
 } from "./slot-picker-model";
 
-export {
-  getAdjacentSlotIndex,
-  getSlotIndexForKey,
-  getSlotOptionState,
-  type SlotOptionState,
-} from "./slot-picker-model";
-
 export interface SlotPickerProps {
   slots: ResolvedSlot[];
   viewerTimezone: IanaTz;

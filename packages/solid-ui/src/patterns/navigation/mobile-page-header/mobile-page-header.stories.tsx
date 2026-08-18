@@ -9,7 +9,25 @@ const meta = {
   tags: ["autodocs"],
   args: { title: "Settings", onBackClick: fn() },
   argTypes: { backIcon: { table: { disable: true } }, closeIcon: { table: { disable: true } }, class: { table: { disable: true } }, trailingAction: { table: { disable: true } } },
-  parameters: { viewport: { defaultViewport: "mobile1" }, docs: { description: { component: "A compact page header with a leading navigation affordance, centered title, optional avatar/title action, and trailing slot." } } },
+  globals: { viewport: { value: "mobile1", isRotated: false } },
+  parameters: {
+    layout: "fullscreen",
+    docs: {
+      description: {
+        component:
+          "A compact page header with a leading navigation affordance, centered title, optional avatar/title action, and trailing slot. The header is fixed to the top of its containing block; the story decorator establishes one so autodocs renders each example in place instead of stacking them on the viewport.",
+      },
+    },
+  },
+  decorators: [
+    (Story) => (
+      // `transform` creates a containing block so the fixed header resolves
+      // against this wrapper rather than the viewport (needed for autodocs).
+      <div style={{ position: "relative", "min-height": "12rem", width: "100%", transform: "translateZ(0)" }}>
+        <Story />
+      </div>
+    ),
+  ],
 } satisfies Meta<typeof MobilePageHeader>;
 
 export default meta;

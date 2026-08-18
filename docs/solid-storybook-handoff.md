@@ -48,11 +48,21 @@ parity manifest. Per the coordinator brief:
 
 - `MobileFooterNav` now uses the CSS-first DS API; `forceMobile` was removed
   from this surface only. The prop remains live on `AppHeader`, `Modal`, and
-  `MobilePageHeader` (including wallet feature callers), so do not copy it back
-  into the footer API.
-- Replacing `MobilePageHeader` with the DS callback-driven implementation is a
-  separate follow-up: it currently composes the Web-owned `AppHeader` and
-  passes `forceMobile` through that boundary.
+  wallet modal callers, so do not copy it back into the footer API or the
+  page-header API.
+- `MobilePageHeader` now uses the DS callback-driven implementation directly;
+  it no longer composes `AppHeader` or passes `forceMobile` through that
+  boundary. Its fixed positioning and safe-area padding keep callers within the
+  existing shell clearance, though the header itself grows from `h-16` (4rem,
+  the old AppHeader mobile branch) to `h-[var(--header-height)]` (4.5rem);
+  callers pad `calc(env(safe-area-inset-top)+5rem)`, so nothing clips. The back
+  affordance now defaults to the accessible name `Back` where `AppHeader`
+  defaults to `Go back`; both remain overridable props. With neither
+  `onBackClick` nor `onCloseClick` supplied the leading slot renders empty —
+  `AppHeader`'s hamburger fallback is not carried over, since
+  `MobilePageHeader` never passed `onMenuClick` and that control was inert.
+  Its Solid callers use only the callback-driven title/back/close/trailing
+  surface.
 - `ResponsiveOptionSelect` is reconciled against the DS implementation. It
   affects live B8d wallet consumers and wallet SSR tests because the mobile
   branch changes to an `aria-pressed` button group and the desktop branch owns

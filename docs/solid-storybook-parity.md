@@ -12,6 +12,14 @@ product/composition files, or 119/177 total. 58 product/composition sources rema
 not done (57 pending, one moved to B12). Counts are by React source file, not by
 Solid story export or catalog file.
 
+Evidence note: `done` is a source-disposition status, not a claim that every
+row has identical runtime evidence. Row 42 (Join Request) is explicitly
+`source-accepted / runtime-gate-pending`: its model/SSR semantics and shared
+modal suite passed, but fresh-worktree Storybook, axe, and browser execution
+was blocked by missing compatible Solid/Storybook dependencies. A dependency
+bootstrap and runtime sweep must clear that row before treating the full
+119/177 count as uniformly runtime-verified.
+
 ## A. Primitives — covered by the existing Solid catalog (47)
 
 React `src/components/primitives/<name>.stories.tsx` → `packages/solid-ui/src/<target>/<name>.stories.tsx`.
@@ -123,7 +131,7 @@ Notes: React `sonner.stories.tsx` maps to the Solid `overlays/toast` implementat
 | 39 | `components/compositions/community/handle-policy-editor/stories/handle-policy-editor.stories.tsx` | solid/src/features/community | B10 | pending |
 | 40 | `components/compositions/community/integrations/stories/community-integrations.stories.tsx` | solid/src/features/community | B10 | pending |
 | 41 | `components/compositions/community/interaction-gate-modal/stories/interaction-gate-modal.stories.tsx` | solid/src/features/community | B10 | pending |
-| 42 | `components/compositions/community/join-request-modal/stories/join-request-modal.stories.tsx` | solid/src/features/community | B10 | done — solid/src/features/community/join-request-modal/join-request-modal.stories.tsx |
+| 42 | `components/compositions/community/join-request-modal/stories/join-request-modal.stories.tsx` | solid/src/features/community | B10 | done — source-accepted; runtime-gate-pending — solid/src/features/community/join-request-modal/join-request-modal.stories.tsx |
 | 43 | `components/compositions/community/labels-editor/stories/labels-editor.stories.tsx` | solid/src/features/community | B10 | pending |
 | 44 | `components/compositions/community/links-editor/stories/links-editor.stories.tsx` | solid/src/features/community | B10 | done — solid/src/features/community/links-editor/links-editor.stories.tsx |
 | 45 | `components/compositions/community/machine-access/stories/machine-access.stories.tsx` | solid/src/features/community | B10 | pending |

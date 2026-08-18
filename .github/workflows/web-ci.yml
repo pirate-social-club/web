@@ -53,6 +53,12 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      - name: Install Solid workspace dependencies for dead-code analysis
+        shell: bash
+        run: |
+          bun install --cwd solid --frozen-lockfile
+          bun install --cwd packages/solid-ui --frozen-lockfile
+
       - name: Install API workspace dependency dependencies
         working-directory: api/services/efp-shared
         run: bun install --frozen-lockfile
@@ -229,6 +235,9 @@ jobs:
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
+
+      - name: Install Solid dependencies for cross-boundary unit tests
+        run: bun install --cwd solid --frozen-lockfile
 
       - name: Install API workspace dependency dependencies
         working-directory: api/services/efp-shared

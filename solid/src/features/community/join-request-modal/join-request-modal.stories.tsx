@@ -69,6 +69,12 @@ function JoinRequestStory(props: Pick<CommunityJoinRequestModalProps, "initialNo
 const meta = {
   title: "Compositions/Community/JoinRequestModal",
   component: CommunityJoinRequestModal,
+  args: {
+    communityName: "Signal Room",
+    onOpenChange: () => undefined,
+    onSubmit: () => undefined,
+    open: true,
+  },
   parameters: {
     layout: "fullscreen",
     a11y: { test: "error" },

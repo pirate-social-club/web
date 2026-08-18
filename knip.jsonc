@@ -1,7 +1,6 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema-jsonc.json",
   "ignore": [
-    "scripts/story-cdr-direct-read-check.ts",
     "src/lib/auth/privy-react-auth.ssr.tsx",
     "src/lib/dotenv-browser-shim.ts",
     "src/lib/rwsdk-router.client.ts",
@@ -41,6 +40,37 @@
   "ignoreIssues": {
     // Mock modules expose reusable fixture types even when the app does not import every type.
     "src/app/mocks/types.ts": ["types"],
+    // Accepted Solid migration modules expose composition contracts before every
+    // product route consumes them. Keep this baseline file-specific so it can
+    // shrink as cutover routes replace Storybook-only consumers.
+    "solid/src/features/bookings/add-to-calendar/add-to-calendar.tsx": ["exports"],
+    "solid/src/features/bookings/add-to-calendar/calendar-file.ts": ["exports"],
+    "solid/src/features/bookings/booking-cancellation-dialog/booking-cancellation-dialog.tsx": ["types"],
+    "solid/src/features/bookings/profile-bookings-section/profile-bookings-section-model.ts": ["exports"],
+    "solid/src/features/bookings/profile-bookings-section/profile-bookings-section.tsx": ["types"],
+    "solid/src/features/bookings/slot-picker/slot-picker.tsx": ["exports", "types"],
+    "solid/src/features/bookings/view-models.ts": ["types"],
+    "solid/src/features/community/archive-page/community-archive-page.tsx": ["types"],
+    "solid/src/features/community/links-editor/community-links-editor-page.tsx": ["exports", "types"],
+    "solid/src/features/community/membership-requests-page/membership-requests-page-model.ts": ["types"],
+    "solid/src/features/community/rules-editor/community-rules-editor-page.tsx": ["exports"],
+    "solid/src/features/community/your-communities-page/your-communities-page.tsx": ["duplicates"],
+    "solid/src/features/posts/feed-side-panel/feed-side-panel-model.ts": ["exports"],
+    "solid/src/features/posts/feed-side-panel/feed-side-panel.tsx": ["exports"],
+    "solid/src/features/posts/video-feed/video-feed.tsx": ["types"],
+    "solid/src/features/posts/video-feed/video-feed.types.ts": ["types"],
+    "solid/src/features/profiles/edit-profile-form/edit-profile-form.model.ts": ["exports"],
+    "solid/src/features/profiles/edit-profile-form/edit-profile-form.tsx": ["exports"],
+    "solid/src/features/profiles/edit-profile-form/edit-profile-form.types.ts": ["types"],
+    "solid/src/features/profiles/profile-page/profile-page-fixtures.ts": ["exports"],
+    "solid/src/features/profiles/profile-page/profile-page.model.ts": ["exports"],
+    "solid/src/features/profiles/profile-page/profile-page.types.ts": ["types"],
+    "solid/src/features/wallet/wallet-hub.types.ts": ["types"],
+    "solid/src/features/wallet/wallet-receive-sheet-model.ts": ["exports"],
+    "solid/src/features/wallet/wallet-receive-sheet.tsx": ["exports"],
+    "solid/src/features/wallet/wallet-send-sheet.types.ts": ["types"],
+    "solid/src/lib/api/public-profile.ts": ["exports", "types"],
+    "solid/src/lib/public-profile-presentation.ts": ["exports"],
     // These exports are intentional public/compatibility seams for external consumers and
     // routes that have not migrated to the create-style accessors yet.
     "packages/solid-ui/src/patterns/navigation/sidebar/index.ts": ["exports"],

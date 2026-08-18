@@ -89,12 +89,12 @@ export function CommunityJoinRequestModal(props: CommunityJoinRequestModalProps)
                 </Show>
               </span>
               {/* @ts-expect-error ModalTitle forwards dir to its semantic heading. */}
-              <ModalTitle class="min-w-0 text-2xl leading-8 sm:text-3xl sm:leading-tight" dir="auto" leading="tight" variant="h1">
+              <ModalTitle class="min-w-0" dir="auto" leading="tight" variant="h1">
                 {props.submitted ? copy().submittedTitle : copy().title}
               </ModalTitle>
             </div>
             {/* @ts-expect-error ModalDescription forwards dir to its semantic description. */}
-            <ModalDescription class="w-full text-lg leading-8 text-foreground" dir="auto" leading="roomy" variant="body">
+            <ModalDescription class="w-full text-foreground" dir="auto" leading="roomy" variant="body">
               {props.submitted ? copy().submittedDescription : copy().description}
             </ModalDescription>
           </ModalHeader>

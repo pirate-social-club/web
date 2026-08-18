@@ -61,6 +61,11 @@ import { applySecurityHeaders } from "@/lib/security/csp";
 import { buildVersionResponse, type BuildVersionEnv } from "@/lib/build-version";
 import { telegramCommunityJoinRedirect } from "@/lib/telegram-join-redirect";
 import {
+  dispatchSolidRequestAtEdge,
+  sanitizeSolidDispatchResponse,
+  type SolidEdgeEnv,
+} from "@/lib/solid-edge-dispatcher";
+import {
   buildAgentSeoMetadata,
   buildOpenGraphUrl,
   buildCommunitySeoMetadata,
@@ -682,12 +687,31 @@ export default {
           : "HNS forwarder authentication failed.",
         {
           status: forwarderAuthentication.rejection === "configuration" ? 503 : 403,
-          headers: { "content-type": "text/plain; charset=utf-8" },
+          headers: {
+            "cache-control": "no-store",
+            "content-type": "text/plain; charset=utf-8",
+          },
         },
       );
     }
     const initialEffectiveUrl = resolveEffectiveRequestUrl(request);
     const initialPathname = new URL(initialEffectiveUrl).pathname;
+    const solidDispatch = await dispatchSolidRequestAtEdge(
+      request,
+      initialEffectiveUrl,
+      env as Env & SolidEdgeEnv,
+    );
+    const publicSolidDispatch = sanitizeSolidDispatchResponse(solidDispatch);
+    if (publicSolidDispatch.kind === "response" || publicSolidDispatch.kind === "solid") {
+      return publicSolidDispatch.response;
+    }
+    if (solidDispatch.kind === "react" && solidDispatch.reason !== "route-not-dispatchable") {
+      console.info("[solid-dispatch] React fallback", {
+        path: initialPathname,
+        reason: solidDispatch.reason,
+      });
+    }
+
     if (initialPathname === "/__version") {
       return buildVersionResponse("web", env as BuildVersionEnv);
     }

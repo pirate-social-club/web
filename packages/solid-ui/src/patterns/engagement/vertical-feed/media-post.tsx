@@ -1,10 +1,11 @@
-import { Show, untrack } from "solid-js";
+import { createEffect, Show, untrack } from "solid-js";
 
+import { Type } from "@/components/data-display/type/type";
 import { cn } from "@/lib/cn";
 
 import { MediaActions } from "./media-actions";
 import type { HapticKind, MediaPostData } from "./types";
-import { useVideoPlayback } from "./video-playback";
+import { createVideoPlayback } from "./video-playback";
 import { VideoPlayer } from "./video-player";
 
 export interface MediaPostProps extends MediaPostData {
@@ -16,6 +17,10 @@ export interface MediaPostProps extends MediaPostData {
   hasMobileFooter?: boolean;
   /** Bypass the first-interaction autoplay gate. */
   forceAutoplay?: boolean;
+  /** Controlled audio state supplied by the feed host. */
+  muted?: boolean;
+  /** Hide the shared author/action overlays when a product host owns chrome. */
+  showChrome?: boolean;
   class?: string;
   onLikeClick?: () => void;
   onShareClick?: () => void;
@@ -23,6 +28,7 @@ export interface MediaPostProps extends MediaPostData {
   onAuthorClick?: () => void;
   onSoundtrackClick?: () => void;
   onMuteToggle?: (muted: boolean) => void;
+  onTimeUpdate?: (postId: string, currentTime: number, duration: number) => void;
   /** Called once per post after 3 seconds of cumulative watch time. */
   onViewed?: (postId: string) => void;
   onHaptic?: (kind: HapticKind) => void;
@@ -40,10 +46,19 @@ const VIEW_THRESHOLD_SECONDS = 3;
 export function MediaPost(props: MediaPostProps) {
   // Pass autoplay as a getter so scroll-driven changes stay reactive.
   // forceAutoplay is a construction-time option; read it untracked.
-  const playback = useVideoPlayback({
+  const playback = createVideoPlayback({
     autoplay: () => props.autoplay ?? true,
     forceAutoplay: untrack(() => props.forceAutoplay),
   });
+
+  createEffect(
+    () => props.muted,
+    (muted) => {
+      if (muted !== undefined && muted !== untrack(playback.isMuted)) {
+        playback.setIsMuted(muted);
+      }
+    },
+  );
 
   // View tracking lives in the timeupdate event handler rather than an
   // effect, so the accumulation locals and the onViewed emit never run in a
@@ -53,8 +68,9 @@ export function MediaPost(props: MediaPostProps) {
   let markedViewed = false;
   let trackedPostId: string | undefined;
 
-  const handleTimeUpdate = (time: number) => {
+  const handleTimeUpdate = (time: number, duration: number) => {
     playback.handleTimeUpdate(time);
+    props.onTimeUpdate?.(props.id, time, duration);
 
     if (props.id !== trackedPostId) {
       watchTime = 0;
@@ -82,6 +98,14 @@ export function MediaPost(props: MediaPostProps) {
     const nextMuted = !playback.isMuted();
     playback.handleToggleMute();
     props.onMuteToggle?.(nextMuted);
+  };
+
+  const handleTogglePlay = () => {
+    const wasMuted = playback.isMuted();
+    playback.handleTogglePlay();
+    if (wasMuted) {
+      props.onMuteToggle?.(false);
+    }
   };
 
   // Bottom insets clear the host app's mobile tab bar when present.
@@ -115,113 +139,122 @@ export function MediaPost(props: MediaPostProps) {
           isPlaying={playback.isPlaying()}
           isMuted={playback.isMuted()}
           priorityLoad={props.priorityLoad}
-          onTogglePlay={playback.handleTogglePlay}
+          onTogglePlay={handleTogglePlay}
           onPlayFailed={playback.handlePlayFailed}
           onTimeUpdate={handleTimeUpdate}
         />
 
         {/* Desktop: post info overlay, bottom left inside the video container.
             Author and soundtrack degrade to plain text when unwired. */}
-        <div class="pointer-events-none absolute bottom-4 left-6 right-20 z-40 max-md:hidden">
+        <Show when={props.showChrome ?? true}>
+          <div class="pointer-events-none absolute bottom-4 left-6 right-20 z-40 max-md:hidden">
           <Show
             when={props.onAuthorClick}
             fallback={
-              <span class="text-lg font-semibold text-white drop-shadow-lg">
+              <span class="text-lg font-semibold text-primary-foreground drop-shadow-lg">
                 @{props.authorName}
               </span>
             }
           >
             <button
               type="button"
-              class="pointer-events-auto cursor-pointer text-lg font-semibold text-white drop-shadow-lg hover:underline"
+              class="pointer-events-auto cursor-pointer text-lg font-semibold text-primary-foreground drop-shadow-lg hover:underline"
               onClick={() => props.onAuthorClick?.()}
             >
               @{props.authorName}
             </button>
           </Show>
           <Show when={props.caption}>
-            <p class="mt-1 line-clamp-2 text-sm text-white/90">{props.caption}</p>
+            <Type as="p" variant="caption" class="mt-1 line-clamp-2 text-primary-foreground/90">
+              {props.caption}
+            </Type>
           </Show>
           <Show when={hasSoundtrack()}>
             <Show
               when={props.onSoundtrackClick}
               fallback={
-                <span class="mt-1 block text-sm text-white/70">
+                <Type as="span" variant="caption" class="mt-1 block text-primary-foreground/70">
                   {props.title}
                   {props.title && props.artist ? " - " : ""}
                   {props.artist}
-                </span>
+                </Type>
               }
             >
               <button
                 type="button"
-                class="pointer-events-auto mt-1 block cursor-pointer text-sm text-white/70 hover:underline"
+                class="pointer-events-auto mt-1 block cursor-pointer hover:underline"
                 onClick={() => props.onSoundtrackClick?.()}
               >
-                {props.title}
-                {props.title && props.artist ? " - " : ""}
-                {props.artist}
+                <Type as="span" variant="caption" class="text-primary-foreground/70">
+                  {props.title}
+                  {props.title && props.artist ? " - " : ""}
+                  {props.artist}
+                </Type>
               </button>
             </Show>
           </Show>
-        </div>
+          </div>
+        </Show>
       </div>
 
-      {/* Mobile: post info, absolute positioned outside the container */}
-      <div
-        class="pointer-events-none absolute left-0 right-0 z-40 p-6 pr-20 md:hidden"
-        style={{ bottom: infoBottomOffset() }}
-      >
+      <Show when={props.showChrome ?? true}>
+        {/* Mobile: post info, absolute positioned outside the container */}
+        <div
+          class="pointer-events-none absolute left-0 right-0 z-40 p-6 pr-20 md:hidden"
+          style={{ bottom: infoBottomOffset() }}
+        >
         <Show
           when={props.onAuthorClick}
           fallback={
-            <span class="text-lg font-semibold text-white drop-shadow-lg">
+            <span class="text-lg font-semibold text-primary-foreground drop-shadow-lg">
               @{props.authorName}
             </span>
           }
         >
           <button
             type="button"
-            class="pointer-events-auto cursor-pointer text-lg font-semibold text-white drop-shadow-lg hover:underline"
+            class="pointer-events-auto cursor-pointer text-lg font-semibold text-primary-foreground drop-shadow-lg hover:underline"
             onClick={() => props.onAuthorClick?.()}
           >
             @{props.authorName}
           </button>
         </Show>
         <Show when={props.caption}>
-          <p class="mt-1 line-clamp-2 text-sm text-white/90 drop-shadow-md">
+          <Type as="p" variant="caption" class="mt-1 line-clamp-2 text-primary-foreground/90 drop-shadow-md">
             {props.caption}
-          </p>
+          </Type>
         </Show>
         <Show when={hasSoundtrack()}>
           <Show
             when={props.onSoundtrackClick}
             fallback={
-              <span class="mt-1 block text-sm text-white/70">
+              <Type as="span" variant="caption" class="mt-1 block text-primary-foreground/70">
                 {props.title}
                 {props.title && props.artist ? " - " : ""}
                 {props.artist}
-              </span>
+              </Type>
             }
           >
             <button
               type="button"
-              class="pointer-events-auto mt-1 block cursor-pointer text-sm text-white/70 hover:underline"
+              class="pointer-events-auto mt-1 block cursor-pointer hover:underline"
               onClick={() => props.onSoundtrackClick?.()}
             >
-              {props.title}
-              {props.title && props.artist ? " - " : ""}
-              {props.artist}
+              <Type as="span" variant="caption" class="text-primary-foreground/70">
+                {props.title}
+                {props.title && props.artist ? " - " : ""}
+                {props.artist}
+              </Type>
             </button>
           </Show>
         </Show>
-      </div>
+        </div>
 
-      {/* Mobile: actions overlay on the right side */}
-      <div
-        class="absolute right-4 z-40 md:hidden"
-        style={{ bottom: actionsBottomOffset() }}
-      >
+        {/* Mobile: actions overlay on the right side */}
+        <div
+          class="absolute right-4 z-40 md:hidden"
+          style={{ bottom: actionsBottomOffset() }}
+        >
         <MediaActions
           authorName={props.authorName}
           authorAvatarUrl={props.authorAvatarUrl}
@@ -240,10 +273,10 @@ export function MediaPost(props: MediaPostProps) {
           onToggleMute={handleToggleMute}
           onHaptic={props.onHaptic}
         />
-      </div>
+        </div>
 
-      {/* Desktop: actions column to the right of the video */}
-      <div class="absolute left-[calc(50%+25vh+20px)] top-1/2 z-40 -translate-y-1/2 max-md:hidden">
+        {/* Desktop: actions column to the right of the video */}
+        <div class="absolute left-[calc(50%+25vh+20px)] top-1/2 z-40 -translate-y-1/2 max-md:hidden">
         <MediaActions
           authorName={props.authorName}
           authorAvatarUrl={props.authorAvatarUrl}
@@ -262,7 +295,8 @@ export function MediaPost(props: MediaPostProps) {
           onToggleMute={handleToggleMute}
           onHaptic={props.onHaptic}
         />
-      </div>
+        </div>
+      </Show>
     </div>
   );
 }

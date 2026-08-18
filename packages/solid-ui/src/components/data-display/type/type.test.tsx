@@ -30,6 +30,30 @@ describe("Type", () => {
     expect(within(container).getByText("Eyebrow")).toHaveClass("uppercase");
   });
 
+  it("applies a typed line-height override", () => {
+    const container = render(() => (
+      <Type leading="roomy" variant="body">
+        Roomy body copy
+      </Type>
+    ));
+
+    expect(within(container).getByText("Roomy body copy")).toHaveClass(
+      "leading-8",
+    );
+  });
+
+  it("applies a typed desktop heading size override", () => {
+    const container = render(() => (
+      <Type responsiveSize="desktop4xl" variant="h1">
+        Responsive heading
+      </Type>
+    ));
+
+    expect(within(container).getByText("Responsive heading")).toHaveClass(
+      "md:text-4xl",
+    );
+  });
+
   it("has no axe violations", async () => {
     render(() => (
       <div>

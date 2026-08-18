@@ -16,7 +16,6 @@ import {
   DialogFooterLayout,
   DialogHeaderLayout,
   dialogDescriptionClass,
-  dialogOverlayClass,
   dialogTitleClass,
 } from "@/components/overlays/dialog-presentation";
 import { cn } from "@/lib/cn";
@@ -26,15 +25,18 @@ const Sheet = KDialog;
 const SheetTrigger = KDialog.Trigger;
 const SheetClose = KDialog.CloseButton;
 
+const sheetOverlayClass =
+  "fixed inset-0 z-50 bg-black/55 backdrop-blur-sm transition-opacity duration-300 ease-out data-expanded:opacity-100 data-closed:opacity-0 motion-reduce:transition-none";
+
 const sheetContentVariants = cva(
-  "fixed z-50 grid gap-4 border border-border bg-card p-6 shadow-xl",
+  "fixed z-50 grid gap-4 border border-border bg-card p-6 shadow-xl transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
   {
     variants: {
       side: {
-        top: "inset-x-0 top-0 rounded-b-[var(--radius-xl)] border-b",
-        bottom: "inset-x-0 bottom-0 rounded-t-[var(--radius-xl)] border-t",
-        left: "inset-y-0 start-0 h-full w-3/4 border-e sm:max-w-sm",
-        right: "inset-y-0 end-0 h-full w-3/4 border-s sm:max-w-sm",
+        top: "inset-x-0 top-0 rounded-b-[var(--radius-xl)] border-b data-expanded:translate-y-0 data-closed:-translate-y-full",
+        bottom: "inset-x-0 bottom-0 rounded-t-[var(--radius-xl)] border-t data-expanded:translate-y-0 data-closed:translate-y-full",
+        left: "inset-y-0 start-0 h-full w-3/4 border-e sm:max-w-sm data-expanded:translate-x-0 data-closed:-translate-x-full",
+        right: "inset-y-0 end-0 h-full w-3/4 border-s sm:max-w-sm data-expanded:translate-x-0 data-closed:translate-x-full",
       },
     },
     defaultVariants: {
@@ -47,6 +49,7 @@ export interface SheetContentProps
   extends KDialogContentProps,
     VariantProps<typeof sheetContentVariants> {
   class?: string;
+  dir?: "ltr" | "rtl" | "auto";
   hideCloseButton?: boolean;
 }
 
@@ -58,8 +61,8 @@ function SheetContent(props: ParentProps<SheetContentProps>) {
 
   return (
     <KDialog.Portal>
-      <KDialog.Overlay class={dialogOverlayClass} />
-      <KDialog.Content class={className()} {...rest}>
+      <KDialog.Overlay class={sheetOverlayClass} />
+      <KDialog.Content forceMount class={className()} {...rest}>
         {props.children}
         <Show when={!props.hideCloseButton}>
           <DialogCloseButtonLayout part={KDialog.CloseButton} />

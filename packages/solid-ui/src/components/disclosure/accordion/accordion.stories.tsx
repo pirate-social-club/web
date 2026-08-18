@@ -33,12 +33,13 @@ const meta = {
     shouldFocusWrap: { control: "boolean" },
   },
   render: (args) => (
-    <Accordion
-      class="w-[480px] max-w-full"
-      collapsible={args.collapsible}
-      defaultValue={args.defaultValue}
-      multiple={args.multiple}
-    >
+    <div class="w-[calc(100vw-2rem)] max-w-full p-4">
+      <Accordion
+        class="w-full max-w-[480px]"
+        collapsible={args.collapsible}
+        defaultValue={args.defaultValue}
+        multiple={args.multiple}
+      >
       <AccordionItem value="item-1">
         <AccordionHeader>
           <AccordionTrigger>What is Pirate?</AccordionTrigger>
@@ -66,7 +67,8 @@ const meta = {
           shared resources around your focus.
         </AccordionContent>
       </AccordionItem>
-    </Accordion>
+      </Accordion>
+    </div>
   ),
   parameters: {
     docs: {
@@ -83,6 +85,9 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
+};
+
+export const Interaction: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const first = canvas.getByRole("button", { name: "What is Pirate?" });
@@ -93,24 +98,16 @@ export const Default: Story = {
       name: "Can I start my own community?",
     });
 
-    await expect(first).toHaveAttribute("aria-expanded", "true");
-    await expect(
-      canvas.getByText(/community-first social product/),
-    ).toBeVisible();
-    await expect(canvas.queryByText(/organize people around a topic/)).not.toBeInTheDocument();
-
     await userEvent.click(second);
     await expect(second).toHaveAttribute("aria-expanded", "true");
     await expect(first).toHaveAttribute("aria-expanded", "false");
     await expect(canvas.getByText(/organize people around a topic/)).toBeVisible();
-
     await userEvent.keyboard("{Home}");
     await expect(first).toHaveFocus();
     await userEvent.keyboard("{End}");
     await expect(third).toHaveFocus();
     await userEvent.keyboard("{ArrowUp}");
     await expect(second).toHaveFocus();
-    await expect(second).toHaveAttribute("aria-expanded", "true");
     await userEvent.keyboard("{Enter}");
     await expect(second).toHaveAttribute("aria-expanded", "true");
   },

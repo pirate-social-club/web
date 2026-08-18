@@ -11,6 +11,13 @@ describe("public video feed normalization", () => {
   test("preserves numeric cursor precision as a string", () => {
     expect(normalizeKeysetCursor("900719925474099312345")).toBe("900719925474099312345");
     expect(normalizeKeysetCursor(42)).toBe("42");
+    expect(normalizeKeysetCursor("")).toBeNull();
+  });
+
+  test("rejects malformed cursor shapes instead of coercing them", () => {
+    for (const value of [{}, [], Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY]) {
+      expect(() => normalizeKeysetCursor(value)).toThrow("Invalid public feed keyset cursor");
+    }
   });
 
   test("removes one duplicate author prefix only", () => {
@@ -20,7 +27,7 @@ describe("public video feed normalization", () => {
 
   test("normalizes a feed page without changing media references", () => {
     const page = normalizePublicVideoFeed({
-      items: [{ post: { post: { id: "post_1", author_user: "usr_usr_1", media_refs: [{ storage_ref: "https://media.test/a.mp4" }] } } }],
+      items: [{ post: { post: { id: "post_1", post_type: "video", author_user: "usr_usr_1", media_refs: [{ storage_ref: "https://media.test/a.mp4", mime_type: "video/mp4" }] } } }],
       next_cursor: 7,
     });
     expect(page.next_cursor).toBe("7");

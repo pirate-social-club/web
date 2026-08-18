@@ -21,6 +21,7 @@ const DialogTrigger = KDialog.Trigger;
 
 export interface DialogContentProps extends KDialogContentProps {
   class?: string;
+  dir?: "ltr" | "rtl" | "auto";
   hideCloseButton?: boolean;
 }
 

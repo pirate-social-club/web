@@ -10,6 +10,20 @@ const workspaceRoot = path.resolve(projectRoot, "..");
 const primitivesDir = path.join(projectRoot, "src", "components", "primitives");
 const compositionsDir = path.join(projectRoot, "src", "components", "compositions");
 const srcDir = path.join(projectRoot, "src");
+const typographyRoots = [
+  path.join(projectRoot, "solid", "src"),
+  path.join(projectRoot, "packages", "solid-ui", "src"),
+];
+const typographyPrimitivePaths = new Set([
+  path.join(projectRoot, "packages", "solid-ui", "src", "components", "data-display", "type", "type.tsx"),
+].map((filePath) => path.normalize(filePath)));
+const typographyBaselinePath = path.join(projectRoot, "scripts", "ui-audit-typography-baseline.json");
+const updateTypographyBaseline = process.argv.includes("--update-typography-baseline");
+const uiSourceDirs = [
+  srcDir,
+  path.join(projectRoot, "solid"),
+  path.join(projectRoot, "packages", "solid-ui"),
+];
 const scannedExtensions = new Set([".json", ".md", ".ts", ".tsx", ".yml", ".yaml"]);
 const ignoredDirs = new Set([".git", "node_modules", ".wrangler", "dist", "storybook-static"]);
 const staleMarkers = [
@@ -30,6 +44,7 @@ const staleRegexMarkers = [
   { label: "TUI", pattern: /\bTUI\b/u },
   { label: "tui", pattern: /\btui\b/u },
 ];
+const typographyUtilityPattern = /(?:[a-z0-9-]+:)*(?:text-(?:\[[^\]]+\]|xs|sm|base|lg|xl|2xl|3xl|4xl|5xl|6xl|7xl|8xl|9xl)|font-(?:\[[^\]]+\]|thin|extralight|light|normal|medium|semibold|bold|extrabold|black|sans|serif|mono)|leading-(?:\[[^\]]+\]|none|tight|snug|normal|relaxed|loose|[0-9]+)|tracking-(?:\[[^\]]+\]|tighter|tight|normal|wide|wider|widest))/gu;
 
 function walk(dir, options = {}) {
   const entries = fs.readdirSync(dir, { withFileTypes: true });
@@ -45,6 +60,10 @@ function walk(dir, options = {}) {
   }
 
   return files;
+}
+
+function walkRoots(dirs, options = {}) {
+  return dirs.flatMap((dir) => walk(dir, options));
 }
 
 function relative(filePath) {
@@ -66,13 +85,15 @@ function checkNoDuplicateWebTrees() {
 }
 
 function checkPrimitiveStoryCoverage() {
-  const primitiveFiles = fs
+  const reactPrimitiveFiles = fs
     .readdirSync(primitivesDir)
     .filter((name) => name.endsWith(".tsx") && !name.endsWith(".stories.tsx") && !name.endsWith(".test.tsx"));
 
-  const missingStories = primitiveFiles
+  const missingReactStories = reactPrimitiveFiles
     .filter((name) => !fs.existsSync(path.join(primitivesDir, name.replace(/\.tsx$/, ".stories.tsx"))))
     .map((name) => relative(path.join(primitivesDir, name)));
+
+  const missingStories = missingReactStories;
 
   return {
     label: "primitives/story-coverage",
@@ -84,7 +105,7 @@ function checkPrimitiveStoryCoverage() {
 function checkNoSmallText() {
   const offenders = [];
 
-  for (const filePath of walk(srcDir)) {
+  for (const filePath of walkRoots(uiSourceDirs, { skipIgnoredDirs: true })) {
     if (!filePath.endsWith(".tsx")) continue;
 
     const lines = fs.readFileSync(filePath, "utf8").split("\n");
@@ -97,6 +118,65 @@ function checkNoSmallText() {
 
   return {
     label: "typography/no-small-text",
+    passed: offenders.length === 0,
+    details: offenders,
+  };
+}
+
+function collectTypographyViolationCounts() {
+  const counts = {};
+
+  for (const filePath of walkRoots(typographyRoots, { skipIgnoredDirs: true })) {
+    if (!filePath.endsWith(".tsx") || typographyPrimitivePaths.has(path.normalize(filePath))) continue;
+    if (filePath.endsWith(".test.tsx") || filePath.endsWith(".spec.tsx")) continue;
+
+    const count = fs
+      .readFileSync(filePath, "utf8")
+      .split("\n")
+      .reduce((total, line) => total + (line.match(typographyUtilityPattern)?.length ?? 0), 0);
+
+    if (count > 0) counts[relative(filePath)] = count;
+  }
+
+  return Object.fromEntries(Object.entries(counts).sort(([left], [right]) => left.localeCompare(right)));
+}
+
+function checkTypographyRatchet() {
+  const current = collectTypographyViolationCounts();
+
+  if (updateTypographyBaseline) {
+    fs.writeFileSync(
+      typographyBaselinePath,
+      `${JSON.stringify({ version: 1, files: current }, null, 2)}\n`,
+    );
+    return {
+      label: "typography/no-raw-utility-increase",
+      passed: true,
+      details: [`updated ${relative(typographyBaselinePath)}`],
+    };
+  }
+
+  if (!fs.existsSync(typographyBaselinePath)) {
+    return {
+      label: "typography/no-raw-utility-increase",
+      passed: false,
+      details: [`missing ${relative(typographyBaselinePath)}; run bun run ui:audit:typography-baseline`],
+    };
+  }
+
+  const baseline = JSON.parse(fs.readFileSync(typographyBaselinePath, "utf8"));
+  const baselineFiles = baseline.files ?? {};
+  const offenders = [];
+
+  for (const [filePath, count] of Object.entries(current)) {
+    const previous = Number(baselineFiles[filePath] ?? 0);
+    if (count > previous) {
+      offenders.push(`${filePath}: ${previous} -> ${count} (+${count - previous})`);
+    }
+  }
+
+  return {
+    label: "typography/no-raw-utility-increase",
     passed: offenders.length === 0,
     details: offenders,
   };
@@ -115,7 +195,7 @@ function checkNoHardcodedColors() {
     /\b(?:bg|text|border|ring|from|via|to)-(?:amber|blue|brown|cyan|emerald|fuchsia|gray|green|indigo|lime|neutral|orange|pink|purple|red|rose|sky|slate|stone|teal|violet|yellow|zinc)-\d{2,3}\b/,
   ];
 
-  for (const filePath of walk(srcDir)) {
+  for (const filePath of walkRoots(uiSourceDirs, { skipIgnoredDirs: true })) {
     if (!filePath.endsWith(".tsx") && !filePath.endsWith(".ts")) continue;
 
     const lines = fs.readFileSync(filePath, "utf8").split("\n");
@@ -168,7 +248,7 @@ function checkNoArbitrarySpacing() {
     /\bw-\[1px\]/,
   ];
 
-  for (const filePath of walk(srcDir)) {
+  for (const filePath of walkRoots(uiSourceDirs, { skipIgnoredDirs: true })) {
     if (!filePath.endsWith(".tsx") && !filePath.endsWith(".ts")) continue;
 
     const lines = fs.readFileSync(filePath, "utf8").split("\n");
@@ -292,6 +372,7 @@ function checkStaleMarkers() {
 const checks = [
   checkNoDuplicateWebTrees(),
   checkPrimitiveStoryCoverage(),
+  checkTypographyRatchet(),
   checkNoSmallText(),
   checkNoHardcodedColors(),
   checkNoArbitrarySpacing(),

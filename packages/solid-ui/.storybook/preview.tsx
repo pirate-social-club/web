@@ -169,7 +169,7 @@ const preview: Preview = {
           "Components",
           ["Actions", "Forms", "Overlays", "Disclosure", "Feedback", "Data Display", "Media"],
           "Patterns",
-          ["Forms", "Overlays", "Feedback", "Identity", "Engagement", "Layout"],
+          ["Forms", "Overlays", "Feedback", "Identity", "Engagement", "Layout", "Navigation"],
         ],
       },
     },

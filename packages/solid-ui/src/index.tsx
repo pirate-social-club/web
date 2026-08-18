@@ -7,6 +7,14 @@
 //   the real Button and DialogTrigger deliberately dropped polymorphism.
 //   Call sites passing `as` must render the real trigger directly.
 
+export { cn } from "./lib/cn";
+export {
+  MOBILE_BREAKPOINT,
+  MOBILE_BREAKPOINT_QUERY,
+  createIsMobile,
+  createMediaQuery,
+} from "./lib/media-query";
+
 export {
   Button,
   buttonVariants,
@@ -22,6 +30,7 @@ export {
 } from "./components/actions/icon-button/icon-button";
 export {
   PillButton,
+  pillButtonVariants,
   type PillButtonProps,
 } from "./components/actions/pill-button/pill-button";
 
@@ -173,8 +182,67 @@ export {
 
 export {
   MediaControlButton,
+  mediaControlButtonVariants,
   type MediaControlButtonProps,
 } from "./components/media/media-control-button/media-control-button";
+export {
+  IconArrowDown,
+  IconArrowLeft,
+  IconArrowRight,
+  IconArrowSquareOut,
+  IconArrowUp,
+  IconArrowsClockwise,
+  IconBell,
+  IconBroadcast,
+  IconCalendar,
+  IconCalendarBlank,
+  IconCaretDown,
+  IconCaretLeft,
+  IconCaretRight,
+  IconChatCircle,
+  IconCheck,
+  IconCheckCircle,
+  IconClock,
+  IconCopy,
+  IconCrown,
+  IconDotsThree,
+  IconDownloadSimple,
+  IconFire,
+  IconFileText,
+  IconFlag,
+  IconGlobe,
+  IconHouse,
+  IconImage,
+  IconInfo,
+  IconLink,
+  IconList,
+  IconLock,
+  IconMagnifyingGlass,
+  IconMapPin,
+  IconMaskHappy,
+  IconMicrophone,
+  IconMusicNote,
+  IconPause,
+  IconPencil,
+  IconPlay,
+  IconPlus,
+  IconRobot,
+  IconShareFat,
+  IconShareNetwork,
+  IconShield,
+  IconSidebarSimple,
+  IconSquare,
+  IconTrash,
+  IconTrendUp,
+  IconUploadSimple,
+  IconUsers,
+  IconUsersThree,
+  IconVideoCamera,
+  IconVinylRecord,
+  IconWallet,
+  IconWarningCircle,
+  IconX,
+} from "./components/media/icons";
 export {
   Scrubber,
   type ScrubberProps,
@@ -253,10 +321,12 @@ export {
 export {
   MediaActions,
   MediaPost,
+  VerticalFeed,
   type HapticKind,
   type MediaActionsProps,
   type MediaPostData,
   type MediaPostProps,
+  type VerticalFeedProps,
   type VideoPlayerProps,
 } from "./patterns/engagement/vertical-feed";
 export {
@@ -273,6 +343,29 @@ export {
   type IllustratedStateImage,
   type IllustratedStateProps,
 } from "./patterns/feedback/illustrated-state/illustrated-state";
+export {
+  AuthRequiredRouteState,
+  EmptyFeedState,
+  EmptyInboxState,
+  ErrorState,
+  FullPageSpinner,
+  NotFoundRouteState,
+  PublicRouteLoadingState,
+  PublicRouteMessageState,
+  RootAppErrorState,
+  RouteLoadFailureState,
+  RouteLoadingState,
+  type AuthRequiredRouteStateProps,
+  type EmptyInboxStateProps,
+  type ErrorStateProps,
+  type NotFoundRouteStateProps,
+  type RootAppErrorStateProps,
+  type RouteLoadFailureStateProps,
+} from "./patterns/feedback/route-states/route-states";
+export {
+  StatusCard,
+  type StatusCardProps,
+} from "./patterns/feedback/status-card/status-card";
 
 export {
   CheckboxCard,
@@ -284,6 +377,8 @@ export {
 } from "./patterns/forms/copy-field/copy-field";
 export {
   FormattedTextarea,
+  type FormattedTextareaToolbarAction,
+  type FormattedTextareaToolbarLabels,
   type FormattedTextareaProps,
 } from "./patterns/forms/formatted-textarea/formatted-textarea";
 export {
@@ -299,6 +394,17 @@ export {
   optionCardVariants,
   type OptionCardProps,
 } from "./patterns/forms/option-card/option-card";
+export {
+  ResponsiveOptionSelect,
+  type ResponsiveOptionSelectOption,
+  type ResponsiveOptionSelectProps,
+} from "./patterns/forms/responsive-option-select/responsive-option-select";
+
+export {
+  AvatarBadge,
+  type AvatarBadgeProps,
+  type AvatarBadgeSize,
+} from "./patterns/identity/avatar-badge/avatar-badge";
 
 export {
   PirateBrandMark,
@@ -310,6 +416,66 @@ export {
   PageContainer,
   type PageContainerProps,
 } from "./patterns/layout/layout-shell/layout-shell";
+export {
+  StackPageShell,
+  type StackPageShellProps,
+} from "./patterns/layout/stack-page-shell/stack-page-shell";
+
+export {
+  FlatTabBar,
+  FlatTabButton,
+  FlatTabsList,
+  FlatTabsTrigger,
+  type FlatTabBarProps,
+  type FlatTabButtonProps,
+  type FlatTabsListProps,
+  type FlatTabsTriggerProps,
+} from "./patterns/navigation/flat-tabs/flat-tabs";
+export {
+  StackedSectionNav,
+  type StackedSectionNavItem,
+  type StackedSectionNavProps,
+  type StackedSectionNavSection,
+} from "./patterns/navigation/stacked-section-nav/stacked-section-nav";
+export {
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarInset,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+  SidebarRail,
+  SidebarSeparator,
+  SidebarTrigger,
+  createSidebar,
+  createSidebarSide,
+  type SidebarContextValue,
+  type SidebarMenuButtonProps,
+  type SidebarProps,
+  type SidebarProviderProps,
+} from "./patterns/navigation/sidebar";
+export {
+  AppHeader,
+  shouldShowDesktopConnectAction,
+  shouldShowMobileConnectAction,
+  type AppHeaderLabels,
+  type AppHeaderProps,
+} from "./patterns/navigation/app-header/app-header";
+export {
+  MobileFooterNav,
+  type FooterNavItemId,
+  type MobileFooterNavLabels,
+  type MobileFooterNavProps,
+} from "./patterns/navigation/mobile-footer-nav/mobile-footer-nav";
+export {
+  MobilePageHeader,
+  type MobilePageHeaderProps,
+} from "./patterns/navigation/mobile-page-header/mobile-page-header";
 
 export {
   ActionMenu,
@@ -321,3 +487,14 @@ export {
   ConfirmDialog,
   type ConfirmDialogProps,
 } from "./patterns/overlays/confirm-dialog/confirm-dialog";
+export {
+  Modal,
+  ModalContent,
+  ModalDescription,
+  ModalFooter,
+  ModalHeader,
+  ModalTitle,
+  ModalTrigger,
+  type ModalContentProps,
+  type ModalProps,
+} from "./patterns/overlays/modal/modal";

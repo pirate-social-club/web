@@ -100,6 +100,9 @@ export function UiLocaleProvider(props: ParentProps<{ locale: UiLocaleCode }>) {
   );
 }
 
-export function useUiLocale(): UiLocaleContextValue {
+export function createUiLocale(): UiLocaleContextValue {
   return useContext(UiLocaleContext);
 }
+
+/** Compatibility alias for routes not yet migrated to create-style accessors. */
+export const useUiLocale = createUiLocale;

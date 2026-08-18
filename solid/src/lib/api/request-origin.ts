@@ -9,7 +9,7 @@ function resolveExecutionEnvironment(): "local" | "staging" | "production" {
   return "production";
 }
 
-export function resolveApiOriginForRequest(request?: Request): string {
+function resolveApiOriginForRequest(request?: Request): string {
   const eventOrigin = getRequestEvent()?.locals?.apiOrigin;
   if (eventOrigin) return eventOrigin;
 

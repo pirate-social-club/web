@@ -50,7 +50,7 @@ export interface AccordionTriggerProps extends KAccordionTriggerProps {
 function AccordionTrigger(props: ParentProps<AccordionTriggerProps>) {
   const className = createMemo(() =>
     cn(
-      "group flex flex-1 cursor-pointer items-center justify-between gap-2 py-4 text-start text-base font-medium text-foreground transition-colors motion-reduce:transition-none hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background disabled:pointer-events-none disabled:opacity-50",
+      "group flex min-w-0 flex-1 cursor-pointer items-center justify-between gap-2 py-4 text-start text-base font-medium text-foreground transition-colors motion-reduce:transition-none hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border focus-visible:ring-offset-2 ring-offset-background disabled:pointer-events-none disabled:opacity-50",
       props.class,
     ),
   );
@@ -85,8 +85,8 @@ function AccordionContent(props: ParentProps<AccordionContentProps>) {
   const rest = omit(props, "class", "children");
 
   return (
-    <KAccordion.Content class={className()} {...rest}>
-      <div class="pb-4 pt-0">{props.children}</div>
+    <KAccordion.Content class={cn("accordion-content overflow-hidden", className())} {...rest}>
+      <div class="min-w-0 pb-4 pt-0">{props.children}</div>
     </KAccordion.Content>
   );
 }

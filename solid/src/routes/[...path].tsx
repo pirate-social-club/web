@@ -1,11 +1,11 @@
 import { getRequestEvent } from "@solidjs/web";
-import { useUiLocale } from "../lib/ui-locale";
+import { createUiLocale } from "../lib/ui-locale";
 import { getLocaleMessages } from "../locales";
 
 export default function NotFoundRoute() {
   const event = getRequestEvent();
   if (event) event.locals.routeStatus = 404;
-  const { locale } = useUiLocale();
+  const { locale } = createUiLocale();
   const copy = () => getLocaleMessages(locale(), "routes").notFound;
   return (
     <main data-route-path="*404" data-route-status="404">

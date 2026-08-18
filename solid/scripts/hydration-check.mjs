@@ -1,6 +1,9 @@
 import { chromium } from "playwright";
+import { startSolidBoundaryHarness } from "./local-boundary-harness.mjs";
 
-const base = process.env.WEB_SOLID_BASE_URL ?? "http://localhost:4173";
+const externalBase = process.env.SOLID_BOUNDARY_BASE_URL;
+const harness = externalBase ? null : await startSolidBoundaryHarness();
+const base = externalBase ?? harness.baseUrl;
 const browser = await chromium.launch({
   headless: true,
   executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE,
@@ -112,7 +115,7 @@ async function installApiVersionInstrumentation(page) {
       const rawUrl = input instanceof Request ? input.url : String(input);
       const url = new URL(rawUrl, window.location.href);
       if (url.pathname === "/__version") attempts.push(`${url.origin}${url.pathname}`);
-      if (url.pathname === "/feed/home/videos/public") {
+      if (url.pathname === "/feed/home/public") {
         const attemptedUrl = `${url.origin}${url.pathname}${url.search}`;
         publicFeedAttempts.push(attemptedUrl);
         publicFeedAttemptStates.push({ url: attemptedUrl, queries: readQueryState() });
@@ -383,6 +386,8 @@ try {
       ogTitle: null,
       ogType: null,
     });
+    await page.goBack({ waitUntil: "networkidle" });
+    await page.waitForURL(url => url.pathname === "/");
   } else {
     const seamResponse = await page.request.get(new URL("/seam/host", base).toString());
     if (seamResponse.status() !== 404) {
@@ -390,8 +395,6 @@ try {
     }
   }
 
-  await page.goBack({ waitUntil: "networkidle" });
-  await page.waitForURL(url => url.pathname === "/");
   await page.locator('[data-route-path="/"]').waitFor({ state: "attached" });
   await assertResolvedApiVersion(page, "Home remount", violations);
   await logApiVersionPhase(page, "remount", violations);
@@ -418,11 +421,11 @@ try {
     },
     "/u/demo-user": {
       marker: '[data-route-path="/u/:handle"]',
-      title: "@demo-user · Pirate Web",
-      canonical: "/u/demo-user",
-      description: null,
-      ogTitle: "@demo-user · Pirate Web",
-      ogType: null,
+      title: "demo-user • Pirate",
+      canonical: new URL("/u/demo-user", base).toString(),
+      description: "Public profile for demo-user on Pirate Web.",
+      ogTitle: "demo-user • Pirate",
+      ogType: "profile",
     },
   }[overlapPath];
   if (!overlap) throw new Error(`Rapid overlapping navigation ended at an unexpected path: ${overlapPath}`);
@@ -438,4 +441,5 @@ try {
   console.log(JSON.stringify({ ok: true, before, after, navigated: "/c/demo/threads", backNavigation: true, routeDisposal: true, overlapPath, deferredReveal: true, nonceLength: nonce.length, apiVersionAttempts: apiVersionAttemptsAfterNavigation, overlay: true, form: true }));
 } finally {
   await browser.close();
+  await harness?.close();
 }

@@ -121,23 +121,24 @@ handlers; this milestone performs no writes to the API.
 
 ## Verification
 
-Install the project-local browser, then run one foreground preview at a time:
+Install the project-local browser, then run the Worker-backed boundary gate:
 
 ```bash
 rtk env PLAYWRIGHT_BROWSERS_PATH=./.playwright-browsers bunx playwright install chromium
 rtk bun run build
 rtk bun run check-solid-runtime
-rtk bun run preview -- --port 4173
-rtk env SEAM_BASE_URL=http://localhost:4173 PLAYWRIGHT_BROWSERS_PATH=./.playwright-browsers WEB_SOLID_BASE_URL=http://localhost:4173 bun run verify
+rtk env PLAYWRIGHT_BROWSERS_PATH=./.playwright-browsers bun run verify
 ```
 
-`build` runs the runtime/patch guard through `prebuild`. `verify` is the
-single focused shell gate: it checks the runtime and patch, resolver tests,
-the Worker API data seam, routing, API error mapping, host-context, layout, and
-not-found probes, streaming, and browser hydration of the real design-system
-Button/Dialog/TextField plus a dynamic client navigation.
-Run it while the foreground preview is active, then stop that preview. No
-shared Cloudflare resource may be deployed by the bootstrap.
+`build` runs the runtime/patch guard through `prebuild`. `verify` starts a
+local Wrangler Worker from the built SSR bundle and a loopback gateway that
+signs every request with a deterministic test-only key. The direct Worker URL
+is probed separately without that signature and must return 404; no raw Vite
+preview is a canonical route probe. The gate checks the runtime and patch,
+resolver tests, the Worker API data seam, routing, API error mapping,
+host-context, layout, not-found probes, streaming, and browser hydration of
+the real design-system Button/Dialog/TextField plus a dynamic client
+navigation. No shared Cloudflare resource may be deployed by the bootstrap.
 
 ## Scope
 

@@ -1,19 +1,20 @@
 import { getRequestEvent } from "@solidjs/web";
-import { createContext, useContext, type ParentProps } from "solid-js";
+import { createContext, useContext } from "solid-js";
 import type { HostSurface } from "@pirate/web-platform";
 import type { UiDirection, UiLocaleCode } from "./ui-locale-core";
 import type { PublicVideoFeedPage } from "./api/public-feed";
+import type { PublicProfileLoadResult } from "./api/public-profile";
 
 export type { HostSurface } from "@pirate/web-platform";
 
-export interface HostContext {
+export interface HostContextValue {
   surface: HostSurface;
   communitySlug: string | null;
   importedRoot: boolean;
   forwardingMetadataPresent: boolean;
 }
 
-const defaultHostContext: HostContext = {
+const defaultHostContext: HostContextValue = {
   surface: "canonical",
   communitySlug: null,
   importedRoot: false,
@@ -22,22 +23,30 @@ const defaultHostContext: HostContext = {
 
 declare module "@solidjs/web" {
   interface RequestEventLocals {
-    hostContext?: HostContext;
+    hostContext?: HostContextValue;
     cspNonce?: string;
     bindingResult?: string;
     routeStatus?: number;
+    responseStatus?: number;
+    responseRedirect?: string;
+    responseCacheControl?: string;
+    responseVary?: string;
     seamHost?: HostSurface;
     apiOrigin?: string;
+    /** Origin derived only after the request host passes the perimeter classifier. */
+    canonicalOrigin?: string;
     apiFeedResult?: { ok: boolean; itemCount: number };
     publicVideoFeed?: PublicVideoFeedPage;
+    profilePreload?: Promise<PublicProfileLoadResult>;
+    profileResult?: PublicProfileLoadResult;
     uiLocale?: UiLocaleCode;
     uiDirection?: UiDirection;
   }
 }
 
-export const HostContextContext = createContext<HostContext>(defaultHostContext);
+export const HostContext = createContext<HostContextValue>(defaultHostContext);
 
-export function readHostContext(): HostContext {
+export function readHostContext(): HostContextValue {
   const serverContext = getRequestEvent()?.locals?.hostContext;
   if (serverContext) return serverContext;
 
@@ -55,10 +64,9 @@ export function readHostContext(): HostContext {
   return defaultHostContext;
 }
 
-export function HostContextProvider(props: ParentProps<{ value: HostContext }>) {
-  return <HostContextContext value={props.value}>{props.children}</HostContextContext>;
+export function createHostContext(): HostContextValue {
+  return useContext(HostContext);
 }
 
-export function useHostContext(): HostContext {
-  return useContext(HostContextContext);
-}
+/** Compatibility alias for routes not yet migrated to create-style accessors. */
+export const useHostContext = createHostContext;

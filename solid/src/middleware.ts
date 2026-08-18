@@ -15,12 +15,16 @@ import {
   resolveApiOriginFromExecution,
 } from "@pirate/web-platform";
 import type { HnsForwardedOriginEnv } from "@pirate/web-platform";
-import type { HostContext } from "./lib/host-context";
-import { createApiClient } from "./lib/api/client";
-import { normalizePublicVideoFeed } from "./lib/api/public-feed";
+import type { HostContextValue } from "./lib/host-context";
+import { describeApiNextError, fetchPublicVideoFeedPage } from "./lib/api/public-feed";
+import {
+  loadPublicProfile,
+  parsePublicProfilePath,
+  profileResponsePolicy,
+  type PublicProfileLoadResult,
+} from "./lib/api/public-profile";
 import {
   resolveLocaleDirection,
-  resolveLocaleLanguageTag,
   resolveRequestUiLocale,
 } from "./lib/ui-locale-core";
 
@@ -36,7 +40,7 @@ type SolidWorkerEnv = HnsForwardedOriginEnv & {
   SOLID_STAGING_HOST?: string;
 };
 
-function makeHostContext(request: Request, configuredStagingHost?: string): HostContext {
+function makeHostContext(request: Request, configuredStagingHost?: string): HostContextValue {
   const host = request.headers.get("host") ?? "";
   const surface = classifySolidHost(host, configuredStagingHost);
   const trusted = request.headers.get("x-pirate-hns-trusted-forwarder") === "1";
@@ -56,6 +60,17 @@ function makeHostContext(request: Request, configuredStagingHost?: string): Host
   };
 }
 
+function resolveTrustedCanonicalOrigin(request: Request, surface: HostContextValue["surface"]): string {
+  const requestOrigin = new URL(request.url).origin;
+  const hostname = hostName(request.headers.get("host") ?? "");
+  if (surface === "unknown" || !hostname) return requestOrigin;
+  // Local preview ports are part of the trusted test origin. Public hosts are
+  // normalized from the already-classified Host header and never from arbitrary
+  // route input, so SEO URLs cannot be poisoned by a user-supplied path label.
+  if (isLocalHost(hostname)) return requestOrigin;
+  return `https://${hostname}`;
+}
+
 async function seamMiddleware(request: Request, next: () => Promise<Response>) {
   const event = getRequestEvent();
   if (!event) return next();
@@ -70,7 +85,10 @@ async function seamMiddleware(request: Request, next: () => Promise<Response>) {
         : "HNS forwarder authentication failed.",
       {
         status: forwarding.rejection === "configuration" ? 503 : 403,
-        headers: { "content-type": "text/plain; charset=utf-8" },
+        headers: {
+          "cache-control": "no-store",
+          "content-type": "text/plain; charset=utf-8",
+        },
       },
     );
   }
@@ -112,6 +130,7 @@ async function seamMiddleware(request: Request, next: () => Promise<Response>) {
       : "local";
   event.locals.cspNonce = nonce;
   event.locals.apiOrigin = resolveApiOriginFromExecution(hostname, apiEnvironment);
+  event.locals.canonicalOrigin = resolveTrustedCanonicalOrigin(request, surface);
   event.locals.hostContext = hostContext;
   event.locals.seamHost = surface;
   event.locals.uiLocale = uiLocale;
@@ -119,33 +138,51 @@ async function seamMiddleware(request: Request, next: () => Promise<Response>) {
 
   if (url.pathname === "/") {
     try {
-      const feed = await createApiClient({
+      event.locals.publicVideoFeed = await fetchPublicVideoFeedPage({
         request,
+        locale: uiLocale,
         fetchImpl: (input, init) => fetchWithTimeout(fetch, input, init, SOLID_UPSTREAM_TIMEOUT_MS),
-      }).getJson<unknown>(
-        `/feed/home/videos/public?locale=${encodeURIComponent(resolveLocaleLanguageTag(uiLocale))}&sort=best`,
-      );
-      event.locals.publicVideoFeed = normalizePublicVideoFeed(feed);
-    } catch {
+      });
+    } catch (error) {
+      console.warn("[solid] public video feed SSR unavailable", describeApiNextError(error));
       // The route still renders its signed-out empty/error state when the
       // public read is unavailable; SSR must not hang on an optional feed.
       event.locals.publicVideoFeed = { items: [], next_cursor: null };
     }
   }
 
+  if (url.pathname.startsWith("/u/")) {
+    const profileHandle = parsePublicProfilePath(url.pathname);
+    const hasAuthorization = request.headers.get("authorization") !== null;
+    if (!profileHandle) {
+      const invalid: PublicProfileLoadResult = {
+        kind: "invalid",
+        status: 400,
+      };
+      event.locals.profilePreload = Promise.resolve(invalid);
+      event.locals.profileResult = invalid;
+      event.locals.responseStatus = 400;
+      event.locals.responseCacheControl = "no-store";
+      event.locals.responseVary = "Accept-Language";
+    } else {
+      const profilePreload = loadPublicProfile(profileHandle, { request });
+      event.locals.profilePreload = profilePreload;
+      event.locals.profileResult = await profilePreload;
+      const policy = profileResponsePolicy(event.locals.profileResult, hasAuthorization);
+      event.locals.responseStatus = policy.status;
+      event.locals.responseCacheControl = policy.cacheControl;
+      event.locals.responseVary = policy.vary;
+      event.locals.responseRedirect = policy.redirect ?? undefined;
+    }
+  }
+
   if (url.pathname === "/seam/api" && url.searchParams.get("feed") === "1") {
-    const feed = await createApiClient({
+    const feed = await fetchPublicVideoFeedPage({
       request,
+      locale: uiLocale,
       fetchImpl: (input, init) => fetchWithTimeout(fetch, input, init, SOLID_UPSTREAM_TIMEOUT_MS),
-    }).getJson<unknown>(
-      `/feed/home/videos/public?locale=${encodeURIComponent(resolveLocaleLanguageTag(uiLocale))}&sort=best`,
-    );
-    const items = Array.isArray(feed)
-      ? feed.length
-      : feed && typeof feed === "object" && "items" in feed && Array.isArray(feed.items)
-        ? feed.items.length
-        : 0;
-    event.locals.apiFeedResult = { ok: true, itemCount: items };
+    });
+    event.locals.apiFeedResult = { ok: true, itemCount: feed.items.length };
   }
 
   if (url.pathname === "/seam/binding") {
@@ -174,7 +211,13 @@ async function seamMiddleware(request: Request, next: () => Promise<Response>) {
   headers.set("permissions-policy", "camera=(), microphone=(self), geolocation=()");
   headers.set("x-frame-options", "DENY");
   headers.set("x-seam-host-surface", surface);
-  const status = event.locals.routeStatus ?? response.status;
+  const status = event.locals.responseStatus ?? event.locals.routeStatus ?? response.status;
+  if (event.locals.responseCacheControl) headers.set("cache-control", event.locals.responseCacheControl);
+  if (event.locals.responseVary) headers.set("vary", event.locals.responseVary);
+  if (event.locals.responseRedirect) {
+    headers.set("location", event.locals.responseRedirect);
+    return new Response(null, { status: 302, headers });
+  }
   return new Response(response.body, { status, statusText: response.statusText, headers });
 }
 

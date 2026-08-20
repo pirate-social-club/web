@@ -1,5 +1,8 @@
 # Solid Storybook Migration — Agent Handoff (2026-08-15, post-B6.5)
 
+> Historical record. The tracked `web/solid` app was retired after this handoff;
+> the active Solid Storybook lane is now maintained in `pirate-web-solid`.
+
 ## Mission
 
 Migrate the entire React Storybook catalog (177 CSF files under `web/src/`) to

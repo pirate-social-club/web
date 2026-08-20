@@ -1,5 +1,8 @@
 # React → Solid service boundary
 
+> Historical boundary record. The tracked `web/solid` service was retired;
+> the `SOLID` deployment details below are retained for audit history only.
+
 The React Worker is the only public dispatcher. After it authenticates the HNS
 forwarder envelope and removes identity/session credentials, it signs the
 request sent through the `SOLID` service binding. The Solid Worker rejects

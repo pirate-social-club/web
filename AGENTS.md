@@ -2,9 +2,21 @@
 
 ## Repository Boundary
 
-`/run/media/x42/codedrive/Code/pirate-workspace` is a workspace directory, not this Git repo. This repo root is `/run/media/x42/codedrive/Code/pirate-workspace/web`.
+`/media/t42/codedrive/Code/pirate-workspace` is a workspace directory, not this Git repo. This repo root is `/media/t42/codedrive/Code/pirate-workspace/web`.
 
 Run web git commands from this directory. The sibling `api/` and `core/` directories are separate Git repositories and must be committed independently.
+
+## Writer Isolation
+
+- Every non-coordinator agent or Codex session must be launched with filesystem
+  write scope restricted to its assigned linked worktree. The canonical
+  checkout must be read-only to that session.
+- Only the integration coordinator may receive canonical write scope. A
+  session's launch directory does not establish or expand its ownership.
+- The only active workspace root is
+  `/media/t42/codedrive/Code/pirate-workspace`. The similarly named
+  `/home/t42/Documents/pirate-workspace` tree is historical reference material,
+  never a task root or write target.
 
 ## Default Checks
 

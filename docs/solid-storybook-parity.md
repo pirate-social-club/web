@@ -1,5 +1,8 @@
 # Solid Storybook Parity Manifest
 
+> Historical manifest. The tracked `web/solid` catalog was retired after this
+> inventory; the active Solid Storybook lane is maintained in `pirate-web-solid`.
+
 Source inventory: 177 React CSF story files under `web/src/`. Generated 2026-08-15
 from `main@c3b077ce`; update the Status column as batches land. Rules: deterministic
 offline stories (typed fixtures, callback-driven adapters; no live APIs, auth, router

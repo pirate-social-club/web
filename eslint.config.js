@@ -26,7 +26,7 @@ export default [
     },
   },
   {
-    files: ["solid/**/*.{ts,tsx}", "packages/solid-ui/**/*.{ts,tsx}"],
+    files: ["packages/solid-ui/**/*.{ts,tsx}"],
     languageOptions: {
       parser: typescriptParser,
       parserOptions: {

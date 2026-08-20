@@ -1,5 +1,8 @@
 # Solid cutover plan
 
+> Historical proposal. The tracked `web/solid` app and its cutover gates have
+> been retired; do not use the paths or release steps below as active commands.
+
 Date: 2026-08-14
 Status: proposed — single-operator lane ownership recorded; production sign-offs pending
 

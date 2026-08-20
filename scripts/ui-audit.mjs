@@ -11,7 +11,6 @@ const primitivesDir = path.join(projectRoot, "src", "components", "primitives");
 const compositionsDir = path.join(projectRoot, "src", "components", "compositions");
 const srcDir = path.join(projectRoot, "src");
 const typographyRoots = [
-  path.join(projectRoot, "solid", "src"),
   path.join(projectRoot, "packages", "solid-ui", "src"),
 ];
 const typographyPrimitivePaths = new Set([
@@ -21,7 +20,6 @@ const typographyBaselinePath = path.join(projectRoot, "scripts", "ui-audit-typog
 const updateTypographyBaseline = process.argv.includes("--update-typography-baseline");
 const uiSourceDirs = [
   srcDir,
-  path.join(projectRoot, "solid"),
   path.join(projectRoot, "packages", "solid-ui"),
 ];
 const scannedExtensions = new Set([".json", ".md", ".ts", ".tsx", ".yml", ".yaml"]);

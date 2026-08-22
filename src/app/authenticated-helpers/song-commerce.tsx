@@ -6,6 +6,7 @@ import type { CommunityPurchase as ApiCommunityPurchase } from "@pirate/api-cont
 
 import { useApi } from "@/lib/api";
 import { resolveApiUrl } from "@/lib/api/base-url";
+import { browserCanUseCredentials } from "@/lib/browser-security";
 import {
   usePiratePrivyRuntime,
   usePiratePrivyWallets,
@@ -289,7 +290,7 @@ export function useSongPlayback(accessToken: string | null): SongPlaybackControl
   const fetchTrackBlob = React.useCallback(async (descriptor: SongPlaybackDescriptor): Promise<Blob> => {
     if (descriptor.kind === "source") {
       const response = await fetch(resolveApiUrl(descriptor.sourcePath), {
-        headers: descriptor.requiresAuth && accessTokenRef.current
+        headers: descriptor.requiresAuth && accessTokenRef.current && browserCanUseCredentials()
           ? { Authorization: `Bearer ${accessTokenRef.current}` }
           : undefined,
       });
@@ -311,7 +312,7 @@ export function useSongPlayback(accessToken: string | null): SongPlaybackControl
 
     if (access.delivery_kind === "primary_content_ref" && access.delivery_ref) {
       const response = await fetch(resolveApiUrl(access.delivery_ref), {
-        headers: accessTokenRef.current
+        headers: accessTokenRef.current && browserCanUseCredentials()
           ? { Authorization: `Bearer ${accessTokenRef.current}` }
           : undefined,
       });

@@ -12,9 +12,29 @@ export type HnsForwarderNegativeProbeOptions = {
   allowMissingNamespace?: boolean;
   apiBaseUrl: string;
   fetchImpl?: FetchLike;
+  namespaceRetryDelayMs?: number;
   rootLabel: string;
+  useSyntheticContext?: boolean;
   webBaseUrl: string;
 };
+
+const transientNamespaceStatuses = new Set([429, 502, 503, 504]);
+
+async function fetchPublicNamespace(
+  fetchImpl: FetchLike,
+  namespaceUrl: URL,
+  retryDelayMs: number,
+): Promise<Response> {
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    const response = await fetchImpl(namespaceUrl, {
+      headers: { accept: "application/json" },
+      method: "GET",
+    });
+    if (!transientNamespaceStatuses.has(response.status) || attempt === 3) return response;
+    await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+  }
+  throw new Error("public namespace lookup retry loop exhausted unexpectedly");
+}
 
 function requiredString(value: unknown, label: string): string {
   if (typeof value !== "string" || !value.trim()) {
@@ -66,20 +86,23 @@ export async function verifyHnsForwarderNegativeProbe(
     `/public-namespaces/${encodeURIComponent(options.rootLabel)}`,
     options.apiBaseUrl,
   );
-  const namespaceResponse = await fetchImpl(namespaceUrl, {
-    headers: { accept: "application/json" },
-    method: "GET",
-  });
-  const useSyntheticContext = !namespaceResponse.ok
-    && namespaceResponse.status === 404
-    && options.allowMissingNamespace;
-  if (!namespaceResponse.ok && !useSyntheticContext) {
-    throw new Error(`public namespace lookup returned HTTP ${namespaceResponse.status}`);
+  let namespace: PublicNamespace | null = null;
+  if (!options.useSyntheticContext) {
+    const namespaceResponse = await fetchPublicNamespace(
+      fetchImpl,
+      namespaceUrl,
+      options.namespaceRetryDelayMs ?? 1_000,
+    );
+    const useSyntheticContext = !namespaceResponse.ok
+      && namespaceResponse.status === 404
+      && options.allowMissingNamespace;
+    if (!namespaceResponse.ok && !useSyntheticContext) {
+      throw new Error(`public namespace lookup returned HTTP ${namespaceResponse.status}`);
+    }
+    namespace = !useSyntheticContext
+      ? await namespaceResponse.json() as PublicNamespace
+      : null;
   }
-
-  const namespace = !useSyntheticContext
-    ? await namespaceResponse.json() as PublicNamespace
-    : null;
   const rootLabel = namespace
     ? requiredString(namespace.root_label, "public namespace root_label")
     : options.rootLabel;
@@ -134,6 +157,7 @@ if (import.meta.main) {
     apiBaseUrl: process.env.HNS_FORWARDER_NEGATIVE_API_BASE_URL ?? "https://api.pirate.sc",
     allowMissingNamespace: process.env.HNS_FORWARDER_NEGATIVE_ALLOW_ABSENT_NAMESPACE === "true",
     rootLabel: process.env.HNS_FORWARDER_NEGATIVE_ROOT ?? "dankmeme",
+    useSyntheticContext: process.env.HNS_FORWARDER_NEGATIVE_USE_SYNTHETIC_CONTEXT === "true",
     webBaseUrl: process.env.HNS_FORWARDER_NEGATIVE_WEB_BASE_URL ?? "https://pirate.sc",
   });
   console.log(

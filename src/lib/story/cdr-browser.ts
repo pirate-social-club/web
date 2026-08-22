@@ -4,6 +4,7 @@ import type { AssetAccessResponse } from "@pirate/api-contracts";
 import { createPublicClient, createWalletClient, custom, defineChain, http } from "viem";
 
 import { resolveApiUrl } from "@/lib/api/base-url";
+import { browserCanUseCredentials } from "@/lib/browser-security";
 import type { PirateConnectedEvmWallet } from "@/lib/auth/privy-wallet";
 
 import { initWasm } from "@/vendor/piplabs/crypto/index.js";
@@ -88,7 +89,9 @@ async function fetchCiphertext(
   accessToken: string | null,
 ): Promise<Uint8Array> {
   const response = await fetch(resolveApiUrl(ciphertextRef), {
-    headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
+    headers: accessToken && browserCanUseCredentials()
+      ? { Authorization: `Bearer ${accessToken}` }
+      : undefined,
   });
   if (!response.ok) {
     throw new Error("Could not load the encrypted song.");

@@ -1,7 +1,10 @@
 import { describe, expect, test } from "bun:test";
 
 import { withFetchMockGlobal } from "@/test/fetch-mock";
+import { browserCanUseCredentials } from "../browser-security";
 import { ApiClient, ApiError } from "./client";
+
+const runtimeGlobal = globalThis as typeof globalThis & { window?: unknown };
 
 withFetchMockGlobal((globalThis) => {
 
@@ -223,6 +226,38 @@ describe("ApiClient geo", () => {
       expect(capturedRequest.headers.get("authorization")).toBe("Bearer session-token");
     } finally {
       globalThis.fetch = originalFetch;
+    }
+  });
+});
+
+describe("ApiClient HNS credential policy", () => {
+  test("does not attach bearer credentials from a plaintext HNS page", async () => {
+    const originalWindow = runtimeGlobal.window;
+    const originalFetch = globalThis.fetch;
+    let request: Request | null = null;
+    Object.defineProperty(runtimeGlobal, "window", {
+      configurable: true,
+      value: { location: { hostname: "app.pirate", protocol: "http:" } },
+    });
+    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      request = input instanceof Request ? input : new Request(input, init);
+      return Response.json({ feed: [] });
+    };
+
+    try {
+      expect(browserCanUseCredentials()).toBe(false);
+      const client = new ApiClient({
+        baseUrl: "https://api.pirate.sc",
+        getToken: () => "session-token",
+      });
+      await client.feed.home({ locale: "en", sort: "best" });
+      expect(requireRequest(request).headers.get("authorization")).toBeNull();
+    } finally {
+      globalThis.fetch = originalFetch;
+      Object.defineProperty(runtimeGlobal, "window", {
+        configurable: true,
+        value: originalWindow,
+      });
     }
   });
 });

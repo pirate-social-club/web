@@ -1,4 +1,5 @@
 import { resolveApiUrl } from "@/lib/api/base-url";
+import { browserCanUseCredentials } from "@/lib/browser-security";
 import type {
   PirateSponsoredIntentRequest,
   PirateSponsoredRelayErrorCode,
@@ -52,7 +53,9 @@ export async function sendPrivyRelayIntent(input: {
     body: JSON.stringify(input.request),
     headers: {
       "content-type": "application/json",
-      ...(input.accessToken ? { authorization: `Bearer ${input.accessToken}` } : {}),
+      ...(input.accessToken && browserCanUseCredentials()
+        ? { authorization: `Bearer ${input.accessToken}` }
+        : {}),
     },
     method: "POST",
   });

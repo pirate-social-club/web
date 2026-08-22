@@ -44,6 +44,31 @@ function isNavigationRequest(request) {
   return request.mode === "navigate";
 }
 
+function hasExpectedAssetContentType(request, response) {
+  const pathname = new URL(request.url).pathname.toLowerCase();
+  const dot = pathname.lastIndexOf(".");
+  const extension = dot === -1 ? "" : pathname.slice(dot);
+  const contentType = (response.headers.get("content-type") || "").toLowerCase();
+
+  // A SPA fallback can return index.html with status 200 for a missing hashed
+  // module. Never put that HTML response into the asset cache: Chromium will
+  // later reject it as a module because its MIME type is text/html.
+  if (extension === ".js" || extension === ".mjs") {
+    return /(?:java|ecma)script|wasm/u.test(contentType);
+  }
+  if (extension === ".css") return contentType.includes("text/css");
+  if (extension === ".wasm") return contentType.includes("application/wasm");
+  if ([".png", ".jpg", ".jpeg", ".webp", ".svg", ".ico"].includes(extension)) {
+    return contentType.startsWith("image/");
+  }
+  if ([".woff2", ".woff", ".ttf"].includes(extension)) {
+    return contentType.startsWith("font/")
+      || contentType.includes("woff")
+      || contentType.includes("truetype");
+  }
+  return false;
+}
+
 self.addEventListener("install", () => {
   self.skipWaiting();
 });
@@ -114,7 +139,7 @@ async function cacheResponse(cacheName, request, response, maxEntries) {
 }
 
 function cacheSuccessfulResponse(event, cacheName, request, response, maxEntries) {
-  if (!response || response.status !== 200) return;
+  if (!response || response.status !== 200 || !hasExpectedAssetContentType(request, response)) return;
   event.waitUntil(cacheResponse(cacheName, request, response.clone(), maxEntries));
 }
 

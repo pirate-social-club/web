@@ -1,4 +1,5 @@
 import { resolveApiUrl } from "@/lib/api/base-url";
+import { browserCanUseCredentials } from "@/lib/browser-security";
 import { getAccessToken } from "@/lib/api/session-store";
 
 const VERY_BRIDGE_ORIGIN = "https://bridge.very.org";
@@ -66,7 +67,7 @@ export function installVeryBridgeFetchProxy(verificationSessionId?: string | nul
       headers.set("accept", accept);
     }
     const token = getAccessToken();
-    if (token) {
+    if (token && browserCanUseCredentials()) {
       headers.set("authorization", `Bearer ${token}`);
     }
     const body = sourceRequest.method === "GET" || sourceRequest.method === "HEAD"

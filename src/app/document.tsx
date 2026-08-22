@@ -13,6 +13,7 @@ import {
   DEFAULT_SHARE_IMAGE_TYPE,
   DEFAULT_SHARE_IMAGE_WIDTH,
 } from "@/lib/share-metadata";
+import { originCanUseCredentials } from "@/lib/browser-security";
 
 import stylesUrl from "@/styles/tokens.css?url";
 
@@ -38,14 +39,18 @@ function isDefaultShareImageUrl(value: string | null): boolean {
   }
 }
 
-function buildHomeVideoFeedBootstrapScript(publicUrl: string, scopeKey: string): string {
+function buildHomeVideoFeedBootstrapScript(
+  publicUrl: string,
+  scopeKey: string,
+  canUseCredentials: boolean,
+): string {
   const parsedPublicUrl = new URL(publicUrl);
   const viewerNeutral = parsedPublicUrl.pathname.startsWith("/public-communities/");
   const authenticatedUrl = new URL(publicUrl);
   authenticatedUrl.pathname = authenticatedUrl.pathname.replace(/\/public$/u, "");
   const locale = parsedPublicUrl.searchParams.get("locale") ?? "en";
 
-  return `(function(){try{var publicUrl=${JSON.stringify(publicUrl)};var authenticatedUrl=${JSON.stringify(authenticatedUrl.toString())};var viewerNeutral=${JSON.stringify(viewerNeutral)};var locale=${JSON.stringify(locale)};var scopeKey=${JSON.stringify(scopeKey)};var token=null;try{var raw=localStorage.getItem("pirate_session");var session=raw?JSON.parse(raw):null;token=session&&typeof session.accessToken==="string"?session.accessToken:null;if(token){var part=token.split(".")[1];if(part){var normalized=part.replace(/-/g,"+").replace(/_/g,"/");var payload=JSON.parse(atob(normalized.padEnd(Math.ceil(normalized.length/4)*4,"=")));if(typeof payload.exp==="number"&&payload.exp*1000<=Date.now())token=null;}}}catch(_error){token=null;}var authenticated=!viewerNeutral&&Boolean(token);var request=function(withToken){return fetch(withToken?authenticatedUrl:publicUrl,{headers:withToken&&token?{Authorization:"Bearer "+token}:undefined}).then(function(response){if(response.status===401&&withToken)return request(false);if(!response.ok)return{ok:false};return response.json().then(function(body){return{ok:true,response:body};});}).catch(function(){return{ok:false};});};window.__pirateHomeVideoFeedBootstrap={authenticated:authenticated,locale:locale,scopeKey:scopeKey,promise:request(authenticated)};}catch(_error){}})();`;
+  return `(function(){try{var publicUrl=${JSON.stringify(publicUrl)};var authenticatedUrl=${JSON.stringify(authenticatedUrl.toString())};var viewerNeutral=${JSON.stringify(viewerNeutral)};var canUseCredentials=${JSON.stringify(canUseCredentials)};var locale=${JSON.stringify(locale)};var scopeKey=${JSON.stringify(scopeKey)};var token=null;if(canUseCredentials){try{var raw=localStorage.getItem("pirate_session");var session=raw?JSON.parse(raw):null;token=session&&typeof session.accessToken==="string"?session.accessToken:null;if(token){var part=token.split(".")[1];if(part){var normalized=part.replace(/-/g,"+").replace(/_/g,"/");var payload=JSON.parse(atob(normalized.padEnd(Math.ceil(normalized.length/4)*4,"=")));if(typeof payload.exp==="number"&&payload.exp*1000<=Date.now())token=null;}}}catch(_error){token=null;}}var authenticated=canUseCredentials&&!viewerNeutral&&Boolean(token);var request=function(withToken){return fetch(withToken?authenticatedUrl:publicUrl,{credentials:canUseCredentials?"same-origin":"omit",headers:withToken&&token?{Authorization:"Bearer "+token}:undefined}).then(function(response){if(response.status===401&&withToken)return request(false);if(!response.ok)return{ok:false};return response.json().then(function(body){return{ok:true,response:body};});}).catch(function(){return{ok:false};});};window.__pirateHomeVideoFeedBootstrap={authenticated:authenticated,locale:locale,scopeKey:scopeKey,promise:request(authenticated)};}catch(_error){}})();`;
 }
 
 export const Document: React.FC<DocumentProps<RequestInfo<any, AppContext>>> = ({
@@ -81,6 +86,8 @@ export const Document: React.FC<DocumentProps<RequestInfo<any, AppContext>>> = (
   const homeFeedPreloadUrl = ctx.homeFeedPreloadUrl ?? null;
   const homeFeedScopeKey = ctx.homeFeedScopeKey ?? "global";
   const homeFeedApiOrigin = homeFeedPreloadUrl ? new URL(homeFeedPreloadUrl).origin : null;
+  const effectiveUrl = new URL(ctx.effectiveUrl ?? "https://pirate.sc/");
+  const canUseCredentials = originCanUseCredentials(effectiveUrl.protocol, effectiveUrl.hostname);
   const clientModuleUrl = isDev
     ? "/src/client.tsx"
     : "rwsdk_asset:/src/client.tsx";
@@ -148,7 +155,11 @@ export const Document: React.FC<DocumentProps<RequestInfo<any, AppContext>>> = (
           <script
             nonce={nonce}
             dangerouslySetInnerHTML={{
-              __html: buildHomeVideoFeedBootstrapScript(homeFeedPreloadUrl, homeFeedScopeKey),
+              __html: buildHomeVideoFeedBootstrapScript(
+                homeFeedPreloadUrl,
+                homeFeedScopeKey,
+                canUseCredentials,
+              ),
             }}
           />
         ) : null}

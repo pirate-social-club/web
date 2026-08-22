@@ -3,6 +3,7 @@
 import * as React from "react";
 import pirateBrandMarkUrl from "@/assets/logo_ghost_sm.png";
 import { getStoredSession, type StoredSession } from "@/lib/api/session-store";
+import { browserCanUseCredentials } from "@/lib/browser-security";
 import type { ChatConversation, ChatMessageRecord } from "./chat-types";
 
 const ASSISTANT_CONVERSATION_ID = "bedsheet";
@@ -205,7 +206,7 @@ async function requestAssistant<T>(
       ...init,
       signal: controller.signal,
       headers: {
-        "authorization": `Bearer ${session.accessToken}`,
+        ...(browserCanUseCredentials() ? { "authorization": `Bearer ${session.accessToken}` } : {}),
         "content-type": "application/json",
         ...(init?.headers ?? {}),
       },

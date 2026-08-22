@@ -9,6 +9,7 @@ import type { AssetSourceDescriptor, SongPlaybackDescriptor } from "@/app/authen
 import type { SongPresentationOptions } from "@/app/authenticated-helpers/post-presentation-types";
 import { centsToUsd, formatUsdLabel } from "@/lib/formatting/currency";
 import { resolveApiUrl } from "@/lib/api/base-url";
+import { browserCanUseCredentials } from "@/lib/browser-security";
 import { getAccessToken } from "@/lib/api/session-store";
 import { buildStoryExplorerIpAssetUrl } from "@/lib/story/story-portal";
 import { toast } from "@/components/primitives/sonner";
@@ -215,7 +216,7 @@ async function downloadAudioFile(input: {
   try {
     const token = getAccessToken();
     const response = await fetch(resolveApiUrl(input.path), {
-      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      headers: token && browserCanUseCredentials() ? { Authorization: `Bearer ${token}` } : undefined,
     });
 
     if (!response.ok) {

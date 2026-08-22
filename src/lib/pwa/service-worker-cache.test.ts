@@ -12,10 +12,15 @@ class FakeResponse {
   constructor(
     readonly body: string,
     readonly status = 200,
+    readonly contentType: string | null = null,
   ) {}
 
+  readonly headers = {
+    get: (name: string) => name.toLowerCase() === "content-type" ? this.contentType : null,
+  };
+
   clone() {
-    return new FakeResponse(this.body, this.status);
+    return new FakeResponse(this.body, this.status, this.contentType);
   }
 
   async json() {
@@ -28,7 +33,19 @@ type CacheEntry = { request: FakeRequest; response: FakeResponse };
 function createHarness() {
   const listeners = new Map<string, (event: Record<string, unknown>) => void>();
   const stores = new Map<string, Map<string, CacheEntry>>();
-  let fetcher = async (request: FakeRequest) => new FakeResponse(`network:${request.url}`);
+  const assetContentType = (url: string) => {
+    const extension = new URL(url).pathname.split(".").pop()?.toLowerCase();
+    if (extension === "js") return "application/javascript";
+    if (extension === "css") return "text/css";
+    if (extension === "wasm") return "application/wasm";
+    if (["woff", "woff2", "ttf"].includes(extension ?? "")) return "font/woff2";
+    return "image/svg+xml";
+  };
+  let fetcher = async (request: FakeRequest) => new FakeResponse(
+    `network:${request.url}`,
+    200,
+    assetContentType(request.url),
+  );
   let rejectCacheWrites = false;
 
   const cacheFor = (name: string) => {
@@ -219,5 +236,13 @@ describe("service worker static caching", () => {
     harness.setRejectCacheWrites(true);
     const response = await harness.fetch("https://pirate.sc/assets/quota.js");
     expect(response.status).toBe(200);
+  });
+
+  test("does not cache an HTML fallback for a missing JavaScript module", async () => {
+    const url = "https://pirate.sc/assets/missing.js";
+    harness.setFetcher(async () => new FakeResponse("<html>fallback</html>", 200, "text/html"));
+
+    expect((await harness.fetch(url)).body).toBe("<html>fallback</html>");
+    expect(harness.stores.get("pirate-pwa-assets-v5")?.has(url)).toBe(false);
   });
 });

@@ -8,6 +8,11 @@ on:
         required: false
         type: boolean
         default: false
+      use_synthetic_context:
+        description: "Probe the Web trust boundary without depending on public namespace registry availability"
+        required: false
+        type: boolean
+        default: false
   workflow_dispatch:
   schedule:
     - cron: "17 */6 * * *"
@@ -26,4 +31,5 @@ jobs:
       - name: Require forged context to remain non-interactive and unscoped
         env:
           HNS_FORWARDER_NEGATIVE_ALLOW_ABSENT_NAMESPACE: ${{ inputs.allow_absent_namespace && 'true' || 'false' }}
+          HNS_FORWARDER_NEGATIVE_USE_SYNTHETIC_CONTEXT: ${{ inputs.use_synthetic_context && 'true' || 'false' }}
         run: bun scripts/verify-hns-forwarder-negative.ts

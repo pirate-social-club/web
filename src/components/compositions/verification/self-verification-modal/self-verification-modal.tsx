@@ -17,6 +17,7 @@ import { FormNote } from "@/components/primitives/form-layout";
 import { VerificationAppDownloadLinks } from "@/components/compositions/verification/verification-app-download-links/verification-app-download-links";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { isAndroidRuntime } from "@/lib/platform-detection";
+import { useClientHydrated } from "@/hooks/use-client-hydrated";
 
 // The Self SDK only console.errors transport failures — its connect_error
 // handler never invokes onError — so a blocked or unreachable relay is
@@ -54,8 +55,9 @@ export function SelfVerificationModal({
   stallNoticeMs = SELF_QR_STALL_NOTICE_MS,
   title,
 }: SelfVerificationModalProps) {
+  const hydrated = useClientHydrated();
   const isMobile = useIsMobile();
-  const shouldShowQr = Boolean(selfApp) && !forceMobile && !isMobile && !isAndroidRuntime();
+  const shouldShowQr = hydrated && Boolean(selfApp) && !forceMobile && !isMobile && !isAndroidRuntime();
   const hasPrimaryAction = Boolean(href) && !shouldShowQr;
   const missingLaunchTarget = !shouldShowQr && !hasPrimaryAction;
   const [stallNoticeVisible, setStallNoticeVisible] = React.useState(false);

@@ -6,6 +6,7 @@ const root = resolve(import.meta.dir, "..");
 const deployScript = readFileSync(resolve(root, "scripts/deploy-production.sh"), "utf8");
 const releaseWorkflow = readFileSync(resolve(root, ".github/workflows/release.yml"), "utf8");
 const smokeScript = readFileSync(resolve(root, "scripts/smoke-test.sh"), "utf8");
+const viteConfig = readFileSync(resolve(root, "vite.config.ts"), "utf8");
 const packageJson = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8")) as {
   scripts?: Record<string, string>;
 };
@@ -22,6 +23,27 @@ describe("production Web artifact provenance", () => {
     expect(packageJson.scripts?.["build:prod"]).toContain("bun run build:provenance:emit");
     expect(packageJson.scripts?.["build:prod"]).toContain("bun run build:asset-inventory");
     expect(packageJson.scripts?.["build:staging"]).toContain("bun run build:asset-inventory");
+    expect(packageJson.scripts?.["build:staging"]).toContain("--minify oxc");
+    expect(packageJson.scripts?.["build:prod"]).toContain("--minify oxc");
+    expect(packageJson.scripts?.["build:staging"]).not.toContain("--minify false");
+    expect(packageJson.scripts?.["build:prod"]).not.toContain("--minify false");
+  });
+
+  test("keeps browser-only SDKs out of the Worker and SSR module graphs", () => {
+    expect(viteConfig).toContain('environment.name === "worker" || environment.name === "ssr"');
+    expect(viteConfig).toContain('resolve(__dirname, "./src/lib/ssr/browser-sdk.ssr.tsx")');
+
+    for (const moduleId of [
+      "@selfxyz/qrcode",
+      "@story-protocol/core-sdk",
+      "@veryai/widget",
+      "@vidstack/react",
+      "@vidstack/react/player/layouts/default",
+      "@zkpassport/sdk",
+      "agora-rtc-sdk-ng",
+    ]) {
+      expect(viteConfig).toContain(`"${moduleId}"`);
+    }
   });
 
   test("measures and durably uploads the production asset inventory without blocking deploy", () => {

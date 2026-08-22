@@ -22,6 +22,7 @@ import {
   getMediaAspectRatioStyle,
   getVideoPreviewObjectFitClassName,
 } from "@/components/compositions/posts/video-preview-layout";
+import { useClientHydrated } from "@/hooks/use-client-hydrated";
 
 export interface VideoPlayerProps {
   src: string;
@@ -48,8 +49,26 @@ export function VideoPlayer({
   className,
   onEnded,
 }: VideoPlayerProps) {
+  const hydrated = useClientHydrated();
   const aspectRatioStyle = getMediaAspectRatioStyle(aspectRatio) as MediaPlayerProps["style"] | undefined;
   const objectFitClassName = getVideoPreviewObjectFitClassName(aspectRatio);
+
+  if (!hydrated) {
+    return (
+      <div
+        aria-label={title}
+        style={aspectRatioStyle}
+        data-video-object-fit={objectFitClassName === "object-contain" ? "contain" : "cover"}
+        className={cn(
+          "vp-player relative w-full overflow-hidden rounded-lg bg-black text-white",
+          !aspectRatioStyle && "aspect-video",
+          className,
+        )}
+      >
+        {poster ? <img alt={title ?? ""} className={cn("absolute inset-0 h-full w-full", objectFitClassName)} src={poster} /> : null}
+      </div>
+    );
+  }
 
   return (
     <MediaPlayer

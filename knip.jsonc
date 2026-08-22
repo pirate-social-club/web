@@ -2,6 +2,7 @@
   "$schema": "https://unpkg.com/knip@6/schema-jsonc.json",
   "ignore": [
     "src/lib/auth/privy-react-auth.ssr.tsx",
+    "src/lib/ssr/browser-sdk.ssr.tsx",
     "src/lib/dotenv-browser-shim.ts",
     "src/lib/rwsdk-router.client.ts",
     "src/lib/rwsdk-worker.client.ts",

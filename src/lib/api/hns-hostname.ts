@@ -20,7 +20,7 @@ export function isHnsHostname(hostname: string): boolean {
     return false;
   }
 
-  if (hostname.endsWith(".pirate")) {
+  if (hostname.endsWith(".pirate") || hostname.endsWith(".clawitzer")) {
     return true;
   }
 

@@ -78,6 +78,28 @@ describe("HNS forwarder negative probe", () => {
     })).resolves.toEqual({ malformedStatus: 200, unsignedStatus: 200 });
   });
 
+  test("retries transient namespace lookup failures before using an allowed absent namespace", async () => {
+    let calls = 0;
+    const fetchImpl = (async () => {
+      calls += 1;
+      if (calls <= 2) return new Response("unavailable", { status: 503 });
+      if (calls === 3) return new Response("not found", { status: 404 });
+      return calls === 4
+        ? new Response(canonicalBody(), { status: 200 })
+        : new Response("HNS forwarder authentication failed.", { status: 403 });
+    }) as typeof fetch;
+
+    await expect(verifyHnsForwarderNegativeProbe({
+      allowMissingNamespace: true,
+      apiBaseUrl: "https://api.pirate.sc",
+      fetchImpl,
+      namespaceRetryDelayMs: 0,
+      rootLabel,
+      webBaseUrl: "https://pirate.sc",
+    })).resolves.toEqual({ malformedStatus: 403, unsignedStatus: 200 });
+    expect(calls).toBe(5);
+  });
+
   test("fails if unsigned client headers adopt wallet or route context", async () => {
     let calls = 0;
     const fetchImpl = (async () => {
@@ -107,6 +129,26 @@ describe("HNS forwarder negative probe", () => {
       rootLabel,
       webBaseUrl: "https://pirate.sc",
     })).resolves.toEqual({ malformedStatus: 403, unsignedStatus: 200 });
+  });
+
+  test("can explicitly isolate the forged-context boundary from registry availability", async () => {
+    let calls = 0;
+    const fetchImpl = (async (input: RequestInfo | URL) => {
+      calls += 1;
+      expect(String(input)).toBe("https://pirate.sc/");
+      return calls === 1
+        ? new Response(canonicalBody(), { status: 200 })
+        : new Response("HNS forwarder authentication failed.", { status: 403 });
+    }) as typeof fetch;
+
+    await expect(verifyHnsForwarderNegativeProbe({
+      apiBaseUrl: "https://api.pirate.sc",
+      fetchImpl,
+      rootLabel,
+      useSyntheticContext: true,
+      webBaseUrl: "https://pirate.sc",
+    })).resolves.toEqual({ malformedStatus: 403, unsignedStatus: 200 });
+    expect(calls).toBe(2);
   });
 
   test("still fails on an absent namespace by default", async () => {

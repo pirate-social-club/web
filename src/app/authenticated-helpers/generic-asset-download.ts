@@ -1,6 +1,7 @@
 "use client";
 
 import type { AssetAccessResponse } from "@pirate/api-contracts";
+import { browserCanUseCredentials } from "@/lib/browser-security";
 
 type StoryCdrAccess = NonNullable<AssetAccessResponse["story_cdr_access"]>;
 
@@ -68,7 +69,9 @@ export async function downloadGenericAsset(input: {
     blob = await input.readStoryCdr(access.story_cdr_access);
   } else if (access.delivery_kind === "primary_content_ref" && access.delivery_ref) {
     const response = await input.fetchContent(input.resolveContentUrl(access.delivery_ref), {
-      headers: input.accessToken ? { Authorization: `Bearer ${input.accessToken}` } : undefined,
+      headers: input.accessToken && browserCanUseCredentials()
+        ? { Authorization: `Bearer ${input.accessToken}` }
+        : undefined,
     });
     if (!response.ok) throw new Error("Could not download this asset.");
     blob = await response.blob();

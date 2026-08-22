@@ -1012,6 +1012,7 @@ jobs:
       # public registry is temporarily empty. Scheduled/manual probes remain
       # strict and report missing registry data.
       allow_absent_namespace: true
+      use_synthetic_context: true
 
   # Guard against an older run overwriting a newer production deployment. Checked
   # as late as possible — after the blocking gate, immediately before deploying.

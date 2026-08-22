@@ -1,6 +1,7 @@
 import { resolveApiUrl } from "@/lib/api/base-url";
 import { getAccessToken } from "@/lib/api/session-store";
 import { getAnalyticsIdentity } from "@/lib/analytics-identity";
+import { browserCanUseCredentials } from "@/lib/browser-security";
 import { logger } from "@/lib/logger";
 
 type AnalyticsEventName =
@@ -81,7 +82,7 @@ export function trackAnalyticsEvent(input: TrackAnalyticsEventInput): void {
   const headers: Record<string, string> = {
     "content-type": "application/json",
   };
-  if (token) {
+  if (token && browserCanUseCredentials()) {
     headers.authorization = `Bearer ${token}`;
   }
 

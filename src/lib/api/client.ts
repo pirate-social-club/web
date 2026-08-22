@@ -39,6 +39,7 @@ import type {
 import { xhrUploadFetch } from "./client-xhr-upload";
 import { getAnalyticsIdentity } from "../analytics-identity";
 import { logger } from "../logger";
+import { browserCanUseCredentials } from "../browser-security";
 
 export class ApiError extends Error {
   readonly code: string;
@@ -208,18 +209,24 @@ export class ApiClient {
     const method = init?.method ?? "GET";
     const usesFormData = typeof FormData !== "undefined" && body instanceof FormData;
     const hasBody = body !== undefined && body !== null;
+    const canUseCredentials = browserCanUseCredentials();
     const headers = new Headers(usesFormData || !hasBody ? undefined : { "Content-Type": "application/json" });
     // Identity headers are not CORS-safelisted, so sending them on a public GET
     // forces a preflight. Writes already preflight (JSON content-type), so they
     // keep both headers: the API reads them for server-side event attribution.
-    if (typeof window !== "undefined" && method !== "GET" && method !== "HEAD") {
+    if (
+      typeof window !== "undefined"
+      && canUseCredentials
+      && method !== "GET"
+      && method !== "HEAD"
+    ) {
       const identity = getAnalyticsIdentity();
       headers.set("x-pirate-anonymous-id", identity.anonymousId);
       headers.set("x-pirate-session-id", identity.sessionId);
     }
-    let token = tokenRequired || tokenOptional ? this.getToken() : null;
+    let token = canUseCredentials && (tokenRequired || tokenOptional) ? this.getToken() : null;
 
-    if (tokenRequired) {
+    if (canUseCredentials && tokenRequired) {
       if (!token) {
         logger.info("[auth] request missing token, attempting refresh", { method: init?.method ?? "GET", path });
         const refreshed = await this.runAuthRefresh().catch(() => false);
@@ -233,12 +240,15 @@ export class ApiClient {
       }
     }
 
-    if (tokenOptional && token) {
+    if (canUseCredentials && tokenOptional && token) {
       headers.set("Authorization", `Bearer ${token}`);
     }
     const callerHeaders = new Headers(fetchInit.headers);
     for (const [key, value] of callerHeaders.entries()) {
       headers.set(key, value);
+    }
+    if (!canUseCredentials) {
+      headers.delete("authorization");
     }
 
     logger.debug("[api-client] request", { method, path, tokenOptional, tokenRequired });
@@ -273,6 +283,7 @@ export class ApiClient {
         : await fetch(`${this.baseUrl}${path}`, {
           ...fetchInit,
           headers,
+          credentials: canUseCredentials ? fetchInit.credentials : "omit",
           signal: timeoutController?.signal ?? callerSignal,
         });
     } catch (error) {

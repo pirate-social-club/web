@@ -41,16 +41,23 @@ jobs:
             return { response, body }
           }
 
-          await request("token-verify", `${api}/user/tokens/verify`)
-          const schedulesUrl = `${api}/accounts/${accountId}/workers/scripts/pirate-api-staging/schedules`
-          await request("schedules-before", schedulesUrl)
-          const attached = await request("schedule-create", schedulesUrl, {
-            method: "POST",
-            body: JSON.stringify({ cron: "*/1 * * * *" }),
-          })
-          if (!attached.response.ok || attached.body.success !== true) {
-            process.exitCode = 1
-            return
+          async function main() {
+            await request("token-verify", `${api}/user/tokens/verify`)
+            const schedulesUrl = `${api}/accounts/${accountId}/workers/scripts/pirate-api-staging/schedules`
+            await request("schedules-before", schedulesUrl)
+            const attached = await request("schedule-create", schedulesUrl, {
+              method: "POST",
+              body: JSON.stringify({ cron: "*/1 * * * *" }),
+            })
+            if (!attached.response.ok || attached.body.success !== true) {
+              process.exitCode = 1
+              return
+            }
+            await request("schedules-after", schedulesUrl)
           }
-          await request("schedules-after", schedulesUrl)
+
+          main().catch((error) => {
+            console.error(error instanceof Error ? error.message : String(error))
+            process.exitCode = 1
+          })
           NODE

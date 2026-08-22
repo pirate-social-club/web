@@ -38,6 +38,29 @@ const privyServerAliasPlugin = {
   },
 };
 
+const browserOnlySdkModuleIds = new Set([
+  "@selfxyz/qrcode",
+  "@story-protocol/core-sdk",
+  "@veryai/widget",
+  "@vidstack/react",
+  "@vidstack/react/player/layouts/default",
+  "@zkpassport/sdk",
+  "agora-rtc-sdk-ng",
+]);
+
+const browserSdkServerAliasPlugin = {
+  name: "pirate:browser-sdk-server-alias",
+  enforce: "pre" as const,
+  applyToEnvironment(environment: { name: string }) {
+    return environment.name === "worker" || environment.name === "ssr";
+  },
+  resolveId(id: string) {
+    if (browserOnlySdkModuleIds.has(id)) {
+      return resolve(__dirname, "./src/lib/ssr/browser-sdk.ssr.tsx");
+    }
+  },
+};
+
 // The lightweight AGENTS.md verification command builds `src/worker.tsx` via
 // the client pipeline first, which resolves `rwsdk/worker` through the default
 // export condition instead of the worker condition. Enable the browser-side
@@ -78,6 +101,7 @@ export default defineConfig(() => ({
   plugins: [
     ...(enableClientWorkerShim ? [clientWorkerShimPlugin] : []),
     privyServerAliasPlugin,
+    browserSdkServerAliasPlugin,
     cloudflare({
       viteEnvironment: { name: "worker" },
     }),

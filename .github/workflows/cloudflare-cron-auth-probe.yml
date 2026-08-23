@@ -43,6 +43,18 @@ jobs:
 
           async function main() {
             await request("token-verify", `${api}/user/tokens/verify`)
+            const curatorSchedulesUrl = `${api}/accounts/${accountId}/workers/scripts/country-board-curator/schedules`
+            for (const cron of ["0 * * * *", "0 13 * * *"]) {
+              const removed = await request(`curator-delete-${cron}`, `${curatorSchedulesUrl}/${encodeURIComponent(cron)}`, {
+                method: "DELETE",
+              })
+              if (!removed.response.ok || removed.body.success !== true) {
+                process.exitCode = 1
+                return
+              }
+            }
+            await request("curator-schedules-after", curatorSchedulesUrl)
+
             const schedulesUrl = `${api}/accounts/${accountId}/workers/scripts/pirate-api-staging/schedules`
             await request("schedules-before", schedulesUrl)
             const attached = await request("schedule-create", schedulesUrl, {

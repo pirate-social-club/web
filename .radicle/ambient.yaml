@@ -1,0 +1,40 @@
+plan:
+  - action: shell
+    shell: |
+      set -euo pipefail
+      grep -q 'shell-only' /ci/src/.radicle/ambient.yaml
+      package=/ci/src/packages/karaoke-runtime
+      test -f "$package/package.json"
+      test -f "$package/src/binary-codec.ts"
+      test -f "$package/tests/binary-codec.test.ts"
+      test ! -e "$package/node_modules"
+
+      # The promotion gate is intentionally dependency-free. Hosted CI owns
+      # Bun tests, typechecking, builds, and the wider product matrix.
+      grep -q '"name": "@pirate-social-club/karaoke-runtime"' "$package/package.json"
+      if grep -Eq '^[[:space:]]*"dependencies"[[:space:]]*:' "$package/package.json"; then
+        echo 'runtime dependencies are not allowed in the shell-only gate' >&2
+        exit 1
+      fi
+      grep -q 'KARAOKE_BINARY_PROTOCOL_VERSION' "$package/src/binary-codec.ts"
+      grep -q 'round-trips the fixed header' "$package/tests/binary-codec.test.ts"
+
+      if grep -REn \
+        -e 'from[[:space:]]+"react(-dom)?"' \
+        -e "from[[:space:]]+'react(-dom)?'" \
+        -e 'from[[:space:]]+"@pirate/karaoke-runtime/test"' \
+        -e "from[[:space:]]+'@pirate/karaoke-runtime/test'" \
+        -e 'from[[:space:]]+"\./test"' \
+        -e "from[[:space:]]+'\./test'" \
+        -e 'import\.meta\.env' \
+        -e 'Date\.now[[:space:]]*\(' \
+        -e 'crypto\.randomUUID[[:space:]]*\(' \
+        -e 'Math\.random[[:space:]]*\(' \
+        -e '\bAbortController\b' \
+        "$package/src/binary-codec.ts" "$package/src/transport.ts"; then
+        echo 'forbidden runtime construct detected' >&2
+        exit 1
+      fi
+
+      find "$package/src" -type f -name '*.ts' ! -name '*.d.ts' -print -quit | grep -q .
+      echo 'shell-only web gate passed'
